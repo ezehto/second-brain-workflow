@@ -1,15 +1,52 @@
 # Carry-forward and headings
 
 Audience: a Claude Code session creating or filling a daily note, or appending
-text under a heading. Source: plan sections 2.2 and 2.4.
+text under a heading. Source: plan sections 2.2, 2.4 and 4.1.
 
 ## Contents
 
+- [Ensuring today's note](#ensuring-todays-note)
 - [When carry-forward runs](#when-carry-forward-runs)
 - [Untouched](#untouched)
 - [What goes in each section](#what-goes-in-each-section)
 - [Rules](#rules)
 - [Locating a heading](#locating-a-heading)
+- [Appending standup input](#appending-standup-input)
+
+## Ensuring today's note
+
+The one procedure used by `/daily`, `/standup` and `/eod`. It always writes in
+the first two cases below, even when the command has nothing else to add.
+`/daily` ignores any text typed after it and says so in the reply.
+
+1. Run `env` as [Running tools](../SKILL.md#running-tools) says. `today` names
+   the note and fixes "strictly before today"; `now` is the `id` of a note you
+   create. The note is `01-Daily/YYYY/YYYY-MM-DD.md` for `today`.
+2. Run `stem '<today>'`. Any `ignored` line for that path is a clash: stop and
+   change nothing. A missing file or year folder is not an error.
+3. Decide the case:
+   - **Missing:** create the note from the current `daily` template with
+     carry-forward (the folder is created by writing the note).
+   - **Untouched:** fill it in place, see [Untouched](#untouched).
+   - **Touched:** never rewrite it. Return it unchanged.
+   Before an existing note is filled or appended to, `stem '<today>'` must print
+   a `note` line for exactly that path and the frontmatter must parse with
+   `type: daily`, otherwise stop and change nothing.
+4. Pick the previous daily note `P` as described under
+   [What goes in each section](#what-goes-in-each-section), found with plain
+   `ls` of `01-Daily` and its year folders. A task is carried forward, and `P` is
+   read as the source, only if `stem` prints a `note` line for it: a directory
+   listing alone never decides that a file is a real note. One exception: a
+   task whose name contains `$`, a backtick, `<` or `>` is not passed to `stem`;
+   it is carried when Read shows frontmatter with `type: task`, with the
+   folder-qualified link of [links.md](links.md#emitted-links).
+5. Resolve project values with the `project` verb (see
+   [links.md](links.md#resolving-a-link-or-project-value)). Unknown or duplicated
+   projects are skipped, never asked about. A project value containing `$`, a
+   backtick, `<` or `>` is unknown and is not passed to the script.
+6. Write links as [links.md](links.md#emitted-links) says.
+7. Immediately before writing, re-read the file. On a byte mismatch treat the
+   note as touched and stop.
 
 ## When carry-forward runs
 
@@ -131,3 +168,20 @@ Use this to append text under a section. The rules need no Markdown parser.
    Then the new text is written, and the file ends with exactly one line ending.
    Nothing earlier in the file changes. This is the one end state that code and a
    Claude session produce identically.
+
+## Appending standup input
+
+Used by `/standup` after [Ensuring today's note](#ensuring-todays-note), which
+never rewrites a touched note.
+
+- The user's input is appended under the matching headings in one edit, by the
+  appending rules above. Input labelled `Done:`, `Today:`, `Blockers:`,
+  `Decisions:` or `Follow-ups:` goes under that heading. Nothing existing is
+  changed or removed.
+- Items under Today and Follow-ups are `- [ ]` checkboxes (they carry forward).
+  Items under the other headings are plain `- ` bullets.
+- The printed standup always shows the six headings in template order. A heading
+  missing from a touched note is printed empty.
+- Any status change the input implies (not only done or blocked) is asked first
+  and made by the rules in "Changing a note" in
+  [../SKILL.md](../SKILL.md#changing-a-note), so `done` needs evidence.

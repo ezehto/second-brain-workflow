@@ -37,9 +37,9 @@ run by `addopts = ["-m", "not commands"]` in claude-workflow/pyproject.toml. Any
 `-m` expression given on the command line replaces that default and can select
 the live scenarios: they launch `claude` and spend tokens.
 
-Live calls for a full `-m commands` run: 44 (capture 3, daily 4, decision 1,
-eod 9, guard 1, knowledge 1, project 5, standup 1, task 12, template edit 1,
-triage 4, canary 2).
+Live calls for a full `-m commands` run: 52 (capture 3, daily 4, decision 1,
+eod 9, guard 1, knowledge 1, project 5, standup 3, task 12, template edit 1,
+triage 10, canary 2).
 
 Every turn of every scenario also fails if the session ran any Bash command
 other than the wrapper's verbs its profile allows (`env`; `stem` and `project`

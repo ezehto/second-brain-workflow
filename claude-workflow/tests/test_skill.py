@@ -952,3 +952,49 @@ def test_refusal_exit_code_statement_stands():
     text = norm(read(SKILL_MD))
     assert "1 is a refusal with a one-line reason" in text
     assert "2 is a usage error" in text
+
+
+# ---- ensuring today's note, standup details, triage details (plan 4.1) -------------
+
+@pytest.mark.parametrize(
+    "rel,needle",
+    [
+        (CF, "## Ensuring today's note"),
+        (CF, "used by `/daily`, `/standup` and `/eod`"),
+        (CF, "It always writes in the first two cases"),
+        (CF, "even when the command has nothing else to add"),
+        (CF, "`stem '<today>'` must print a `note` line for exactly that path and the frontmatter must parse with `type: daily`, otherwise stop and change nothing"),
+        (CF, "on a byte mismatch treat the note as touched and stop"),
+        (CF, "found with plain `ls` of `01-Daily` and its year folders"),
+        (CF, "only if `stem` prints a `note` line for it"),
+        (CF, "a directory listing alone never decides that a file is a real note"),
+        (CF, "unknown or duplicated projects are skipped, never asked about"),
+        (CF, "a project value containing `$`, a backtick, `<` or `>` is unknown"),
+        (CF, "`/daily` ignores any text typed after it and says so in the reply"),
+        (CF, "## Appending standup input"),
+        (CF, "in one edit, by the appending rules"),
+        (CF, "nothing existing is changed or removed"),
+        (CF, "items under Today and Follow-ups are `- [ ]` checkboxes"),
+        (CF, "items under the other headings are plain `- ` bullets"),
+        (CF, "six headings in template order"),
+        (CF, "a heading missing from a touched note is printed empty"),
+        (CF, "asked first and made by the rules in \"Changing a note\""),
+        (CF, "so `done` needs evidence"),
+        (TRIAGE, "## Details"),
+        (TRIAGE, "plain `ls` of `00-Inbox`"),
+        (TRIAGE, "a `note` line whose path is that file in `00-Inbox`"),
+        (TRIAGE, "listed as not triaged"),
+        (TRIAGE, "`classification` and `triaged_to` are added as the last frontmatter lines"),
+        (TRIAGE, "every capture that is not dismissed and whose target did not clash gets its final `classification` written"),
+        (TRIAGE, "only `status` changes"),
+        (TRIAGE, "the user's change if they made one, otherwise the one shown"),
+        (TRIAGE, "whether or not it has a Phase 1 target"),
+        (TRIAGE, "an accepted suggestion with no target keeps `status: inbox` and gains its classification"),
+        (TRIAGE, "a dismissed capture is dismissed whatever its kind"),
+        (TRIAGE, "A `project` target is also checked with the `project` verb and is not created if its slug already exists"),
+        (TRIAGE, "that capture is left unchanged, the rest of the batch proceeds, and the command asks for another title"),
+        (TRIAGE, "`/triage` ignores any text typed after it and says so in the reply"),
+    ],
+)
+def test_ensuring_standup_triage_details(rel, needle):
+    assert has(skill_text(*rel), needle)

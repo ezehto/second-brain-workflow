@@ -1012,6 +1012,41 @@ Settled on 2026-10-05 after the command-test and security reviews.
   text that begins with another slash-command name (`/capture /daily was
   late`) makes Claude Code load that command too. `${CLAUDE_...}` placeholders
   in argument text are substituted.
+- **`/triage` details.** The inbox is listed with a plain `ls` of `00-Inbox`
+  and each capture is confirmed with `stem` (a `note` line whose path is that
+  file in `00-Inbox`) before it is edited; a capture that cannot be confirmed
+  is listed as not triaged. `classification` and `triaged_to` are added as the
+  last frontmatter lines. After a "yes", every capture that is not dismissed and whose target did
+  not clash gets its final `classification` written (the user's change if they made one, otherwise the
+  one shown), whether or not it was written in turn 1 and whether or not it
+  has a Phase 1 target: an accepted suggestion with no target keeps
+  `status: inbox` and gains its classification, and a dismissed capture is
+  dismissed whatever its kind, with only `status` changed. A `project` target is also checked with the
+  `project` verb and is not created if its slug already exists. A target
+  whose name or slug clashes is not created: that capture is left unchanged,
+  the rest of the batch proceeds, and the command asks for another title.
+- **Ensuring today's note** is one procedure, written once in the skill's
+  `reference/carry-forward.md` and used by `/daily`, `/standup` and `/eod`.
+  It always writes: a missing note is created and an untouched one is filled,
+  even when the command has nothing else to add. Before an existing daily
+  note is filled or appended to, `stem '<today>'` must print a `note` line
+  for exactly that path and the frontmatter must parse with `type: daily`;
+  otherwise the command stops and changes nothing. A task is carried forward,
+  and a previous daily note is read as the source, only if `stem` prints a
+  `note` line for it: a directory listing alone never decides that a file is
+  a real note. Unknown or duplicated projects are skipped, never asked about.
+- **`/standup` details.** Ensuring today's note never rewrites a touched note
+  (section 2.2). The user's input is then appended under the matching
+  headings in one edit, by the appending rules of section 2.4; nothing
+  already there is changed or removed. Items appended under Today and
+  Follow-ups are `- [ ]` checkboxes (they carry forward); items under the
+  other headings are plain `- ` bullets. The printed standup always shows the
+  six headings in template order; a heading missing from a touched note is
+  printed empty. Any status change the input implies (not only done or
+  blocked) is asked about first and made by the skill's "Changing a note"
+  rules, so `done` needs evidence.
+- **Commands without arguments** (`/daily`, `/triage`) ignore any text typed
+  after them and say so in the reply.
 - **Finding a project.** A command never slugifies by hand or scans the
   projects folder: it runs `vault_git.py project <text>` with the slug, title
   or wikilink the user gave and uses the result (one `note` line: that

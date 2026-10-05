@@ -10,6 +10,7 @@ triage endpoint follow the same rules.
 - [Classification and what it becomes](#classification-and-what-it-becomes)
 - [Confidence](#confidence)
 - [Flow](#flow)
+- [Details](#details)
 - [Approval](#approval)
 
 ## What triage does
@@ -70,6 +71,25 @@ guess. Create target notes as in "Creating a note" in
    in later runs.
 
 Captures are never moved or deleted.
+
+## Details
+
+- `/triage` ignores any text typed after it and says so in the reply.
+- List the inbox with plain `ls` of `00-Inbox`. Confirm each capture with `stem`
+  (a `note` line whose path is that file in `00-Inbox`) before editing it. A
+  capture that cannot be confirmed is listed as not triaged.
+- `classification` and `triaged_to` are added as the last frontmatter lines.
+- After approval, every capture that is not dismissed and whose target did not
+  clash gets its final `classification` written (the
+  user's change if they made one, otherwise the one shown), whether or not it
+  was written in turn 1 and whether or not it has a Phase 1 target. An accepted
+  suggestion with no target keeps `status: inbox` and gains its classification.
+  A dismissed capture is dismissed whatever its kind: only `status` changes.
+- A `project` target is also checked with the `project` verb and is not created
+  if its slug already exists.
+- A target whose name or slug clashes is not created: that capture is left
+  unchanged, the rest of the batch proceeds, and the command asks for another
+  title.
 
 ## Approval
 
