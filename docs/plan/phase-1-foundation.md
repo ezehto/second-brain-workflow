@@ -1028,6 +1028,65 @@ Rules the script enforces itself, whatever the caller says:
 - **Messages** are one line and say what the user can do. A refusal caused by
   git state the session cannot change (a setting to remove, a merge to finish,
   a lock file) names the exact command for the user to run in a terminal.
+- **Refinements from the second review (2026-10-05).**
+  - *Links under `.git`.* Besides symbolic links, a regular file under `.git`
+    outside `objects/` that has more than one hard link is refused: git writes
+    `COMMIT_EDITMSG` and the reflogs in place, so a hard link would carry the
+    write outside the vault.
+  - *Reading the value.* For `KEY=value` with no space around `=`, and for
+    comma-separated inline YAML or JSON, the value is the first token or the
+    quoted string, so `PGPASSWORD=Q7x... psql` and
+    `password: Secret123x, user: bob` are caught. For `key: text` the value is
+    the rest of the line, which is what keeps "Password: stored in 1Password"
+    from matching.
+  - *"Plain" values.* Without a dictionary, a value is plain when it is made
+    only of lower-case letters and `- _ . / :`. A value is also not a secret
+    when it is an ISO date or time, a number (with or without a unit), a
+    version, a path (it starts with `/`, `~/` or a drive letter), an HTTP
+    header name (`X-...` or hyphenated Title-Case), or upper-case letters and
+    underscores with no digit (an environment variable name used as a
+    placeholder). Also plain: an issue reference such as `JIRA-1234`,
+    and a hyphenated phrase whose parts are lower-case words or numbers with a
+    short unit (`min-12-chars`, `expires-in-24h`). Known cost, accepted: a
+    real password that happens to have one of these shapes (`abc-123-def`,
+    `HUNTERHUNTER`, a numeric PIN) is not flagged.
+  - *Keys that are not credentials.* A key whose last segment is `at`, `date`,
+    `expires`, `expiry`, `ttl`, `count`, `length`, `header`, `name`, `url`,
+    `type`, `hash`, `policy`, `version` or `endpoint` does not count
+    (`token_expires`, `password_hash`, `secret_name`).
+  - *URLs.* The user part may be empty (`redis://:pw@host`). The password part
+    is judged by the same plain-value test and is skipped when it equals the
+    user part, so `postgres://postgres:postgres@localhost/app` and
+    `amqp://guest:guest@localhost/` do not match.
+  - *Authorization.* `Bearer`, `Basic` and `Token` schemes.
+  - *File names.* Each path component of an added file is scanned with its
+    extension removed. A name that matches is never printed; the report gives
+    its folder and says the name is withheld.
+  - *Long lines.* An added line longer than 16 KiB is not scanned; the commit
+    is refused with the file and line and the reason "line too long to scan",
+    and the marker below lets the user accept it. No pattern may take more
+    than linear time on a long line. A binary file (an image, a PDF) has
+    no lines a user could mark, so its content is scanned in overlapping
+    16 KiB chunks instead of being refused for length; a match in it still
+    refuses the commit.
+  - *The marker is the user's.* The refusal is worded for the session to pass
+    on: it says to ask the user to remove the value or to mark the line
+    themselves, and never tells the session to add the marker. In YAML
+    frontmatter or a code block, where an HTML comment would change the
+    content, `# sbw: not-a-secret` at the end of the line is accepted too. A
+    successful commit that contains added lines carrying the marker says so
+    and lists them (`file:line`, never the text), so a marker cannot pass
+    unnoticed.
+  - *All undone.* When everything changed today was undone again, the day's
+    commit is amended to match the tree (an empty amend is allowed in this one
+    case) and the output says so; it is not reported as "nothing to commit",
+    because `HEAD` would otherwise keep content the vault no longer has.
+  - *Nested repositories.* Paths ignored by the vault's `.gitignore` are
+    skipped by this check; for the rest the message offers moving the folder
+    out or adding it to `.gitignore`.
+  - *Commands in messages.* A path containing control characters is never
+    turned into a command; the message says to inspect it in a file manager.
+    Messages that suggest a command which can discard work say so.
 - `status` and `staged-diff` output is capped at 256 KiB with a truncation
   line.
 - Exit code 0 on success, including "nothing to commit" (printed on stdout:

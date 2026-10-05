@@ -224,13 +224,38 @@ directory.
 | `stage` | stages all changes |
 | `staged-diff` | prints the names of staged files and the staged diff |
 | `head-subject` | prints the subject of `HEAD`, or nothing when there is no commit |
-| `commit-eod YYYY-MM-DD` | scans the staged diff, then commits with the message `eod: YYYY-MM-DD`; if the subject of `HEAD` is already exactly that, amends it instead, so there is one commit per day |
+| `commit-eod YYYY-MM-DD` | stages every change itself, scans the staged diff, then commits with the message `eod: YYYY-MM-DD`; if the subject of `HEAD` is already exactly that, amends it instead, so there is one commit per day. With nothing to commit it says so and changes nothing |
 
 The script itself refuses a vault that has a remote, runs the secret scan, and
 commits or amends. So the session does not scan, write a commit message or
-choose between commit and amend. Exit code 0 is success, 1 is a refusal with a
-one-line reason, 2 is a usage error. If the script exits non-zero, the session
-reports its one-line reason and stops. It never repeats a secret's text.
+choose between commit and amend. `commit-eod` stages every change itself, scans
+the staged diff, then commits or amends. It refuses unless the date is today
+(the pinned date in test mode). It also refuses a vault with any of these: a
+remote, a merge, rebase, cherry-pick or revert in progress, unmerged paths, a
+detached `HEAD`, a nested git repository, or links under `.git`. The session
+always passes today's date from the date rule above.
+
+**Exit codes.** 0 is success and includes "nothing to commit" (one line on
+stdout, which the session reports as the outcome, not as a failure). 1 is a
+refusal with a one-line reason. 2 is a usage error.
+
+**When the script refuses.** The session reports the script's one-line reason to
+the user, including any command it names, and stops. Some refusals name a
+command for the user to run in a terminal, such as removing a stale lock file,
+moving a nested repository, aborting a merge, unsetting a git setting, removing
+a remote or switching branch. The session never runs that command or any
+equivalent itself, in any way, and never tries to resolve the refusal by editing
+or moving files. It never repeats a secret's text.
+
+**The marker belongs to the user.** The comment `<!-- sbw: not-a-secret -->`, or
+`# sbw: not-a-secret` at the end of a line (for YAML frontmatter or a code
+block), exists so the user can accept a false positive. Only the user adds it.
+A session never adds, moves or removes the marker, never removes or rewrites a
+flagged value itself, and never opens the flagged file to quote the matched
+line. On a secret-scan refusal the session relays the listed `file:line (kind)`
+entries and the next step, repeats no text from the file, and stops. When a
+successful commit reports added lines that carry the marker, the session passes
+that list on to the user.
 
 `/eod`, in order:
 
@@ -241,9 +266,11 @@ reports its one-line reason and stops. It never repeats a secret's text.
 4. List the `in-progress` tasks by title and offer a status change for each,
    asking before any change.
 5. Apply the answers.
-6. Run the `stage` verb, then `commit-eod` with today's date.
+6. Run `commit-eod <today>` only. It stages, scans and commits.
 
-The commit is attributed through the vault's own local settings. Never push.
+Run the script exactly as written, with nothing appended: no redirection, no
+`; echo $?`, no `cd ... &&`. Any other form is a different command. The commit
+is attributed through the vault's own local settings. Never push.
 
 ## Reference files
 

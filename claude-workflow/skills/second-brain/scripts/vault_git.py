@@ -86,43 +86,70 @@ DENIED_CONFIG = re.compile(
 )
 
 # ------------------------------------------------------------ secret scan rules
+# Every pattern here runs in linear time on a long line: runs are possessive,
+# and repeated starts are cut off by look-behinds, so no start position rescans
+# a run another start already covered.
 
 # Words that make a key name sensitive. "pass" counts only as a whole segment
 # (DB_PASS), never inside a word (bypass, passenger).
-_KEY_WORDS = (r"(?:password|passwd|passphrase|pwd|private[ _-]?key|api[ _-]?key"
-              r"|secret|token|(?<![a-z])pass(?![a-z]))")
-_KEY_NAME = rf"[\w-]*{_KEY_WORDS}[\w-]*"
-# A Markdown table cell naming a key may hold several words ("API token").
-KEY_CELL = re.compile(rf"(?i)[\w -]*{_KEY_WORDS}[\w -]*")
-# A key, optional closing quote or emphasis, then ":" or "=" (not "==").
-KEY_HEAD = re.compile(rf"(?i)(?<![\w-])(?P<key>{_KEY_NAME})[\"'`*_]*\s*[:=](?!=)")
+_KEY_WORDS = re.compile(r"(?i)password|passwd|passphrase|pwd|private[ _-]?key|api[ _-]?key"
+                        r"|secret|token|(?<![a-z])pass(?![a-z])")
+# A key: "api key" / "private key" as two words, or one run of word characters
+# and hyphens; then an optional closing quote or emphasis, then ":" or "=".
+KEY_HEAD = re.compile(r"(?i)(?<![\w-])(?P<key>(?:api|private) key(?![\w-])|[\w-]++)"
+                      r"[\"'`*_]*+(?P<pre>\s*+)(?P<sep>[:=])(?!=)")
 # A key alone on its line with nothing after the separator.
-BARE_KEY = re.compile(rf"(?i)^\s*(?:[-*+]\s+)?[\"'`*_]*(?P<key>{_KEY_NAME})[\"'`*_]*\s*[:=]\s*$")
+BARE_KEY = re.compile(r"(?i)\s*+(?:[-*+]\s++)?[\"'`*_]*+(?P<key>(?:api|private) key|[\w-]++)"
+                      r"[\"'`*_]*+\s*+[:=]\s*+")
 _KIND_ORDER = [("private key", r"private[ _-]?key"), ("api key", r"api[ _-]?key"),
                ("password", r"passphrase|password|passwd|pwd|(?<![a-z])pass(?![a-z])"),
                ("secret", r"secret"), ("token", r"token")]
+# A key whose last segment is one of these names a property, not a credential.
+NON_CREDENTIAL_SUFFIXES = {"at", "date", "expires", "expiry", "ttl", "count", "length",
+                           "header", "name", "url", "type", "hash", "policy", "version",
+                           "endpoint"}
 
-_NOT_AFTER = r"(?<![A-Za-z0-9])"
+# Token runs are possessive, so a match always consumes its whole run and the
+# next search starts after it.
 TOKEN_PATTERNS = [
-    ("private key", re.compile(r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----"), None),
-    ("GitHub token", re.compile(_NOT_AFTER + r"(?:gh[pousr]_|github_pat_)([A-Za-z0-9_]{20,})"), 1),
-    ("GitLab token", re.compile(_NOT_AFTER + r"glpat-([A-Za-z0-9_-]{20,})"), 1),
-    ("sk- key", re.compile(_NOT_AFTER + r"sk-([A-Za-z0-9_-]{20,})"), 1),
-    ("Slack token", re.compile(_NOT_AFTER + r"xox[a-z]-([A-Za-z0-9-]{10,})"), 1),
-    ("AWS access key", re.compile(_NOT_AFTER + r"(?:AKIA|ASIA)([0-9A-Z]{16})(?![0-9A-Za-z])"), 1),
+    ("private key", re.compile(r"-----BEGIN [A-Z0-9 ]{0,40}PRIVATE KEY(?: BLOCK)?-----"), None),
+    ("GitHub token", re.compile(r"(?<![A-Za-z0-9])(?:gh[pousr]_|github_pat_)"
+                                r"([A-Za-z0-9_]{20,}+)"), 1),
+    ("GitLab token", re.compile(r"(?<![A-Za-z0-9])glpat-([A-Za-z0-9_-]{20,}+)"), 1),
+    ("sk- key", re.compile(r"(?<![A-Za-z0-9])sk-([A-Za-z0-9_-]{20,}+)"), 1),
+    ("Slack token", re.compile(r"(?<![A-Za-z0-9])xox[a-z]-([A-Za-z0-9-]{10,}+)"), 1),
+    ("AWS access key", re.compile(r"(?<![A-Za-z0-9])(?:AKIA|ASIA)([0-9A-Z]{16})(?![0-9A-Za-z])"), 1),
 ]
-URL_CREDENTIALS = re.compile(r"(?i)\b[a-z][a-z0-9+.-]*://[^\s/:@]+:(?P<pw>[^\s/@]+)@")
-AUTH_HEADER = re.compile(
-    r"(?i)authorization\s*[:=]\s*[\"']?(?:bearer|basic)\s+(?P<tok>[A-Za-z0-9._~+/=-]{16,})")
+URL_CREDENTIALS = re.compile(r"(?i)(?<![a-z0-9+.-])[a-z][a-z0-9+.-]*+://"
+                             r"(?P<user>[^\s/:@]*+):(?P<pw>[^\s/@]++)@")
+AUTH_HEADER = re.compile(r"(?i)(?<![a-z])authorization[\"']?+\s*+[:=]\s*+[\"']?+"
+                         r"(?:bearer|basic|token)\s++(?P<tok>[A-Za-z0-9._~+/=-]++)")
+AUTH_MIN = 16
 
 PLACEHOLDER = re.compile(r"<.*>|\$\{.*\}|\$[A-Za-z_]\w*|\{\{.*\}\}|\{%.*%\}|%\w+%|\*+|[xX]+")
 PLACEHOLDER_WORDS = {"changeme", "redacted", "example", "none", "null", "true", "false",
                      "yes", "no", "done", "todo"}
-URL_PLACEHOLDERS = PLACEHOLDER_WORDS | {"password", "pass", "pwd", "secret", "token"}
-DOTTED_NAME = re.compile(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+")
-# Lower-case words, phrases and paths with no digit: names, not secrets.
-PLAIN = re.compile(r"[a-z._/:-]+")
-TRAILING_COMMENT = re.compile(r"\s+(?:#|//|<!--).*$")
+DOTTED_NAME = re.compile(r"[A-Za-z_]\w*+(?:\.[A-Za-z_]\w*+)++")
+# Values that are names, not secrets (plan 4.2, refinements).
+PLAIN_VALUES = [
+    re.compile(r"[a-z._/:-]++"),                                   # lower-case words
+    re.compile(r"\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d++)?)?"
+               r"(?:Z|[+-]\d{2}:?\d{2})?)?|\d{2}:\d{2}(?::\d{2})?"),  # ISO date or time
+    re.compile(r"[+-]?\d++(?:[.,]\d++)*+(?:[a-z%]{1,12}|[KMGTP]i?B)?"),  # number, unit
+    re.compile(r"v?\d++(?:\.\d++)++(?:[-+][0-9A-Za-z.-]++)?"),      # version
+    re.compile(r"(?:/|~/|[A-Za-z]:[\\/]).*"),                       # path
+    re.compile(r"X-[A-Za-z0-9-]++|[A-Z][a-z]++(?:-[A-Z][a-z]++)++"),  # HTTP header name
+    re.compile(r"[A-Z_]++"),                                        # env variable name
+    # Not in the plan's wording (reported): hyphenated words with numbers or
+    # numbers-with-units (min-12-chars, expires-in-24h), and ticket keys.
+    re.compile(r"(?:[a-z]++|\d++[a-z]{0,5})(?:-(?:[a-z]++|\d++[a-z]{0,5}))++"),
+    re.compile(r"[A-Z][A-Z0-9]++-\d++"),
+]
+# A comment after whitespace. The look-behind lets only the first blank of a
+# run start a match.
+TRAILING_COMMENT = re.compile(r"(?<!\s)\s++(?:#|//|<!--)")
+MAX_SCAN_LINE = 16 * 1024
+NOT_A_SECRET_HASH = "# sbw: not-a-secret"
 
 HUNK = re.compile(r"@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
@@ -219,8 +246,12 @@ def _cap(text: str) -> str:
 
 
 def _shell(*parts: str) -> str:
-    """A terminal command for the user, safely quoted and printable."""
-    return _escape(" ".join(shlex.quote(p) for p in parts))
+    """A terminal command for the user, safely quoted and printable. A path
+    with control characters is never turned into a command."""
+    if any(_escape(p) != p for p in parts):
+        return ("(no command: the path contains control characters; inspect it in a"
+                " file manager)")
+    return " ".join(shlex.quote(p) for p in parts)
 
 
 def _git_cmd(vault: str, *args: str) -> str:
@@ -354,23 +385,39 @@ def _resolve_vault(test_mode: bool) -> str:
 
 
 def _walk_git_dir(gitdir: str):
-    """The first symbolic link anywhere under .git (links are never followed)."""
+    """(path, kind) of the first link under .git, or None: a symbolic link
+    anywhere, or a regular file outside objects/ with more than one hard link
+    (git writes COMMIT_EDITMSG and the reflogs in place). Links are never
+    followed. Objects are exempt: git hard-links them itself and never
+    rewrites one."""
+    objects = gitdir + "/objects"
     stack = [gitdir]
     while stack:
         with os.scandir(stack.pop()) as entries:
             for entry in entries:
                 if entry.is_symlink():
-                    return entry.path
+                    return entry.path, "symbolic"
                 if entry.is_dir(follow_symlinks=False):
                     stack.append(entry.path)
+                elif entry.is_file(follow_symlinks=False):
+                    if entry.stat(follow_symlinks=False).st_nlink > 1 and \
+                            not entry.path.startswith(objects + "/"):
+                        return entry.path, "hard"
     return None
 
 
 def _check_no_links(vault: str) -> None:
-    link = _walk_git_dir(vault + "/.git")
-    if link is not None:
+    found = _walk_git_dir(vault + "/.git")
+    if found is None:
+        return
+    link, kind = found
+    if kind == "symbolic":
         raise Refusal(f"{_escape(link)} is a symbolic link, which git would follow out of"
                       f" the vault; inspect it, then remove it in a terminal: {_shell('rm', link)}")
+    raise Refusal(f"{_escape(link)} is a hard link shared with another file, which git would"
+                  " write through out of the vault; break the link in a terminal (this keeps"
+                  f" its content): {_shell('cp', link, link + '.copy')} &&"
+                  f" {_shell('mv', link + '.copy', link)}")
 
 
 def _check_git_dir(vault: str) -> None:
@@ -415,13 +462,15 @@ class Repo:
             raise Refusal("the vault changed during the run; refusing to continue")
 
     def run(self, args: list, ok: tuple = (0,), discover: bool = False,
-            options: list = ()):
+            options: list = (), literal: bool = True):
         """Run git on the vault. Returns (exit code, stdout bytes).
 
         options are extra global options placed before the subcommand (the
         commit identity pins)."""
         self.verify()
-        cmd = [self.git, "--no-pager", "--no-optional-locks", "--literal-pathspecs"]
+        cmd = [self.git, "--no-pager", "--no-optional-locks"]
+        if literal:
+            cmd.append("--literal-pathspecs")
         for pin in GIT_OVERRIDES:
             cmd += ["-c", pin]
         cmd += options
@@ -482,9 +531,14 @@ def _config_keys(repo: Repo) -> list:
 def _check_config(repo: Repo) -> None:
     for key in _config_keys(repo):
         if DENIED_CONFIG.match(key.lower()):
+            section, _, _ = key.rpartition(".")
+            if key.lower().startswith(("filter.", "hook.")) and section.count(".") >= 1:
+                command = _git_cmd(repo.path, "config", "--remove-section", section)
+            else:
+                command = _git_cmd(repo.path, "config", "--unset-all", key)
             raise Refusal(f"the vault's git configuration sets {_escape(key)}, which can"
-                          " run a program or pull in another file; remove it in a"
-                          f" terminal: {_git_cmd(repo.path, 'config', '--unset-all', key)}")
+                          f" run a program or pull in another file; remove it in a"
+                          f" terminal: {command}")
 
 
 def open_vault(test_mode: bool) -> Repo:
@@ -535,20 +589,35 @@ def _check_state(repo: Repo) -> None:
     ):
         if os.path.lexists(f"{g}/{marker}"):
             raise Refusal(f"the vault is in the middle of {what}; finish it, or abort it"
-                          f" in a terminal: {_git_cmd(repo.path, *abort.split())}")
+                          f" in a terminal (aborting discards {what}'s unfinished"
+                          f" changes): {_git_cmd(repo.path, *abort.split())}")
     _, unmerged = repo.run(["ls-files", "--unmerged", "-z"])
     if unmerged:
         raise Refusal("the vault has unmerged paths; resolve them and stage them, or"
-                      " discard the conflict in a terminal: "
+                      " in a terminal (this discards the conflicted changes): "
                       + _git_cmd(repo.path, "reset", "--merge"))
     code, _ = repo.run(["symbolic-ref", "--quiet", "HEAD"], ok=(0, 1))
     if code != 0:
+        left = ("; commits made while HEAD is detached would be left behind, so check"
+                " them first with " + _git_cmd(repo.path, "log", "--oneline", "-5"))
+        if os.path.lexists(f"{g}/BISECT_LOG"):
+            raise Refusal("the vault's HEAD is detached by a bisect; end it in a terminal: "
+                          + _git_cmd(repo.path, "bisect", "reset") + left)
         raise Refusal("the vault's HEAD is detached; return to the branch in a terminal: "
-                      + _git_cmd(repo.path, "switch", "main"))
+                      + _git_cmd(repo.path, "switch", "main") + left)
+
+
+def _is_ignored(repo: Repo, rel: str) -> bool:
+    # check-ignore refuses --literal-pathspecs; the "./" prefix keeps a name
+    # such as ":(icase)x" from being read as pathspec magic instead.
+    code, _ = repo.run(["check-ignore", "--quiet", "--no-index", "--", "./" + rel + "/"],
+                       ok=(0, 1), literal=False)
+    return code == 0
 
 
 def _check_no_nested_repo(repo: Repo) -> None:
-    """No .git (directory, file or link) anywhere below the vault root."""
+    """No .git (directory, file or link) below the vault root, outside paths
+    the vault's .gitignore ignores (git add -A never enters those)."""
     stack = [repo.path]
     while stack:
         current = stack.pop()
@@ -558,10 +627,14 @@ def _check_no_nested_repo(repo: Repo) -> None:
                     if current == repo.path:
                         continue
                     rel = os.path.relpath(current, repo.path)
+                    if _is_ignored(repo, rel):
+                        break
+                    move = _shell("mv", current, os.path.dirname(repo.path))
                     raise Refusal(
                         f"a nested git repository is at {_escape(rel)}; git would record"
                         " it as a pointer, not its files. Move it out of the vault in a"
-                        f" terminal: {_shell('mv', current, os.path.dirname(repo.path))}")
+                        f" terminal ({move}), or add the line {_escape(rel)}/ to the"
+                        " vault's .gitignore")
                 if entry.is_dir(follow_symlinks=False):
                     stack.append(entry.path)
 
@@ -587,28 +660,79 @@ def _local_identity(repo: Repo) -> list:
 # ------------------------------------------------------------- secret scan
 
 
-def _looks_secret(raw: str) -> bool:
-    """The plan's value rule."""
-    value = TRAILING_COMMENT.sub("", raw.strip()).strip().rstrip(",;").strip()
+def _strip_comment(text: str) -> str:
+    match = TRAILING_COMMENT.search(text)
+    return text[:match.start()] if match else text
+
+
+def _clean_value(raw: str) -> str:
+    value = _strip_comment(raw.strip()).strip().rstrip(",;").strip()
     for _ in range(2):
         if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'`":
             value = value[1:-1].strip()
-    if not value.strip("*"):
-        return False
-    if value.startswith("**") and value.endswith("**"):
+    if len(value) > 4 and value.startswith("**") and value.endswith("**"):
         value = value[2:-2]
+    return value
+
+
+def _is_plain(value: str, code: bool = True) -> bool:
+    """A value that is a name, date, number, version, path, header name or
+    placeholder rather than a secret (length and spaces aside). code=False
+    skips the code-expression test, for tokens and URL passwords, where a
+    dotted value (a JWT) is not code."""
+    if not value.strip("*"):
+        return True
+    if PLACEHOLDER.fullmatch(value) or value.lower() in PLACEHOLDER_WORDS:
+        return True
+    if code and ("(" in value or "[" in value or DOTTED_NAME.fullmatch(value)):
+        return True  # a code expression
+    if re.match(r"[a-z][a-z0-9+.-]{0,30}://", value, re.I):
+        return True  # a URL; credentials inside one are a separate rule
+    return any(pattern.fullmatch(value) for pattern in PLAIN_VALUES)
+
+
+def _looks_secret(raw: str) -> bool:
+    """The plan's value rule, applied to an extracted value."""
+    value = _clean_value(raw)
     if len(value) < 8 or any(c.isspace() for c in value):
         return False
-    if PLACEHOLDER.fullmatch(value) or value.lower() in PLACEHOLDER_WORDS:
-        return False
-    if "(" in value or "[" in value or DOTTED_NAME.fullmatch(value):
-        return False
-    if re.match(r"[a-z][a-z0-9+.-]*://", value, re.I):  # a URL; credentials are a separate rule
-        return False
-    return not PLAIN.fullmatch(value)
+    return not _is_plain(value)
 
 
-def _key_kind(key: str) -> str:
+def _first_token(rest: str) -> str:
+    """The quoted string at the start of rest, or its first token (up to a
+    space or a comma)."""
+    if rest[:1] in ("'", '"', "`"):
+        end = rest.find(rest[0], 1)
+        return rest[:end + 1] if end > 0 else rest
+    match = re.match(r"[^\s,]*+", rest)
+    return match.group(0)
+
+
+def _value_after(text: str, head) -> str:
+    """The value a key-head introduces (plan 4.2, "Reading the value")."""
+    rest = text[head.end():]
+    tight = head.group("sep") == "=" and not head.group("pre") and rest[:1] not in ("", " ", "\t")
+    if tight or rest.lstrip()[:1] in ("'", '"', "`"):
+        return _first_token(rest.lstrip())
+    stripped = rest.strip()
+    # Comma-separated inline YAML or JSON: "password: x, user: bob".
+    if re.search(r",\s*+[\"']?+[\w-]++[\"']?+\s*+:", stripped):
+        return _first_token(stripped)
+    return rest
+
+
+def _key_segments(key: str) -> list:
+    return re.findall(r"[A-Z]?[a-z]+|[A-Z]+(?![a-z])|\d+", key)
+
+
+def _credential_kind(key: str):
+    """The kind of credential a key names, or None."""
+    if not _KEY_WORDS.search(key):
+        return None
+    segments = _key_segments(key)
+    if segments and segments[-1].lower() in NON_CREDENTIAL_SUFFIXES:
+        return None
     for kind, pattern in _KIND_ORDER:
         if re.search(pattern, key, re.I):
             return kind
@@ -619,18 +743,35 @@ def _not_plain(run: str) -> bool:
     return any(c.isdigit() or c.isupper() for c in run)
 
 
+def _marked(text: str) -> bool:
+    return NOT_A_SECRET in text or text.rstrip().endswith(NOT_A_SECRET_HASH)
+
+
+def _bare_key_kind(text: str):
+    """The credential kind of a line that is only "key:", markers ignored."""
+    text = text.replace(NOT_A_SECRET, "")
+    if text.rstrip().endswith(NOT_A_SECRET_HASH):
+        text = text.rstrip()[:-len(NOT_A_SECRET_HASH)]
+    match = BARE_KEY.fullmatch(text)
+    return _credential_kind(match.group("key")) if match else None
+
+
 def _line_kinds(text: str) -> list:
     """Kinds matched by one line on its own (the next-line form is in scan_diff)."""
     kinds = []
     for head in KEY_HEAD.finditer(text):
-        if _looks_secret(text[head.end():]):
-            kinds.append(_key_kind(head.group("key")))
+        kind = _credential_kind(head.group("key"))
+        if kind and _looks_secret(_value_after(text, head)):
+            kinds.append(kind)
     stripped = text.strip()
     if stripped.startswith("|"):
         cells = [c.strip() for c in stripped.strip("|").split("|")]
         for cell, value in zip(cells, cells[1:]):
-            if KEY_CELL.fullmatch(cell.strip("*`_\"' ")) and _looks_secret(value):
-                kinds.append(_key_kind(cell))
+            name = cell.strip("*`_\"' ")
+            if re.fullmatch(r"[\w -]++", name):
+                kind = _credential_kind(name)
+                if kind and _looks_secret(value):
+                    kinds.append(kind)
     for kind, pattern, group in TOKEN_PATTERNS:
         for match in pattern.finditer(text):
             if group is None or _not_plain(match.group(group)):
@@ -638,11 +779,12 @@ def _line_kinds(text: str) -> list:
                 break
     for match in URL_CREDENTIALS.finditer(text):
         pw = match.group("pw")
-        if not (PLACEHOLDER.fullmatch(pw) or pw.lower() in URL_PLACEHOLDERS):
+        if pw != match.group("user") and not _is_plain(pw, code=False):
             kinds.append("URL credentials")
             break
     for match in AUTH_HEADER.finditer(text):
-        if _not_plain(match.group("tok")):
+        tok = match.group("tok")
+        if len(tok) >= AUTH_MIN and not _is_plain(tok, code=False) and _not_plain(tok):
             kinds.append("authorization header")
             break
     unique = []
@@ -652,10 +794,22 @@ def _line_kinds(text: str) -> list:
     return unique
 
 
-def scan_diff(diff: bytes) -> list:
-    """(file, line number, kind) for each match on an added line, in order.
-    The diff must have context lines (--unified=1) for the next-line form."""
-    found, name = [], "?"
+def _chunk_kinds(text: str) -> list:
+    """Kinds in a long line of a binary file, scanned in overlapping chunks."""
+    kinds, step, overlap = [], MAX_SCAN_LINE, 512
+    for start in range(0, len(text), step):
+        for kind in _line_kinds(text[max(0, start - overlap):start + step]):
+            if kind not in kinds:
+                kinds.append(kind)
+    return kinds
+
+
+def scan_diff(diff: bytes, binary: frozenset = frozenset()):
+    """Scan the added lines of a diff with context lines (--unified=1).
+
+    Returns (found, marked): found is (file, line, kind) for each match, and
+    marked is (file, line) for each added line carrying the user's marker."""
+    found, marked, name = [], [], "?"
     old_left = new_left = 0
     new_no = 0
     prev = None  # the previous line on the new side, for the next-line form
@@ -665,12 +819,18 @@ def scan_diff(diff: bytes) -> list:
             mark, text = line[:1], line[1:]
             if mark == "+":
                 new_left -= 1
-                if NOT_A_SECRET not in text:
+                if _marked(text):
+                    marked.append((name, new_no))
+                elif name in binary:
+                    found += [(name, new_no, kind) for kind in _chunk_kinds(text)]
+                elif len(raw) - 1 > MAX_SCAN_LINE:
+                    found.append((name, new_no, "line too long to scan"))
+                else:
                     kinds = _line_kinds(text)
-                    if (prev is not None and NOT_A_SECRET not in prev
-                            and BARE_KEY.match(prev) and _looks_secret(text)):
-                        kind = _key_kind(BARE_KEY.match(prev).group("key"))
-                        kinds += [] if kind in kinds else [kind]
+                    if prev is not None and not _marked(prev) and _looks_secret(text):
+                        kind = _bare_key_kind(prev)
+                        if kind and kind not in kinds:
+                            kinds.append(kind)
                     found += [(name, new_no, kind) for kind in kinds]
                 prev, new_no = text, new_no + 1
             elif mark == "-":
@@ -691,28 +851,44 @@ def scan_diff(diff: bytes) -> list:
                 new_no = int(match.group(2))
                 new_left = int(match.group(3) or 1)
                 prev = None
-    return found
+    return found, marked
 
 
-def _scan(repo: Repo) -> list:
-    """Scan the added lines and added file names; return printable entries."""
+def _name_kinds(path: str):
+    """(index of the first path component that matches, kinds), or (None, [])."""
+    for i, part in enumerate(path.split("/")):
+        stem = os.path.splitext(part)[0] if not part.startswith(".") else part
+        kinds = _line_kinds(stem)
+        if kinds:
+            return i, kinds
+    return None, []
+
+
+def _scan(repo: Repo):
+    """Scan the added lines and added file names.
+    Returns (entries for a refusal, labels of marked lines)."""
+    _, numstat = repo.run(["diff", "--cached", *DIFF_SAFETY, "--numstat", "--no-renames",
+                           "-z"])
+    binary = frozenset(_decode(rec.split(b"\t", 2)[2]) for rec in numstat.split(b"\0")
+                       if rec.startswith(b"-\t-\t"))
     _, diff = repo.run(["diff", "--cached", *DIFF_SAFETY, "--src-prefix=a/",
                         "--dst-prefix=b/", "--text", "--no-renames", "--unified=1"])
-    found = scan_diff(diff)
+    found, marked = scan_diff(diff, binary)
     _, added = repo.run(["diff", "--cached", *DIFF_SAFETY, "--name-only",
                          "--diff-filter=A", "--no-renames", "-z"])
     hidden, entries = {}, []
     for raw in added.split(b"\0"):
         name = _decode(raw)
-        kinds = _line_kinds(name) if name else []
+        index, kinds = _name_kinds(name) if name else (None, [])
         if kinds:
-            label = f"<added file {len(hidden) + 1}, name withheld>"
+            folder = "/".join(name.split("/")[:index])
+            label = (_escape(folder) + "/" if folder else "") + "<name withheld>"
             hidden[name] = label
-            entries += [f"{label} ({kind} in the file name)" for kind in kinds]
+            entries += [f"{label} ({kind} in the name)" for kind in kinds]
     for name, number, kind in found:
-        shown = hidden.get(name, _escape(name))
-        entries.append(f"{shown}:{number} ({kind})")
-    return entries
+        entries.append(f"{hidden.get(name, _escape(name))}:{number} ({kind})")
+    labels = [f"{hidden.get(name, _escape(name))}:{number}" for name, number in marked]
+    return entries, labels
 
 
 # ------------------------------------------------------------------- verbs
@@ -762,27 +938,39 @@ def commit_eod(repo: Repo, date: str) -> int:
     if has_head and _index_equals(repo, "HEAD"):
         print(nothing)
         return 0
+    undone = False
     if amend:
         code, _ = repo.run(["rev-parse", "--verify", "--quiet", "HEAD^1^{commit}"],
                            ok=(0, 1))
-        if _index_equals(repo, "HEAD^1" if code == 0 else None):
-            print(nothing + " (today's changes were all undone)")
-            return 0
-    entries = _scan(repo)
+        # Everything changed today was undone: the day's commit is amended to
+        # match the tree, the one case where an empty amend is allowed.
+        undone = _index_equals(repo, "HEAD^1" if code == 0 else None)
+    entries, marked = _scan(repo)
     if entries:
         listed = ", ".join(entries[:MAX_LISTED])
         if len(entries) > MAX_LISTED:
             listed += f", and {len(entries) - MAX_LISTED} more"
         raise Refusal(f"the secret scan matched: {listed}. Nothing was committed and the"
-                      " changes stay staged. Remove the value, or if it is not a secret"
-                      f" add {NOT_A_SECRET} to that line, then run /eod again")
+                      " changes stay staged. Ask the user to remove the value, or, if it"
+                      " is not a secret, to mark the line themselves; then run /eod again")
     _check_no_links(repo.path)  # again, immediately before git writes under .git
     args = ["commit", "--quiet", "--no-verify", "--no-gpg-sign", "--cleanup=verbatim",
             "-m", message]
     if amend:
         args += ["--amend", "--no-post-rewrite"]
+    if undone:
+        args.append("--allow-empty")
     repo.run(args, options=identity)
-    print(f"{'amended' if amend else 'committed'}: {message}")
+    if undone:
+        print(f"amended: {message} (today's changes were undone, so the day's commit now"
+              " matches the vault)")
+    else:
+        print(f"{'amended' if amend else 'committed'}: {message}")
+    if marked:
+        listed = ", ".join(marked[:MAX_LISTED])
+        if len(marked) > MAX_LISTED:
+            listed += f", and {len(marked) - MAX_LISTED} more"
+        print(f"lines the user marked not-a-secret were committed unscanned: {listed}")
     return 0
 
 

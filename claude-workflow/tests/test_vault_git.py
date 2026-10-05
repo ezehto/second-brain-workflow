@@ -1265,7 +1265,7 @@ SECRET_LINES = [
     ("api key", ["x-api-key: Q7x" + "Q7xQ7xQ7x"]),
     ("URL credentials", ["postgres://app:Fake-" + "Pw-123@db/app"]),
     ("URL credentials", ["https://user:Fake" + "Pw42@host"]),
-    ("URL credentials", ["https://user:pw@host"]),
+    ("URL credentials", ["https://user:Secret123x@host"]),
     ("authorization header", ["Authorization: Bearer " + FAKE_JWT]),
     ("authorization header", ['-H "Authorization: Basic ' + "ZmFrZTpmYWtlcGFzcw==" + '"']),
     ("AWS access key", ["ASIA" + "Q7XZ" * 4]),
@@ -1313,9 +1313,9 @@ def test_secret_in_an_added_file_name_is_caught_and_not_printed(vg, vault, capsy
     (vault / "00-Inbox" / name).write_text("password: Fake-" + "Pa55word\n")
     code, out, err = run(vg, capsys, "commit-eod", TODAY)
     assert code == 1
-    assert "file name" in err and "GitHub token" in err
+    assert "00-Inbox/<name withheld> (GitHub token in the name)" in err
     assert FILLER not in out + err and name not in out + err
-    assert "(password)" in err  # the content match, under a redacted label
+    assert "00-Inbox/<name withheld>:1 (password)" in err
 
 
 def test_a_tab_after_a_file_name_with_spaces_is_not_part_of_the_name(vg, vault, capsys):
@@ -1355,7 +1355,9 @@ def test_refusal_lists_ten_matches_then_how_many_more(vg, vault, capsys):
     entries = [f"note.md:{n} (token)" for n in range(1, 14)]
     assert all(e in err for e in entries[:10])
     assert entries[10] not in err and "and 3 more" in err
-    assert "Remove the value" in err and "<!-- sbw: not-a-secret -->" in err
+    assert "ask the user to remove the value" in err.lower()
+    assert "mark the line themselves" in err
+    assert "sbw: not-a-secret" not in err  # never tells the session to add the marker
     assert "/eod" in err
     assert FILLER not in out + err and "token: " not in out + err
     assert head(vault) and subjects(vault) == ["Initialize vault"]
@@ -1494,15 +1496,36 @@ def test_nested_git_file_is_refused(vg, vault, capsys):
     assert code == 1 and "nested git repository" in err
 
 
-def test_same_day_amend_that_would_be_empty_is_nothing_to_commit(vg, vault, capsys):
+def test_all_undone_amends_the_days_commit_to_match_the_tree(vg, vault, capsys):
     (vault / "a.md").write_text("x\n")
     assert run(vg, capsys, "commit-eod", TODAY)[0] == 0
     before = head(vault)
     (vault / "a.md").unlink()  # everything changed today is undone
     code, out, err = run(vg, capsys, "commit-eod", TODAY)
     assert (code, err) == (0, "")
-    assert out.startswith("nothing to commit")
-    assert head(vault) == before
+    assert out.startswith(f"amended: eod: {TODAY}") and "undone" in out
+    assert "nothing to commit" not in out
+    assert head(vault) != before
+    assert subjects(vault) == [f"eod: {TODAY}", "Initialize vault"]
+    assert git(vault, "ls-tree", "-r", "--name-only", "HEAD").split() == ["README.md"]
+    assert git(vault, "status", "--porcelain") == ""
+    assert staged_names(vault) == set()
+
+
+def test_all_undone_on_a_first_ever_commit(vg, tmp_path, home, monkeypatch, capsys):
+    empty = make_repo(tmp_path / "empty vault", commit=False)
+    monkeypatch.setenv("SECOND_BRAIN_VAULT", str(empty))
+    monkeypatch.setenv("SECOND_BRAIN_TEST_MODE", "1")
+    monkeypatch.setenv("SECOND_BRAIN_TODAY", TODAY)
+    (empty / "n.md").write_text("x\n")
+    assert run(vg, capsys, "commit-eod", TODAY)[0] == 0
+    (empty / "n.md").unlink()
+    code, out, err = run(vg, capsys, "commit-eod", TODAY)
+    assert (code, err) == (0, "")
+    assert out.startswith(f"amended: eod: {TODAY}") and "undone" in out
+    assert subjects(empty) == [f"eod: {TODAY}"]
+    assert git(empty, "ls-tree", "-r", "--name-only", "HEAD") == ""
+    assert git(empty, "status", "--porcelain") == ""
 
 
 def test_change_that_vanishes_after_the_status_check_is_nothing_to_commit(
@@ -1545,7 +1568,13 @@ def test_status_works_while_index_lock_exists(vg, vault, capsys):
 def test_denied_config_names_the_unset_command(vg, vault, tmp_path, capsys):
     _local_config(vault, '[filter "x"]\n\tclean = cat\n')
     code, _, err = run(vg, capsys, "status")
-    assert code == 1 and f"git -C '{vault}' config --unset-all filter.x.clean" in err
+    assert code == 1 and f"git -C '{vault}' config --remove-section filter.x" in err
+
+
+def test_denied_diff_driver_key_names_the_unset_command(vg, vault, capsys):
+    _local_config(vault, '[diff "x"]\n\ttextconv = cat\n')
+    code, _, err = run(vg, capsys, "status")
+    assert code == 1 and f"git -C '{vault}' config --unset-all diff.x.textconv" in err
 
 
 def test_remote_refusal_names_the_remove_command(vg, vault, capsys):
@@ -1690,3 +1719,336 @@ def test_real_vault_through_a_second_mount_of_its_drive_is_refused_in_test_mode(
     monkeypatch.setenv("SECOND_BRAIN_VAULT", str(alias))
     code, _, err = run(vg, capsys, "status")
     assert code == 1 and "real vault" in err
+
+
+# ===================================== review round 3: links under .git
+
+
+def _outside_file(tmp_path, text="precious\n"):
+    outside = tmp_path / "outside"
+    outside.mkdir(exist_ok=True)
+    target = outside / "victim.txt"
+    target.write_text(text)
+    return target
+
+
+@pytest.mark.parametrize("where", ["COMMIT_EDITMSG", "logs/HEAD"])
+def test_hard_link_under_git_is_refused(vg, vault, tmp_path, capsys, where):
+    victim = _outside_file(tmp_path)
+    link = vault / ".git" / where
+    link.unlink(missing_ok=True)
+    os.link(victim, link)
+    (vault / "a.md").write_text("x\n")
+    code, _, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 1 and "hard link" in err and err.count("\n") == 1
+    assert victim.read_text() == "precious\n"
+    assert os.stat(victim).st_nlink == 2  # nothing replaced the link either
+    assert subjects(vault) == ["Initialize vault"]
+
+
+def test_hard_link_created_just_before_the_commit_is_refused(
+    vg, vault, tmp_path, capsys, monkeypatch
+):
+    victim = _outside_file(tmp_path)
+    real_scan = vg.scan_diff
+
+    def scan_then_link(*args, **kwargs):
+        result = real_scan(*args, **kwargs)
+        (vault / ".git" / "COMMIT_EDITMSG").unlink(missing_ok=True)
+        os.link(victim, vault / ".git" / "COMMIT_EDITMSG")
+        return result
+
+    monkeypatch.setattr(vg, "scan_diff", scan_then_link)
+    (vault / "a.md").write_text("x\n")
+    code, _, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 1 and "hard link" in err
+    assert victim.read_text() == "precious\n"
+
+
+def test_hard_linked_objects_are_allowed(vg, vault, tmp_path, capsys):
+    """git itself hard-links objects (clone --local); objects are never rewritten."""
+    objects = [p for p in (vault / ".git" / "objects").rglob("*") if p.is_file()]
+    assert objects
+    os.link(objects[0], tmp_path / "object-copy")
+    (vault / "a.md").write_text("x\n")
+    code, _, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 0, err
+
+
+# ================================ review round 3: the marker is the user's
+
+
+def test_hash_marker_at_end_of_line_is_accepted(vg, vault, capsys):
+    (vault / "note.md").write_text(
+        "---\n"
+        f"api_token: {FILLER}  # sbw: not-a-secret\n"
+        "---\n"
+        f"token: {FILLER} # sbw: not-a-secret but more text\n")
+    code, _, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 1
+    assert "note.md:4 (token)" in err and "note.md:2" not in err
+
+
+def test_commit_with_marked_lines_says_so_and_lists_them(vg, vault, capsys):
+    (vault / "note.md").write_text(
+        "intro\n"
+        f"token: {FILLER} <!-- sbw: not-a-secret -->\n"
+        "plain line\n"
+        f"pwd: {FILLER}  # sbw: not-a-secret\n")
+    code, out, err = run(vg, capsys, "commit-eod", TODAY)
+    assert (code, err) == (0, "")
+    assert out.splitlines()[0] == f"committed: eod: {TODAY}"
+    assert "not-a-secret" in out and "note.md:2, note.md:4" in out
+    assert FILLER not in out and "token:" not in out
+
+
+def test_commit_without_marked_lines_prints_one_line(vg, vault, capsys):
+    (vault / "note.md").write_text("x\n")
+    code, out, _ = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 0 and out == f"committed: eod: {TODAY}\n"
+
+
+# ======================================= review round 3: reading the value
+
+VALUE_FORM_SECRETS = [
+    ("password", "PGPASSWORD=Q7x9Lm2Kp4Wz psql"),
+    ("token", 'API_TOKEN="Secret123x" ./run.sh'),
+    ("secret", "SECRET=Abc12345 ./manage.py runserver"),
+    ("password", "password: Secret123x, user: bob"),
+    ("password", '{"password": "Secret123x", "user": "bob"}'),
+    ("password", "password=Secret123x token=abc"),
+    ("password", "token=abc password=Secret123x"),
+    ("password", "password: Ab3defgh"),                      # exactly 8 characters
+    ("password", 'password: "Secret123x" (rotated monthly)'),  # the quoted string
+    ("URL credentials", "redis://:Secret123x@cache:6379/0"),
+    ("authorization header", "Authorization: Token 9944b09199c62bcf9418ad846dd0e4bbdfc6ee4b"),
+    ("authorization header", "Authorization: Bearer Ab3defghijklmnop"),  # 16 characters
+]
+
+
+@pytest.mark.parametrize("kind,text", VALUE_FORM_SECRETS)
+def test_value_forms_are_caught(vg, vault, capsys, kind, text):
+    (vault / "note.md").write_text(text + "\n")
+    code, out, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 1, out
+    assert f"note.md:1 ({kind})" in err
+
+
+ROUND3_NOT_SECRETS = [
+    "Password: stored in 1Password",
+    "password: Ab3defg",                                     # 7 characters
+    "password_changed_at: 2026-10-09T10:00:00Z",
+    "token_expires: 2026-12-31",
+    "last_token_refresh=2026-10-09",
+    "secret_santa: 2026-12-20",
+    "API_KEY=YOUR_API_KEY",
+    "token: YOUR_TOKEN_HERE",
+    "password: MY_PASSWORD",
+    "Authorization: Bearer YOUR_TOKEN_HERE_PLEASE",
+    "token_header=X-Auth-Token",
+    "SECRET_HEADER: X-Secret-Token",
+    "API_KEY_HEADER=X-Api-Key",
+    "csrf-token: X-CSRFToken",
+    "PWD=/mnt/d/Projects",
+    "oldpwd: C:\\Users\\Me",
+    "password_hash: PBKDF2-SHA256",
+    "token: v1.2.3-alpha",
+    "last_token_refresh: 2026-10-09T10:00:00Z",
+    "secret_rotated: 2026-10-09 10:00",
+    "postgres://Admin2:Admin2@localhost/app",                # password equals user
+    "token: 1234567890",
+    "| Token TTL | 3600seconds |",
+    "| password policy | min-12-chars |",
+    "| token | expires-in-24h |",
+    "postgres://postgres:postgres@localhost:5432/app",
+    "postgres://app:app@localhost/app",
+    "amqp://guest:guest@localhost:5672/",
+    "https://user:pw@host",
+    "redis://:changeme@cache:6379/0",
+    "postgres://app:<password>@db/app",
+    "api_key: https://Example.com/v2/Keys",                  # a URL as a value
+    'password: "changeme"',
+    'password: "changeme",',
+    'password: "changeme";',
+    "password: changeme,",
+    "password: changeme;",
+    "password: **changeme**",
+    "password: XXXXXXXX",
+    "password: xXxXxXxXxX",
+    "password: %DB_PASSWORD%",
+    "Authorization: Bearer Ab3defghijklmno",                 # 15 characters
+    "Authorization: Bearer abcdefghijklmnopqrstuvwxyz",      # plain
+    "tokenExpires: Q7xQ7xQ7xQ7x",
+    "secretKeyName: Q7xQ7xQ7xQ7x",
+]
+
+
+@pytest.mark.parametrize("text", ROUND3_NOT_SECRETS)
+def test_round3_harmless_line_is_committed(vg, vault, capsys, text):
+    (vault / "note.md").write_text(text + "\n")
+    code, _, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 0, err
+
+
+def test_ticket_reference_on_the_next_line_is_not_a_secret(vg, vault, capsys):
+    (vault / "note.md").write_text("Token:\nJIRA-1234\n")
+    code, _, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 0, err
+
+
+def test_next_line_value_under_an_unchanged_key_line(vg, vault, capsys):
+    (vault / "conf.md").write_text("intro\npassword:\n")
+    git(vault, "add", "-A")
+    git(vault, "commit", "-q", "-m", "key only")
+    (vault / "conf.md").write_text("intro\npassword:\n  Fake-Pa55word\n")
+    code, _, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 1 and "conf.md:3 (password)" in err
+
+
+def test_marker_on_the_key_line_covers_the_next_line_value(vg, vault, capsys):
+    (vault / "conf.md").write_text("password: <!-- sbw: not-a-secret -->\n  Fake-Pa55word\n")
+    code, out, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 0, err
+    assert "conf.md:1" in out
+
+
+# ============================================ review round 3: file names
+
+
+@pytest.mark.parametrize("name", ["token=Zq8vLm3Kp9Wx.md", "ghp_" + FILLER + ".md"])
+def test_secret_in_a_file_name_component_is_never_printed(vg, vault, capsys, name):
+    secret = name.removesuffix(".md").split("=")[-1]
+    (vault / "02-Work").mkdir()
+    (vault / "02-Work" / name).write_text("token: " + FILLER + "\n")
+    code, out, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 1
+    assert "02-Work/" in err and "name withheld" in err
+    assert "(token)" in err  # the content match, under the withheld name
+    assert secret not in out + err and name not in out + err
+
+
+def test_secret_in_a_folder_name_withholds_from_that_folder_on(vg, vault, capsys):
+    folder = vault / "keys" / "secret=Zq8vLm3Kp9Wx" / "inner"
+    folder.mkdir(parents=True)
+    (folder / "note.md").write_text("fine\n")
+    code, out, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 1
+    assert "keys/" in err and "name withheld" in err
+    assert "Zq8vLm3Kp9Wx" not in out + err and "inner" not in err
+
+
+def test_plain_file_name_with_extension_is_not_flagged(vg, vault, capsys):
+    (vault / "token-rotation.md").write_text("fine\n")
+    (vault / "password-policy.v2.md").write_text("fine\n")
+    assert run(vg, capsys, "commit-eod", TODAY)[0] == 0
+
+
+# ============================================== review round 3: long lines
+
+ADVERSARIAL = [
+    "token" * 200_000,
+    "a." * 500_000,
+    "x" + " " * 1_000_000 + "# c",
+    "x" + " " * 1_000_000 + "y",
+    "password: x" + " " * 1_000_000 + "y",
+    "ghp_" * 250_000,
+    "sk-" * 333_000,
+    "xoxb-" * 200_000,
+    "a://" * 250_000,
+    "a:" + "b" * 1_000_000,
+    "password=" + "=" * 1_000_000,
+    "-----BEGIN " + "A " * 500_000,
+    "| token " * 125_000,
+    "Authorization: Bearer " + " " * 1_000_000,
+    "x" * 1_000_000 + "@",
+]
+
+
+@pytest.mark.parametrize("text", ADVERSARIAL, ids=[t[:12] for t in ADVERSARIAL])
+def test_scanning_a_1mb_adversarial_line_is_fast(vg, text):
+    import time
+    start = time.monotonic()
+    vg._line_kinds(text)
+    vg._looks_secret(text)
+    assert time.monotonic() - start < 2.0
+
+
+def test_line_longer_than_16_kib_is_refused_not_scanned(vg, vault, capsys):
+    (vault / "big.md").write_text("intro\n" + "token" * 4000 + "\n")  # 20,000 characters
+    import time
+    start = time.monotonic()
+    code, out, err = run(vg, capsys, "commit-eod", TODAY)
+    assert time.monotonic() - start < 10
+    assert code == 1 and "big.md:2 (line too long to scan)" in err
+    (vault / "big.md").write_text("intro\n" + "token" * 4000 + " <!-- sbw: not-a-secret -->\n")
+    code, out, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 0, err
+    assert "big.md:2" in out
+
+
+def test_line_of_exactly_16_kib_is_scanned(vg, vault, capsys):
+    (vault / "edge.md").write_text("a" * (16 * 1024) + "\n")
+    assert run(vg, capsys, "commit-eod", TODAY)[0] == 0
+
+
+def test_long_binary_content_is_scanned_in_chunks_not_refused(vg, vault, capsys):
+    (vault / "image.png").write_bytes(b"\x89PNG\x00" + bytes(range(1, 256)) * 4000)
+    assert run(vg, capsys, "commit-eod", TODAY)[0] == 0
+    (vault / "other.bin").write_bytes(
+        b"\x00" * 40_000 + b"ghp_" + FILLER.encode() + b"\x00" * 40_000)
+    code, out, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 1 and "other.bin" in err and "GitHub token" in err
+    assert FILLER not in out + err
+
+
+# =========================================== review round 3: nested repos
+
+
+def test_nested_repository_in_an_ignored_folder_is_allowed(vg, vault, capsys):
+    (vault / ".gitignore").write_text(".trash/\n.obsidian/plugins/vendored/\n")
+    make_repo(vault / ".trash" / "old-project")
+    make_repo(vault / ".obsidian" / "plugins" / "vendored", commit=False)
+    (vault / "a.md").write_text("x\n")
+    code, _, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 0, err
+
+
+def test_nested_repository_message_offers_gitignore(vg, vault, capsys):
+    make_repo(vault / "projects" / "inner")
+    code, _, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 1 and ".gitignore" in err and "projects/inner/" in err
+    assert "mv " in err
+
+
+# ============================================== review round 3: messages
+
+
+def test_path_with_control_characters_is_never_made_a_command(vg, vault, capsys):
+    make_repo(vault / "a\x1bb")
+    code, _, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 1 and "file manager" in err
+    assert "mv " not in err and "\x1b" not in err
+
+
+def test_commands_that_discard_work_say_so(vg, vault, capsys):
+    _conflict(vault)
+    git(vault, "merge", "side", check=False)
+    code, _, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 1 and "merge --abort" in err and "discard" in err
+    (vault / ".git" / "MERGE_HEAD").unlink()
+    code, _, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 1 and "reset --merge" in err and "discard" in err
+
+
+def test_detached_head_during_bisect_suggests_bisect_reset(vg, vault, capsys):
+    git(vault, "checkout", "-q", "--detach")
+    (vault / ".git" / "BISECT_LOG").write_text("# bisect\n")
+    code, _, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 1 and "bisect reset" in err and "switch main" not in err
+    assert "left behind" in err
+
+
+def test_detached_head_warns_that_commits_would_be_left_behind(vg, vault, capsys):
+    git(vault, "checkout", "-q", "--detach")
+    code, _, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 1 and "switch main" in err and "left behind" in err

@@ -563,7 +563,6 @@ def test_git_section_lists_the_six_verbs_exactly():
         "runs the secret scan",
         "commits or amends",
         "does not scan, write a commit message or choose between commit and amend",
-        "reports its one-line reason and stops",
         "never repeats a secret's text",
         "Base directory for this skill",
     ],
@@ -642,3 +641,67 @@ def test_command_detail_needles(rel, needle):
 
 def test_git_written_only_by_init_and_eod():
     assert has(read(SKILL_MD), "Git is written only by the init script and `/eod`")
+
+
+# ---- vault_git.py behaviour, refusals and the marker (plan 4.2) --------------------
+
+@pytest.mark.parametrize(
+    "needle",
+    [
+        # refusals carry terminal commands (item 1)
+        "reports the script's one-line reason to the user, including any command it names, and stops",
+        "never runs that command or any equivalent itself, in any way",
+        "never tries to resolve the refusal by editing or moving files",
+        # the marker belongs to the user (item 2)
+        "`<!-- sbw: not-a-secret -->`",
+        "`# sbw: not-a-secret` at the end of a line",
+        "Only the user adds it",
+        "never adds, moves or removes the marker",
+        "never removes or rewrites a flagged value itself",
+        "never opens the flagged file to quote the matched line",
+        "relays the listed `file:line (kind)` entries and the next step",
+        "repeats no text from the file",
+        "passes that list on to the user",
+        # commit-eod (item 3)
+        "stages every change itself, scans the staged diff, then commits or amends",
+        "refuses unless the date is today (the pinned date in test mode)",
+        "a remote, a merge, rebase, cherry-pick or revert in progress, unmerged paths, a detached `HEAD`, a nested git repository, or links under `.git`",
+        "always passes today's date from the date rule",
+        # exit codes (item 4)
+        "0 is success and includes \"nothing to commit\"",
+        "one line on stdout, which the session reports as the outcome, not as a failure",
+        "1 is a refusal with a one-line reason",
+        "2 is a usage error",
+        # step 6 form (item 5)
+        "Run `commit-eod <today>` only",
+        "exactly as written, with nothing appended",
+        "no redirection",
+        "`; echo $?`",
+        "`cd ... &&`",
+    ],
+)
+def test_vault_git_behaviour_text(needle):
+    assert has(read(SKILL_MD), needle)
+
+
+def test_eod_step6_has_no_separate_stage():
+    sec = section(read(SKILL_MD), "## Git and `/eod`")
+    steps = re.findall(r"^(\d)\. (.+?)(?=\n\d\. |\n\n|\Z)", sec, re.S | re.M)
+    step6 = norm(steps[5][1])
+    assert "commit-eod" in step6 and "`stage`" not in step6
+    assert "Run the `stage` verb, then" not in sec
+
+
+def test_old_script_wording_gone():
+    text = norm(read(SKILL_MD))
+    assert "| scans the staged diff, then commits" not in text
+    assert "Exit code 0 is success, 1 is a refusal" not in text
+    assert "It never repeats a secret's text" not in text or "repeats no text" in text
+
+
+def test_marker_is_not_instructed_to_the_session():
+    text = read(SKILL_MD)
+    # the marker may be named only in sentences that give it to the user or forbid the session
+    for ln in norm(text).split(". "):
+        if "not-a-secret" in ln:
+            assert re.search(r"user|never|only", ln, re.I), ln
