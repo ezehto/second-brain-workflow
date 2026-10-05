@@ -986,7 +986,10 @@ Settled on 2026-10-05 after the command-test and security reviews.
   delimiter that ordinary text is unlikely to contain and says the text runs
   to that delimiter; if the delimiter itself appears inside the text, the
   command refuses and says so, because it can no longer tell where the text
-  ends.
+  ends. Known limit: Claude Code substitutes `${CLAUDE_...}` variables in
+  a command file after inserting the arguments, so argument text that contains
+  such a placeholder (for example `${CLAUDE_SKILL_DIR}`) is stored with the
+  value substituted, not verbatim. No command text can prevent that.
 - **`/task`:** when marking a task `done`, the evidence is appended first and
   the status line is changed second, so a stop in between never leaves a
   `done` task without evidence.
