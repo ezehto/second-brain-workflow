@@ -13,18 +13,12 @@ text under a heading. Source: plan sections 2.2 and 2.4.
 
 ## When carry-forward runs
 
-"Today" is the date from the test clock rule below. The daily note is
-`01-Daily/YYYY/YYYY-MM-DD.md`.
+"Today" is the `today` value from the `env` call described in
+[../SKILL.md](../SKILL.md#vault-path-and-todays-date), read once per operation.
+A `refused:` line means report it and stop. Take the date from nowhere else. The
+daily note is `01-Daily/YYYY/YYYY-MM-DD.md`.
 
-> To get today's date, run `printenv SECOND_BRAIN_TEST_MODE SECOND_BRAIN_TODAY`.
-> If `SECOND_BRAIN_TEST_MODE` is exactly `1` and `SECOND_BRAIN_TODAY` is set,
-> today is `SECOND_BRAIN_TODAY`; in that case stop unless `SECOND_BRAIN_VAULT`
-> is set and is not `/mnt/d/Second Brain`. Otherwise run
-> `TZ=Asia/Manila date +%F`.
-
-When the operation also needs a time of day, take the date from that single read instead.
-
-Either variable alone is ignored. Carry-forward fills today's note in one of two
+Carry-forward fills today's note in one of two
 cases:
 
 1. **Today's note does not exist.** Create it from the vault's `daily` template

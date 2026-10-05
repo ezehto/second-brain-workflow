@@ -53,27 +53,23 @@ CANNED_STREAM = "\n".join(
 )
 
 # Every Bash allow rule the harness may ever grant, written out by hand.
-APPROVED_COMMON_BASH = {
-    "Bash(printenv SECOND_BRAIN_TEST_MODE SECOND_BRAIN_TODAY)",
-    "Bash(printenv SECOND_BRAIN_VAULT)",
-    "Bash(TZ=Asia/Manila date +%F)",
-    "Bash(TZ=Asia/Manila date +%Y%m%d%H%M%S)",
-    "Bash(TZ=Asia/Manila date +%H%M%S)",
-    "Bash(date +%F)",
-    "Bash(date +%Y%m%d%H%M%S)",
-    "Bash(date +%H%M%S)",
-    'Bash([ "$SECOND_BRAIN_VAULT" -ef "/mnt/d/Second Brain" ])',
-    'Bash(test "$SECOND_BRAIN_VAULT" -ef "/mnt/d/Second Brain")',
-    "Bash(echo *)",
-}
 APPROVED_BROWSE_BASH = {"Bash(ls)", "Bash(ls *)", "Bash(pwd)"}
 VAULT_GIT_VERBS = ["remote", "status", "stage", "staged-diff", "head-subject", "commit-eod 2026-10-09"]
+FORBIDDEN_PROGRAMS = ("printenv", "date", "TZ=", "[", "test", "echo", "git", "find")
+
+
+def _wrapper_scripts(ws):
+    return [str(ws.cwd / ".claude/skills/second-brain/scripts/vault_git.py"),
+            ".claude/skills/second-brain/scripts/vault_git.py"]
+
+
+def approved_env(ws):
+    """The one call every command makes (plan 2.12), in both path spellings."""
+    return {f"Bash(python3 -I {s} env)" for s in _wrapper_scripts(ws)}
 
 
 def approved_vault_git(ws):
-    scripts = [str(ws.cwd / ".claude/skills/second-brain/scripts/vault_git.py"),
-               ".claude/skills/second-brain/scripts/vault_git.py"]
-    return {f"Bash(python3 -I {s} {verb})" for s in scripts for verb in VAULT_GIT_VERBS}
+    return {f"Bash(python3 -I {s} {verb})" for s in _wrapper_scripts(ws) for verb in VAULT_GIT_VERBS}
 
 
 @pytest.fixture
@@ -262,38 +258,40 @@ def _bash_rules(rules):
 
 def test_every_bash_allow_rule_is_in_the_approved_exact_set(hx, ws):
     approved = {
-        "default": APPROVED_COMMON_BASH | APPROVED_BROWSE_BASH,
-        "eod": APPROVED_COMMON_BASH | APPROVED_BROWSE_BASH | approved_vault_git(ws),
-        "guard": APPROVED_COMMON_BASH,
+        "default": approved_env(ws) | APPROVED_BROWSE_BASH,
+        "eod": approved_env(ws) | APPROVED_BROWSE_BASH | approved_vault_git(ws),
+        "guard": approved_env(ws),
     }
     for profile, expected in approved.items():
         allow = hx.permission_settings(ws, profile)["permissions"]["allow"]
         assert _bash_rules(allow) == expected, profile
 
 
-def test_no_bash_allow_rule_runs_git_and_find_is_not_allowed(hx, ws):
+def test_no_bash_allow_rule_runs_a_shell_form_git_or_find(hx, ws):
+    """No printenv, date, [, test, echo, git or find rule in any profile: a
+    command learns the date and vault from the wrapper's `env` verb (plan 2.12)."""
     for profile in hx.PROFILES:
         for rule in _bash_rules(hx.permission_settings(ws, profile)["permissions"]["allow"]):
             command = rule[len("Bash("):-1]
-            assert not re.match(r"\s*git\b", command), rule
+            first = command.split()[0] if command.split() else ""
+            assert not any(first == p or first.startswith(p) for p in FORBIDDEN_PROGRAMS), rule
             assert " git " not in f" {command} ", rule
-            assert not command.startswith("find"), rule
 
 
-def test_only_the_eod_profile_has_a_git_surface(hx, ws):
-    for profile in ("default", "guard"):
-        allow = hx.permission_settings(ws, profile)["permissions"]["allow"]
-        assert not any("vault_git" in r for r in allow), profile
-    eod = hx.permission_settings(ws, "eod")["permissions"]["allow"]
-    vault_git = [r for r in eod if "vault_git" in r]
-    assert set(vault_git) == approved_vault_git(ws)
-    assert not any("*" in r for r in vault_git)
+def test_every_profile_allows_the_env_verb_and_only_eod_the_other_verbs(hx, ws):
+    for profile in hx.PROFILES:
+        allow = set(hx.permission_settings(ws, profile)["permissions"]["allow"])
+        assert approved_env(ws) <= allow, profile
+        wrapper = {r for r in allow if "vault_git" in r}
+        expected = approved_env(ws) | (approved_vault_git(ws) if profile == "eod" else set())
+        assert wrapper == expected, profile
+        assert not any("*" in r for r in wrapper), profile
 
 
 def test_guard_profile_has_no_write_tool_and_only_the_skill_shell_forms(hx, ws):
     rules = hx.permission_settings(ws, "guard")["permissions"]
     assert not any(r.startswith("Edit(") for r in rules["allow"])
-    assert _bash_rules(rules["allow"]) == APPROVED_COMMON_BASH
+    assert _bash_rules(rules["allow"]) == approved_env(ws)
     assert hx.TOOLS["guard"] == ("Read", "Bash", "Skill")
     argv = hx.build_argv(ws, "/capture x", hx.HarnessConfig(), profile="guard")
     assert argv[argv.index("--tools") + 1] == "Read,Bash,Skill"
@@ -449,14 +447,19 @@ def test_problem_reports_an_unusable_session(hx, result, problem):
 
 
 def test_missing_command_reason_needs_both_the_installed_file_and_the_listing(hx, ws):
+    # Names no real command can have, so the result does not depend on which
+    # commands claude-workflow/commands/ holds today.
+    listed, unlisted = "sbw-stand-in-listed", "sbw-stand-in-unlisted"
+    init = {**INIT_EVENT, "slash_commands": [listed]}
+    assert not (ws.claude_dir / "commands" / f"{listed}.md").exists()
     # Listed (a same-named skill or built-in could be) but not installed: not found.
-    reason = hx.missing_command_reason(INIT_EVENT, "/capture", ws)
-    assert reason.startswith("command not found: /capture")
-    _install_command(ws, "capture")
-    assert hx.missing_command_reason(INIT_EVENT, "/capture", ws) is None
-    _install_command(ws, "daily")  # installed but not listed
-    reason = hx.missing_command_reason(INIT_EVENT, "/daily", ws)
-    assert "claude-workflow/commands/daily.md" in reason and "did not list" in reason
+    reason = hx.missing_command_reason(init, f"/{listed}", ws)
+    assert reason.startswith(f"command not found: /{listed}")
+    _install_command(ws, listed)
+    assert hx.missing_command_reason(init, f"/{listed}", ws) is None
+    _install_command(ws, unlisted)  # installed but not listed
+    reason = hx.missing_command_reason(init, f"/{unlisted}", ws)
+    assert f"claude-workflow/commands/{unlisted}.md" in reason and "did not list" in reason
 
 
 def test_describe_includes_every_text_block_and_the_denials(hx):
@@ -907,16 +910,22 @@ def test_harness_git_refuses_a_symlink_anywhere_under_dot_git(hx, ws, tmp_path, 
         hx.git(ws, "status")
 
 
-def test_denials_outside_root_exempt_the_guards_exact_allowed_commands(hx, ws):
-    guard_cmd = '[ "$SECOND_BRAIN_VAULT" -ef "/mnt/d/Second Brain" ]'
+def test_denials_outside_root_exempt_only_the_env_call(hx, ws):
+    env_abs = f"python3 -I {ws.cwd}/.claude/skills/second-brain/scripts/vault_git.py env"
+    env_rel = "python3 -I .claude/skills/second-brain/scripts/vault_git.py env"
+    old_guard = '[ "$SECOND_BRAIN_VAULT" -ef "/mnt/d/Second Brain" ]'
     session = hx.SessionResult(argv=[], prompt="p", events=[INIT_EVENT, {**RESULT_EVENT, "permission_denials": [
-        {"tool_name": "Bash", "tool_input": {"command": guard_cmd}},
-        {"tool_name": "Bash", "tool_input": {"command": f"{guard_cmd} && echo real"}},
+        {"tool_name": "Bash", "tool_input": {"command": env_abs}},
+        {"tool_name": "Bash", "tool_input": {"command": env_rel}},
+        {"tool_name": "Bash", "tool_input": {"command": f"{env_rel} 2>&1; ls /mnt/d/Second Brain"}},
+        {"tool_name": "Bash", "tool_input": {"command": old_guard}},  # no longer an allowed command
         {"tool_name": "Read", "tool_input": {"file_path": "/mnt/d/Second Brain/x.md"}},
         {"tool_name": "Read", "tool_input": {"file_path": f"{ws.vault}/a.md"}},
     ]}])
+    assert hx.allowed_bash_commands(ws, "guard") == {env_abs, env_rel}
     found = hx.denials_outside_root(session, ws, "guard")
-    assert [d["command"] for d in found] == [f"{guard_cmd} && echo real", '{"file_path": "/mnt/d/Second Brain/x.md"}']
+    assert [d["command"] for d in found] == [
+        f"{env_rel} 2>&1; ls /mnt/d/Second Brain", old_guard, '{"file_path": "/mnt/d/Second Brain/x.md"}']
     assert all(d["paths"] for d in found)
 
 

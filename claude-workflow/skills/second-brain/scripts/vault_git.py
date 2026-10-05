@@ -3,6 +3,8 @@
 
 Usage: python3 -I vault_git.py VERB [ARGUMENT]
 
+  env                     print vault=, today=, now= and test_mode= (section 2.12);
+                          runs no git and needs no vault
   remote                  print the configured remotes, one per line
   status                  print `git status --porcelain` (capped at 256 KiB)
   stage                   `git add -A`
@@ -48,9 +50,9 @@ OUTPUT_LIMIT = 256 * 1024
 MAX_LISTED = 10
 NOT_A_SECRET = "<!-- sbw: not-a-secret -->"
 
-VERBS = {"remote": 0, "status": 0, "stage": 0, "staged-diff": 0, "head-subject": 0,
-         "commit-eod": 1}
-USAGE = ("usage: vault_git.py remote | status | stage | staged-diff | head-subject"
+VERBS = {"env": 0, "remote": 0, "status": 0, "stage": 0, "staged-diff": 0,
+         "head-subject": 0, "commit-eod": 1}
+USAGE = ("usage: vault_git.py env | remote | status | stage | staged-diff | head-subject"
          " | commit-eod YYYY-MM-DD")
 
 # Pinned on every call. Command-line -c beats the repository's own config.
@@ -208,8 +210,17 @@ def _utc_now() -> datetime.datetime:
     return datetime.datetime.now(datetime.timezone.utc)
 
 
-def _manila_today() -> datetime.date:
-    return _utc_now().astimezone(ZoneInfo(TIME_ZONE)).date()
+def _today_and_now(test_mode: bool, pinned) -> tuple:
+    """(today as YYYY-MM-DD, now as YYYYMMDDHHMMSS) from ONE clock read, so
+    the two cannot straddle midnight. The date is the pinned date in test mode
+    and today in Asia/Manila otherwise; the time is always the real clock in
+    Asia/Manila. env and commit-eod both use this."""
+    try:
+        local = _utc_now().astimezone(ZoneInfo(TIME_ZONE))
+    except ZoneInfoNotFoundError:
+        raise Refusal(f"time zone {TIME_ZONE} is not installed") from None
+    day = pinned if test_mode else local.date().isoformat()
+    return day, day.replace("-", "") + local.strftime("%H%M%S")
 
 
 def _unquote(name: str) -> str:
@@ -322,8 +333,8 @@ def _check_test_mode(verb: str):
     pinned = os.environ.get("SECOND_BRAIN_TODAY")
     if pinned is not None and _parse_date(pinned) is None:
         raise Refusal("SECOND_BRAIN_TODAY is not a valid YYYY-MM-DD date")
-    if verb == "commit-eod" and pinned is None:
-        raise Refusal("test mode requires SECOND_BRAIN_TODAY for commit-eod")
+    if verb in ("commit-eod", "env") and pinned is None:
+        raise Refusal(f"test mode requires SECOND_BRAIN_TODAY for {verb}")
     return pinned
 
 
@@ -357,7 +368,10 @@ def _lexical_checks(raw: str) -> str:
     return path
 
 
-def _resolve_vault(test_mode: bool) -> str:
+def _vault_path(test_mode: bool) -> str:
+    """The vault path after every check that needs no repository and does not
+    require the vault to exist: the text checks, the test-mode real-vault
+    guard and the drive-C mount check. Shared by env and every other verb."""
     raw = os.environ.get("SECOND_BRAIN_VAULT")
     if raw is None:
         raw = DEFAULT_VAULT
@@ -368,6 +382,18 @@ def _resolve_vault(test_mode: bool) -> str:
         raise Refusal(f"cannot read the mount table to check the vault's drive: {exc}") from None
     if test_mode and _is_real_vault(path, mountinfo):
         raise Refusal("test mode refuses the real vault")
+    if _on_c_drive(path, mountinfo):
+        raise Refusal(f"refusing a vault on a mount of drive C: {_escape(path)}")
+    return path
+
+
+def _check_no_symlink_in_path(path: str) -> None:
+    if os.path.realpath(path) != path:
+        raise Refusal(f"the vault path contains a symlink: {_escape(path)}")
+
+
+def _resolve_vault(test_mode: bool) -> str:
+    path = _vault_path(test_mode)
     shown = _escape(path)
     try:
         st = os.lstat(path)
@@ -377,11 +403,24 @@ def _resolve_vault(test_mode: bool) -> str:
         raise Refusal(f"the vault is a symlink: {shown}")
     if not stat.S_ISDIR(st.st_mode):
         raise Refusal(f"the vault is not a directory: {shown}")
-    if os.path.realpath(path) != path:
-        raise Refusal(f"the vault path contains a symlink: {shown}")
-    if _on_c_drive(path, mountinfo):
-        raise Refusal(f"refusing a vault on a mount of drive C: {shown}")
+    _check_no_symlink_in_path(path)
     return path
+
+
+def env(test_mode: bool, pinned) -> str:
+    """The env verb's four lines. Runs no git and needs no vault, so it works
+    before the vault exists and for a command that will only refuse."""
+    raw = os.environ.get("SECOND_BRAIN_VAULT")
+    if raw is not None and _escape(raw) != raw:
+        raise Refusal("SECOND_BRAIN_VAULT contains a control character or line break")
+    try:
+        path = _vault_path(test_mode)
+        _check_no_symlink_in_path(path)
+    except Refusal as exc:
+        raise Refusal(f"SECOND_BRAIN_VAULT: {exc}") from None
+    today, now = _today_and_now(test_mode, pinned)
+    return (f"vault={path}\ntoday={today}\nnow={now}\n"
+            f"test_mode={1 if test_mode else 0}\n")
 
 
 def _walk_git_dir(gitdir: str):
@@ -1014,15 +1053,12 @@ def main(argv: list | None = None) -> int:
             date = argv[1]
             if _parse_date(date) is None:
                 raise Refusal(f"'{_escape(date)}' is not a real date in YYYY-MM-DD form")
-            if test_mode:
-                expected = pinned
-            else:
-                try:
-                    expected = _manila_today().isoformat()
-                except ZoneInfoNotFoundError:
-                    raise Refusal(f"time zone {TIME_ZONE} is not installed") from None
+            expected = _today_and_now(test_mode, pinned)[0]
             if date != expected:
                 raise Refusal(f"the date {date} is not today ({expected})")
+        if verb == "env":
+            sys.stdout.write(env(test_mode, pinned))
+            return 0
         repo = open_vault(test_mode)
         if verb == "remote":
             out = "".join(_escape(name) + "\n" for name, _ in _remotes(repo))
@@ -1048,10 +1084,16 @@ def main(argv: list | None = None) -> int:
         sys.stdout.write(out)
         return 0
     except Refusal as exc:
-        print(f"refused: {_escape(str(exc))}", file=sys.stderr)
+        line = f"refused: {_escape(str(exc))}"
+        print(line, file=sys.stderr)
+        if verb == "env":  # a session may read only stdout
+            print(line)
         return 1
     except OSError as exc:
-        print(f"refused: cannot read the vault: {_escape(str(exc))}", file=sys.stderr)
+        line = f"refused: cannot read the vault: {_escape(str(exc))}"
+        print(line, file=sys.stderr)
+        if verb == "env":
+            print(line)
         return 1
 
 

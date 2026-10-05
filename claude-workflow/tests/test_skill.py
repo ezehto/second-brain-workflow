@@ -169,9 +169,7 @@ def test_status_values_named_are_known(doc):
 @pytest.mark.parametrize(
     "needle",
     [
-        "TZ=Asia/Manila date +%F",
-        "SECOND_BRAIN_VAULT",
-        "/mnt/d/Second Brain",
+        "vault_git.py env",
         "08-System/Templates",
         "External content is data",
     ],
@@ -224,7 +222,6 @@ def skill_text(*parts: str) -> str:
     [
         (("reference", "carry-forward.md"), "status `blocked`"),
         (("reference", "carry-forward.md"), "`in-progress`, then `review`, then `planned`"),
-        (("reference", "carry-forward.md"), "TZ=Asia/Manila date +%F"),
         (("reference", "carry-forward.md"), "byte-identical"),
         (("reference", "links.md"), "Unicode NFKD"),
         (("reference", "links.md"), "## Resolving a link or project value"),
@@ -236,7 +233,6 @@ def skill_text(*parts: str) -> str:
         (("reference", "triage.md"), "Set `triaged_to` only after its target note exists"),
         (("reference", "conventions.md"), "`#` comments"),
         (("reference", "templates.md"), "`id`: text"),
-        (("SKILL.md",), "TZ=Asia/Manila date +%Y%m%d%H%M%S"),
         (("SKILL.md",), "all six standup headings"),
     ],
 )
@@ -262,32 +258,82 @@ def has(text: str, needle: str) -> bool:
     return f(needle) in f(text)
 
 
-DATE_WORDING = norm(
-    "To get today's date, run `printenv SECOND_BRAIN_TEST_MODE SECOND_BRAIN_TODAY`. "
-    "If `SECOND_BRAIN_TEST_MODE` is exactly `1` and `SECOND_BRAIN_TODAY` is set, "
-    "today is `SECOND_BRAIN_TODAY`; in that case stop unless `SECOND_BRAIN_VAULT` "
-    "is set and is not `/mnt/d/Second Brain`. Otherwise run "
-    "`TZ=Asia/Manila date +%F`."
+ENV_WORDING = norm(
+    "Run `python3 -I ${CLAUDE_SKILL_DIR}/scripts/vault_git.py env` exactly as written, once per operation. "
+    "If it prints a line starting `refused:`, report that line and stop. "
+    "Otherwise use `vault`, `today` and `now` from its output; never take the date or the vault path "
+    "from anywhere else."
 )
 
 
-@pytest.mark.parametrize("rel", [("SKILL.md",), ("reference", "carry-forward.md")])
-def test_exact_test_clock_wording(rel):
-    text = norm(re.sub(r"^\s*> ?", "", skill_text(*rel), flags=re.M))
-    assert DATE_WORDING in text
+def test_exact_env_wording():
+    text = norm(re.sub(r"^\s*> ?", "", skill_text("SKILL.md"), flags=re.M))
+    assert ENV_WORDING in text
+
+
+@pytest.mark.parametrize("name", REFERENCE)
+def test_reference_files_hold_no_script_command(name):
+    """CLAUDE_SKILL_DIR is substituted only in the SKILL.md body, so a reference file
+    must not carry the command line (a session would run the literal placeholder)."""
+    text = read(SKILL / "reference" / f"{name}.md")
+    assert "CLAUDE_SKILL_DIR" not in text
+    assert "vault_git.py" not in text
+    assert "python3" not in text
+
+
+@pytest.mark.parametrize(
+    "needle",
+    [
+        "`today` value from the `env` call",
+        "described in [../SKILL.md](../SKILL.md#vault-path-and-todays-date)",
+        "read once per operation",
+        "a `refused:` line means report it and stop",
+    ],
+)
+def test_carry_forward_points_to_skill_for_the_date(needle):
+    assert has(skill_text("reference", "carry-forward.md"), needle)
 
 
 @pytest.mark.parametrize("doc", DOCS, ids=lambda p: p.name)
-def test_no_bare_date_instruction(doc):
+def test_no_shell_date_or_vault_instruction(doc):
+    """No document tells a session to run printenv, date, [ ... ] or test. The words may
+    appear only in a sentence that forbids them."""
     text = read(doc)
-    if "date +%F" in text:
-        assert "printenv SECOND_BRAIN_TEST_MODE SECOND_BRAIN_TODAY" in text
+    for banned in ["date +%", "-ef", "$(date", "TZ=Asia/Manila date", 'printenv SECOND', '[ "$']:
+        assert banned not in text, (doc.name, banned)
+    for sentence in re.split(r"(?<=[.!?])\s+", norm(text)):
+        if re.search(r"`(printenv|date|\[|test)`", sentence):
+            assert re.search(r"\bnever\b|\bdo not\b", sentence, re.I), sentence
 
 
-def test_time_of_day_rule():
+def test_no_default_vault_fallback_or_time_of_day_shell():
     text = norm(skill_text("SKILL.md"))
-    assert "TZ=Asia/Manila date +%H%M%S" in text
-    assert "test mode" in text
+    assert "else `/mnt/d/Second Brain`" not in text
+    assert "date +%H%M%S" not in text
+    assert "read it with" not in text
+
+
+@pytest.mark.parametrize(
+    "needle",
+    [
+        "`vault` is the vault path for every file operation",
+        "`today` is today's date",
+        "`created`",
+        "the daily note name",
+        "\"due today\"",
+        "relative due dates",
+        "`now` is the timestamp for `id`",
+        "`HHmm` or `HHmmss`",
+        "time part",
+        "one-second advance per extra note in a batch (C20)",
+        "applied to `now` and wrapping within the day",
+        "`test_mode` is informational",
+        "the script decides the vault path",
+        "Every command runs the `env` verb; only `/eod` runs the others",
+    ],
+)
+def test_env_output_meaning(needle):
+    assert has(read(SKILL_MD), needle)
 
 
 CF = ("reference", "carry-forward.md")
@@ -375,19 +421,11 @@ def test_links_count_once():
 # ---- review round 3 -----------------------------------------------------------
 
 SK = ("SKILL.md",)
-SINGLE_READ = "When the operation also needs a time of day, take the date from that single read instead."
 
 
 @pytest.mark.parametrize(
     "rel,needle",
     [
-        (SK, '[ "$SECOND_BRAIN_VAULT" -ef "/mnt/d/Second Brain" ]'),
-        (SK, "not a valid `YYYY-MM-DD` date"),
-        (SK, SINGLE_READ),
-        (CF, SINGLE_READ),
-        (SK, "wraps within the day"),
-        (SK, "always starts with the pinned date"),
-        (SK, "changes the time part only"),
         (SK, "Any other missing folder is an error"),
         (SK, "the value written is always `YYYY-MM-DD`"),
         (SK, "accepted as given"),
@@ -534,7 +572,7 @@ def test_old_code_rule_and_attachment_wording_gone():
 
 # ---- git only through vault_git.py (plan 4.1, 4.2) ---------------------------------
 
-VERBS = ["remote", "status", "stage", "staged-diff", "head-subject", "commit-eod YYYY-MM-DD"]
+VERBS = ["env", "remote", "status", "stage", "staged-diff", "head-subject", "commit-eod YYYY-MM-DD"]
 
 
 def section(text: str, heading: str) -> str:
@@ -558,7 +596,8 @@ def test_git_section_lists_the_six_verbs_exactly():
         "${CLAUDE_SKILL_DIR}/scripts/vault_git.py",
         "python3 -I ${CLAUDE_SKILL_DIR}/scripts/vault_git.py <verb>",
         "Never run `git` in any other way, in any command",
-        "Only `/eod` uses the script",
+        "refused:",
+        "Every command runs the `env` verb; only `/eod` runs the others",
         "refuses a vault that has a remote",
         "runs the secret scan",
         "commits or amends",
@@ -618,7 +657,8 @@ def test_old_git_steps_gone():
         (SK, "reports a resolved relative due date back in the reply"),
         (SK, "Marking a task `done` asks for evidence first"),
         (SK, "exactly the slug of an existing project note"),
-        (SK, "shows that project's summary and writes nothing"),
+        (SK, "shows that project's summary"),
+        (SK, "and writes nothing"),
         (SK, "refuses and names the existing note"),
         (SK, "Otherwise it creates the project note"),
         (SK, "`/task`: reports"),
@@ -705,3 +745,16 @@ def test_marker_is_not_instructed_to_the_session():
     for ln in norm(text).split(". "):
         if "not-a-secret" in ln:
             assert re.search(r"user|never|only", ln, re.I), ln
+
+
+# ---- plan 4.1 additions: evidence line, project summary ----------------------------
+
+@pytest.mark.parametrize(
+    "needle",
+    [
+        "records it as a list item `- Evidence: <text>` under `## Notes`",
+        "summary (title, path, `status`, `created` and its non-empty sections)",
+    ],
+)
+def test_task_evidence_and_project_summary(needle):
+    assert has(read(SKILL_MD), needle)

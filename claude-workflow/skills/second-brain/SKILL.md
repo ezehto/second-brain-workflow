@@ -43,40 +43,32 @@ C24) point at the design spec, `docs/specs/2026-10-01-second-brain-design.md`.
 7. **Do not guess a rule.** If a rule is missing or unclear, ask the user.
 8. **Never push the vault** and never add a remote to it (C2).
 9. **Git is written only by the init script and `/eod`.** A session never runs
-   `git` directly. Never run `git` in any other way, in any command. Only `/eod`
-   uses the script `vault_git.py`; see [Git and `/eod`](#git-and-eod).
+   `git` directly. Never run `git` in any other way, in any command. Every
+   command runs the `env` verb of the script `vault_git.py`; only `/eod` runs
+   the others. See [Git and `/eod`](#git-and-eod).
 
 ## Vault path and today's date
 
-- Vault path: `$SECOND_BRAIN_VAULT` if it is set (read it with
-  `printenv SECOND_BRAIN_VAULT`), else `/mnt/d/Second Brain`.
-  Tests set the variable to a temporary vault. Resolve it once at the start of
-  a command and use only paths under it.
-- Today's date:
+> Run `python3 -I ${CLAUDE_SKILL_DIR}/scripts/vault_git.py env` exactly as
+> written, once per operation. If it prints a line starting `refused:`, report
+> that line and stop. Otherwise use `vault`, `today` and `now` from its output;
+> never take the date or the vault path from anywhere else.
 
-  > To get today's date, run `printenv SECOND_BRAIN_TEST_MODE SECOND_BRAIN_TODAY`.
-  > If `SECOND_BRAIN_TEST_MODE` is exactly `1` and `SECOND_BRAIN_TODAY` is set,
-  > today is `SECOND_BRAIN_TODAY`; in that case stop unless `SECOND_BRAIN_VAULT`
-  > is set and is not `/mnt/d/Second Brain`. Otherwise run
-  > `TZ=Asia/Manila date +%F`.
+It prints four lines. How to use them:
 
-  When the operation also needs a time of day, take the date from that single read instead.
+- `vault` is the vault path for every file operation. Use only paths under it.
+  The script decides the vault path. Do not look it up yourself or fall back to
+  a default.
+- `today` is today's date: `created`, the daily note name, "due today" and
+  relative due dates.
+- `now` is the timestamp for `id` (`YYYYMMDDHHMMSS`). The `HHmm` or `HHmmss` of a
+  capture name comes from its time part. In a batch, make the one-second
+  advance per extra note in a batch (C20), applied to `now` and wrapping within
+  the day.
+- `test_mode` is informational.
 
-  Either variable alone is ignored. Do not take the date from memory or from the
-  system prompt. In test mode, run
-  `[ "$SECOND_BRAIN_VAULT" -ef "/mnt/d/Second Brain" ]` and stop if it is true.
-  `-ef` compares the directories themselves, so a different letter case, a dot
-  segment, a doubled slash or a symlink anywhere in the path cannot pass. Also
-  stop if `SECOND_BRAIN_TODAY` is not a valid `YYYY-MM-DD` date.
-- Time of day, for an `id` or a capture name. Outside test mode, read
-  `TZ=Asia/Manila date +%Y%m%d%H%M%S` once and take both the date and the time
-  from that single value, so they cannot straddle midnight. Derive from it
-  today's date, the `id`, the `created` date and the capture name. In test mode
-  the date part is always `SECOND_BRAIN_TODAY` and only the time of day comes
-  from the real clock (`TZ=Asia/Manila date +%H%M%S`, read once). The
-  one-second advance per extra note (C20) changes the time part only and wraps
-  within the day, so an `id` written in test mode always starts with the pinned
-  date.
+Never run `printenv`, `date`, `[` or `test` for any of this. To find
+`${CLAUDE_SKILL_DIR}`, see [Git and `/eod`](#git-and-eod).
 
 ## Folders and note types
 
@@ -119,9 +111,8 @@ Follow these steps for every command that creates a note.
 7. Set only the keys the user gave you. Leave other template keys at their
    template values. `project:` stays empty unless a project was given.
 
-When one operation creates several notes, each gets a distinct `id`: advance the
-time part of the single timestamp by one second per note (C20), wrapping within
-the day.
+When one operation creates several notes, each gets a distinct `id`: apply the
+one-second advance to `now` per extra note (C20), wrapping within the day.
 
 **Dates given to a command** (for example `/task ... due:<date>`): the value
 written is always `YYYY-MM-DD`. That form is accepted as given. A relative
@@ -179,11 +170,12 @@ A `/task` due value follows the dates rule under
 - **Created notes:** keys the user did not give keep the template's values.
   `project:` stays empty unless a project was given.
 - **`/task`:** reports a resolved relative due date back in the reply. Marking
-  a task `done` asks for evidence first, and the evidence goes under `## Notes`.
+  a task `done` asks for evidence first, and records it as a list item
+  `- Evidence: <text>` under `## Notes`.
 - **`/project <argument>`** has three cases, checked in this order:
   1. The argument is exactly the slug of an existing project note
-     (`harbor-lights`). The command shows that project's summary and writes
-     nothing.
+     (`harbor-lights`). The command shows that project's summary (title, path, `status`, `created`
+     and its non-empty sections) and writes nothing.
   2. Otherwise, the argument's slug equals an existing project's slug
      (`Harbor Lights!`). The command refuses and names the existing note.
   3. Otherwise it creates the project note.
@@ -205,11 +197,11 @@ A `/task` due value follows the dates rule under
 ## Git and `/eod`
 
 Git is written only by the init script and `/eod`. A session never runs `git`
-directly. `/eod` runs a fixed script with fixed verbs, so the permission it needs
-covers nothing else.
+directly. The commands run a fixed script with fixed verbs, so the permission
+they need covers nothing else.
 
-Run it as `python3 -I ${CLAUDE_SKILL_DIR}/scripts/vault_git.py <verb>`. Only `/eod`
-uses the script. No verb takes a path.
+Run it as `python3 -I ${CLAUDE_SKILL_DIR}/scripts/vault_git.py <verb>`. Every
+command runs the `env` verb; only `/eod` runs the others. No verb takes a path.
 
 **Finding the skill directory.** Claude Code substitutes `${CLAUDE_SKILL_DIR}`
 (the directory that holds this `SKILL.md`) in a skill's body when it loads. When
@@ -219,6 +211,7 @@ directory.
 
 | Verb | Does |
 |---|---|
+| `env` | prints `vault`, `today`, `now` and `test_mode` (see above); runs no git; the one verb every command uses |
 | `remote` | prints the configured remotes, one per line (nothing means none) |
 | `status` | prints the porcelain status of the vault |
 | `stage` | stages all changes |

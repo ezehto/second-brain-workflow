@@ -665,6 +665,41 @@ commands, the backend and the e2e stack.
   is set and is not `/mnt/d/Second Brain`. Otherwise run
   `TZ=Asia/Manila date +%F`."
 
+- **Command sessions use one call (2026-10-05; supersedes the shell forms
+  above for commands; the "Guards", "Time of day" and "Skill wording" bullets
+  above now describe what the script and the backend do, not what a session
+  runs).** The first live command runs showed that a session
+  cannot observe the result of `[ ... -ef ... ]`: it prints nothing, the
+  session could not tell true from false, tried a printing variant that is not
+  an allowed command, and stopped. So a command never runs `printenv`, `date`,
+  `[` or `test` for this. It runs exactly
+  `python3 -I <skill directory>/scripts/vault_git.py env`, which applies every
+  rule of this section itself and prints four lines:
+
+  ```text
+  vault=<absolute vault path>
+  today=YYYY-MM-DD
+  now=YYYYMMDDHHMMSS
+  test_mode=0 or 1
+  ```
+
+  `today` and the date part of `now` are the pinned date in test mode and
+  today in `Asia/Manila` otherwise; the time part of `now` is always the real
+  clock; both come from one clock read. A session takes the vault path,
+  today's date, the `id` and the capture time from this one output and reads
+  it once per operation. If the guard fails (test mode without
+  `SECOND_BRAIN_VAULT`, test mode pointing at the real vault, an invalid
+  `SECOND_BRAIN_TODAY`) it prints one line starting `refused:` and exits 1,
+  and the session reports that line and stops. The `env` verb runs no git and
+  does not require the vault to exist or to be a repository. The skill's
+  wording for this is: "Run `python3 -I ${CLAUDE_SKILL_DIR}/scripts/vault_git.py env`
+  exactly as written, once per operation. If it prints a line starting
+  `refused:`, report that line and stop. Otherwise use `vault`, `today` and
+  `now` from its output; never take the date or the vault path from anywhere
+  else." The command line appears in `SKILL.md` only, where Claude Code
+  substitutes the skill directory; reference files point to that section and
+  never repeat it.
+
 Reason: requiring two explicitly named variables, refusing the real vault in
 test mode and keeping them out of `.env` makes an accidental pinned date in real
 use practically impossible, while one mechanism serves code and prose alike.
@@ -919,9 +954,11 @@ Settled on 2026-10-05 after the command-test and security reviews.
 - **Created notes:** keys the user did not give keep the template's values;
   `project:` stays empty unless a project was given.
 - **`/task`:** a resolved relative due date is reported back in the reply
-  (section 2.10). Marking a task `done` asks for evidence first.
+  (section 2.10). Marking a task `done` asks for evidence first, and records
+  it as a list item `- Evidence: <text>` under `## Notes`.
 - **`/project <argument>`:** if the argument is exactly the slug of an existing
-  project note (`harbor-lights`), the command shows that project's summary and
+  project note (`harbor-lights`), the command shows that project's summary
+  (title, path, `status`, `created` and its non-empty sections) and
   writes nothing. Otherwise, if the argument's slug equals an existing
   project's slug (`Harbor Lights!`), it refuses and names the existing note.
   Otherwise it creates the project note.
@@ -948,7 +985,8 @@ Settled on 2026-10-05 after the command-test and security reviews.
 
 ### 4.2 `vault_git.py`: the only way a command runs git
 
-A session never runs `git` directly. The skill ships
+A session never runs `git` directly. Every command calls the `env` verb; only
+`/eod` calls the others. The skill ships
 `claude-workflow/skills/second-brain/scripts/vault_git.py` (Python standard library only),
 and `/eod` calls `python3 -I <skill directory>/scripts/vault_git.py <verb>`
 (`-I` is Python's isolated mode: it ignores `PYTHONPATH` and the other
@@ -961,6 +999,7 @@ fixed verbs, and the same protection applies to the real vault.
 
 | Verb | Does |
 |---|---|
+| `env` | prints `vault`, `today`, `now` and `test_mode` (section 2.12); runs no git; the one verb every command uses |
 | `remote` | prints the configured remotes, one per line (nothing means none) |
 | `status` | prints `git status --porcelain` |
 | `stage` | `git add -A` |

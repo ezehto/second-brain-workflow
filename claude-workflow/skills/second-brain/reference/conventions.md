@@ -19,7 +19,7 @@ folders and statuses; the other reference files must agree with it.
 
 ## Vault path
 
-`$SECOND_BRAIN_VAULT` if set, else `/mnt/d/Second Brain`. The old vault at
+The `vault` line of the `env` verb, see [../SKILL.md](../SKILL.md#vault-path-and-todays-date). The old vault at
 `/mnt/c/Users/User/Documents/Obsidian Vault` is never read or written.
 
 ## Folders

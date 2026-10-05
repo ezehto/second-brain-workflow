@@ -142,6 +142,20 @@ def vault(tmp_path, home, monkeypatch):
     return path
 
 
+def set_clock(vg, monkeypatch, *utc_instants):
+    """Make _utc_now return these UTC instants in turn (the last one repeats)."""
+    instants = [datetime.datetime.fromisoformat(u).replace(tzinfo=datetime.timezone.utc)
+                for u in utc_instants]
+    calls = []
+
+    def now():
+        calls.append(1)
+        return instants[min(len(calls), len(instants)) - 1]
+
+    monkeypatch.setattr(vg, "_utc_now", now)
+    return calls
+
+
 def run(vg, capsys, *argv):
     code = vg.main(list(argv))
     captured = capsys.readouterr()
@@ -418,7 +432,7 @@ def test_invalid_pinned_date_stops_every_verb(vg, vault, capsys, monkeypatch, ve
 def test_outside_test_mode_the_date_must_be_today_in_manila(vg, vault, capsys, monkeypatch):
     monkeypatch.delenv("SECOND_BRAIN_TEST_MODE")
     # The pinned date is ignored outside test mode.
-    monkeypatch.setattr(vg, "_manila_today", lambda: datetime.date(2026, 10, 5))
+    set_clock(vg, monkeypatch, "2026-10-05T03:00:00")  # 11:00 on 5 October in Manila
     (vault / "a.md").write_text("x\n")
     code, _, err = run(vg, capsys, "commit-eod", TODAY)
     assert code == 1 and "2026-10-05" in err
@@ -433,9 +447,8 @@ def test_outside_test_mode_the_date_must_be_today_in_manila(vg, vault, capsys, m
     ("2026-10-05T15:30:00", "2026-10-05"),
 ])
 def test_today_is_taken_in_manila(vg, monkeypatch, utc, manila):
-    instant = datetime.datetime.fromisoformat(utc).replace(tzinfo=datetime.timezone.utc)
-    monkeypatch.setattr(vg, "_utc_now", lambda: instant)
-    assert vg._manila_today().isoformat() == manila
+    set_clock(vg, monkeypatch, utc)
+    assert vg._today_and_now(False, None)[0] == manila
 
 
 def test_utc_now_is_the_real_clock(vg):
@@ -452,7 +465,7 @@ def test_test_mode_must_be_exactly_1(vg, stand_in, capsys, monkeypatch, value):
     monkeypatch.setenv("SECOND_BRAIN_TEST_MODE", value)
     monkeypatch.setenv("SECOND_BRAIN_TODAY", TODAY)
     monkeypatch.delenv("SECOND_BRAIN_VAULT", raising=False)
-    monkeypatch.setattr(vg, "_manila_today", lambda: datetime.date(2026, 10, 5))
+    set_clock(vg, monkeypatch, "2026-10-05T03:00:00")  # 11:00 on 5 October in Manila
     code, _, err = run(vg, capsys, "commit-eod", TODAY)
     assert code == 1 and "is not today (2026-10-05)" in err
     code, out, err = run(vg, capsys, "commit-eod", "2026-10-05")
@@ -2152,3 +2165,232 @@ def test_mount_inside_git_is_refused(vg, vault, capsys, monkeypatch):
     code, _, err = run(vg, capsys, "commit-eod", TODAY)
     assert code == 1 and "different filesystem" in err and err.count("\n") == 1
     assert subjects(vault) == ["Initialize vault"]
+
+
+# ===================================================== the env verb (2.12)
+
+
+def _env_lines(out):
+    return dict(line.split("=", 1) for line in out.splitlines())
+
+
+@pytest.fixture
+def env_vars(tmp_path, home, monkeypatch):
+    """Test mode with a vault path that does not exist (env needs no vault)."""
+    path = tmp_path / "vaults" / VAULT_NAME
+    monkeypatch.setenv("SECOND_BRAIN_VAULT", str(path))
+    monkeypatch.setenv("SECOND_BRAIN_TEST_MODE", "1")
+    monkeypatch.setenv("SECOND_BRAIN_TODAY", TODAY)
+    return path
+
+
+def test_env_in_test_mode_prints_four_lines(vg, env_vars, capsys, monkeypatch):
+    set_clock(vg, monkeypatch, "2026-10-05T06:07:08")  # 14:07:08 in Manila
+    code, out, err = run(vg, capsys, "env")
+    assert (code, err) == (0, "")
+    assert out == (f"vault={env_vars}\ntoday={TODAY}\nnow=20261009140708\ntest_mode=1\n")
+    assert not env_vars.exists()
+
+
+def test_env_outside_test_mode_uses_manila_and_ignores_the_pinned_date(
+    vg, env_vars, capsys, monkeypatch
+):
+    monkeypatch.delenv("SECOND_BRAIN_TEST_MODE")
+    set_clock(vg, monkeypatch, "2026-10-05T06:07:08")
+    code, out, _ = run(vg, capsys, "env")
+    assert code == 0
+    assert out.splitlines() == [f"vault={env_vars}", "today=2026-10-05",
+                                "now=20261005140708", "test_mode=0"]
+
+
+@pytest.mark.parametrize("utc,today,now", [
+    ("2026-10-04T15:59:59", "2026-10-04", "20261004235959"),  # one second before midnight
+    ("2026-10-04T16:00:00", "2026-10-05", "20261005000000"),  # midnight in Manila
+    ("2026-10-04T16:00:01", "2026-10-05", "20261005000001"),  # one second after
+])
+def test_env_around_midnight_in_manila(vg, env_vars, capsys, monkeypatch, utc, today, now):
+    monkeypatch.delenv("SECOND_BRAIN_TEST_MODE")
+    set_clock(vg, monkeypatch, utc)
+    values = _env_lines(run(vg, capsys, "env")[1])
+    assert (values["today"], values["now"]) == (today, now)
+
+
+@pytest.mark.parametrize("utc,now", [
+    ("2026-10-04T15:59:59", "20261009235959"),
+    ("2026-10-04T16:00:01", "20261009000001"),
+])
+def test_env_pinned_date_keeps_the_real_time_of_day(vg, env_vars, capsys, monkeypatch,
+                                                    utc, now):
+    set_clock(vg, monkeypatch, utc)
+    values = _env_lines(run(vg, capsys, "env")[1])
+    assert (values["today"], values["now"]) == (TODAY, now)
+
+
+def test_env_reads_the_clock_once(vg, env_vars, capsys, monkeypatch):
+    """Two reads straddling midnight would give a date from one day and a time
+    from the next; one read cannot."""
+    monkeypatch.delenv("SECOND_BRAIN_TEST_MODE")
+    calls = set_clock(vg, monkeypatch, "2026-10-04T15:59:59", "2026-10-04T16:00:00")
+    values = _env_lines(run(vg, capsys, "env")[1])
+    assert len(calls) == 1
+    assert (values["today"], values["now"]) == ("2026-10-04", "20261004235959")
+
+
+def test_commit_eod_and_env_agree_on_today(vg, vault, capsys, monkeypatch):
+    monkeypatch.delenv("SECOND_BRAIN_TEST_MODE")
+    # Far from the real date, and the Manila date differs from the UTC date.
+    set_clock(vg, monkeypatch, "2031-03-01T16:00:00")
+    today = _env_lines(run(vg, capsys, "env")[1])["today"]
+    assert today == "2031-03-02"
+    (vault / "a.md").write_text("x\n")
+    code, out, err = run(vg, capsys, "commit-eod", today)
+    assert code == 0, err
+    assert run(vg, capsys, "commit-eod", "2031-03-01")[0] == 1
+
+
+def test_env_uses_the_default_vault_outside_test_mode(vg, home, capsys, monkeypatch):
+    monkeypatch.delenv("SECOND_BRAIN_VAULT", raising=False)
+    monkeypatch.delenv("SECOND_BRAIN_TEST_MODE", raising=False)
+    code, out, _ = run(vg, capsys, "env")
+    assert code == 0 and _env_lines(out)["vault"] == vg.DEFAULT_VAULT
+
+
+def test_env_normalises_the_vault_path(vg, env_vars, capsys, monkeypatch):
+    monkeypatch.setenv("SECOND_BRAIN_VAULT", f"{env_vars.parent}/./{VAULT_NAME}//")
+    assert _env_lines(run(vg, capsys, "env")[1])["vault"] == str(env_vars)
+
+
+def _env_refused(vg, capsys):
+    code, out, err = run(vg, capsys, "env")
+    assert code == 1
+    assert err.startswith("refused: ") and err.count("\n") == 1
+    assert out == err  # stdout carries the same line for a session reading stdout only
+    return err
+
+
+def test_env_test_mode_without_vault(vg, env_vars, capsys, monkeypatch):
+    monkeypatch.delenv("SECOND_BRAIN_VAULT")
+    assert "SECOND_BRAIN_VAULT" in _env_refused(vg, capsys)
+
+
+def test_env_test_mode_without_pinned_date(vg, env_vars, capsys, monkeypatch):
+    monkeypatch.delenv("SECOND_BRAIN_TODAY")
+    assert "SECOND_BRAIN_TODAY" in _env_refused(vg, capsys)
+
+
+@pytest.mark.parametrize("bad", ["2026-02-30", "20261009", "2026-10-09 ", "", "today"])
+def test_env_test_mode_with_an_invalid_pinned_date(vg, env_vars, capsys, monkeypatch, bad):
+    monkeypatch.setenv("SECOND_BRAIN_TODAY", bad)
+    assert "SECOND_BRAIN_TODAY" in _env_refused(vg, capsys)
+
+
+def test_env_invalid_pinned_date_is_ignored_outside_test_mode(vg, env_vars, capsys,
+                                                              monkeypatch):
+    monkeypatch.setenv("SECOND_BRAIN_TEST_MODE", "true")
+    monkeypatch.setenv("SECOND_BRAIN_TODAY", "2026-02-30")
+    set_clock(vg, monkeypatch, "2026-10-05T03:00:00")
+    code, out, _ = run(vg, capsys, "env")
+    assert code == 0
+    assert _env_lines(out)["today"] == "2026-10-05" and _env_lines(out)["test_mode"] == "0"
+
+
+def test_env_test_mode_pointing_at_the_real_vault(vg, home, tmp_path, capsys, monkeypatch):
+    monkeypatch.setattr(vg, "DEFAULT_VAULT", str(tmp_path / "real" / VAULT_NAME))
+    monkeypatch.setenv("SECOND_BRAIN_TEST_MODE", "1")
+    monkeypatch.setenv("SECOND_BRAIN_TODAY", TODAY)
+    for raw in (vg.DEFAULT_VAULT, vg.DEFAULT_VAULT + "/", vg.DEFAULT_VAULT.swapcase()):
+        monkeypatch.setenv("SECOND_BRAIN_VAULT", raw)
+        err = _env_refused(vg, capsys)
+        assert "real vault" in err and "SECOND_BRAIN_VAULT" in err
+
+
+@pytest.mark.parametrize("raw,message", [
+    ("relative/vault", "absolute"),
+    ("/tmp/a/../b", ".."),
+    ("/mnt/c/Users/User/Documents/Obsidian Vault", "old vault"),
+    ("/MNT/C/elsewhere", "drive C"),
+    ("/tmp/DOCUME~1/vault", "short-name"),
+    ("/tmp/a\nb", "control character"),
+    ("/tmp/a\x1bb", "control character"),
+    ("/tmp/a‮b", "control character"),
+])
+def test_env_path_refusals(vg, env_vars, capsys, monkeypatch, raw, message):
+    monkeypatch.setenv("SECOND_BRAIN_VAULT", raw)
+    err = _env_refused(vg, capsys)
+    assert message in err and "SECOND_BRAIN_VAULT" in err
+    assert "\n" not in err[:-1] and "\x1b" not in err and "‮" not in err
+
+
+def test_env_vault_on_a_mount_of_drive_c(vg, env_vars, capsys, monkeypatch):
+    text = _mountinfo((env_vars.parent, C_TAIL))
+    monkeypatch.setattr(vg, "_read_mountinfo", lambda: text)
+    assert "drive C" in _env_refused(vg, capsys)
+
+
+def test_env_vault_path_through_a_symlink(vg, env_vars, tmp_path, capsys, monkeypatch):
+    real = tmp_path / "real-parent"
+    real.mkdir()
+    (tmp_path / "linked").symlink_to(real)
+    monkeypatch.setenv("SECOND_BRAIN_VAULT", str(tmp_path / "linked" / VAULT_NAME))
+    assert "symlink" in _env_refused(vg, capsys)
+
+
+def test_env_runs_no_git(vg, env_vars, capsys, monkeypatch):
+    calls = []
+    monkeypatch.setattr(vg.subprocess, "run", lambda *a, **k: calls.append(a))
+    monkeypatch.setattr(vg.subprocess, "Popen", lambda *a, **k: calls.append(a))
+    monkeypatch.setattr(vg.shutil, "which", lambda *a, **k: calls.append(a))
+    assert run(vg, capsys, "env")[0] == 0
+    assert calls == []
+
+
+def test_env_works_in_an_existing_vault_too(vg, vault, capsys):
+    code, out, _ = run(vg, capsys, "env")
+    assert code == 0 and _env_lines(out)["vault"] == str(vault)
+
+
+@pytest.mark.parametrize("argv", [["env", "x"], ["env", "--json"], ["env", TODAY]])
+def test_env_extra_arguments_are_a_usage_error(vg, env_vars, capsys, argv):
+    code, out, err = run(vg, capsys, *argv)
+    assert code == 2 and out == "" and "usage" in err
+
+
+def test_env_from_the_command_line_under_a_hostile_environment(env_vars, tmp_path):
+    """-I ignores PYTHON* variables; GIT_* and TZ change nothing."""
+    trap = tmp_path / "trap"
+    trap.mkdir()
+    for module in ("datetime", "zoneinfo", "re", "shlex"):
+        (trap / f"{module}.py").write_text("raise SystemExit('hijacked')\n")
+    env = os.environ.copy() | {
+        "PYTHONPATH": str(trap), "PYTHONSTARTUP": str(trap / "re.py"),
+        "PYTHONHOME": str(trap), "TZ": "America/New_York",
+        "GIT_DIR": "/nowhere", "GIT_CONFIG_COUNT": "1",
+        "GIT_CONFIG_KEY_0": "core.pager", "GIT_CONFIG_VALUE_0": "false",
+    }
+    env.pop("PYTHONHOME")  # a bad PYTHONHOME stops any interpreter before -I applies
+    before = datetime.datetime.now(ZoneInfo("Asia/Manila"))
+    result = subprocess.run([sys.executable, "-I", str(SCRIPT), "env"],
+                            capture_output=True, text=True, env=env)
+    after = datetime.datetime.now(ZoneInfo("Asia/Manila"))
+    assert result.returncode == 0, result.stderr
+    values = _env_lines(result.stdout)
+    assert list(values) == ["vault", "today", "now", "test_mode"]
+    assert values["vault"] == str(env_vars) and values["today"] == TODAY
+    assert values["test_mode"] == "1"
+    import re as _re
+    assert _re.fullmatch(r"20261009\d{6}", values["now"])
+    times = {before.strftime("%H%M%S"), after.strftime("%H%M%S")}
+    assert before.strftime("%H%M") <= values["now"][8:12] <= after.strftime("%H%M") or \
+        values["now"][8:] in times
+    plain = subprocess.run([sys.executable, "-I", str(SCRIPT), "env"],
+                           capture_output=True, text=True,
+                           env={k: v for k, v in env.items()
+                                if not k.startswith(("GIT_", "PYTHON", "TZ"))})
+    assert _env_lines(plain.stdout)["today"] == values["today"]
+
+
+def test_env_os_error_is_a_refusal_on_both_streams(vg, env_vars, capsys, monkeypatch):
+    monkeypatch.setattr(vg, "_lexical_checks", lambda raw: (_ for _ in ()).throw(
+        PermissionError(13, "Permission denied", "/x")))
+    code, out, err = run(vg, capsys, "env")
+    assert code == 1 and err.startswith("refused: ") and out == err

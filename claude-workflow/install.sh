@@ -6,7 +6,11 @@
 #   install.sh --uninstall [--target DIR] [--dry-run] [--force]
 #
 # Installs <script dir>/skills/second-brain/** and <script dir>/commands/*.md.
-# Every file under the skill directory ships, dotfiles included.
+# Every file under the skill directory ships, dotfiles included, except Python
+# bytecode caches and editor/OS debris: a directory named __pycache__ and
+# regular files named *.pyc, *.pyo or .DS_Store are skipped (not copied, not
+# recorded; on an update an installed copy of one is removed as stale). A
+# symlink or directory with one of those names is not skipped.
 #
 # The script records every file it installs (with a sha256) and every directory
 # it creates in DIR/.second-brain-manifest, and only ever modifies or deletes
@@ -287,18 +291,23 @@ add_file() { # $1 = relative dest, $2 = absolute source
   new_hash[$1]="$(hash_of "$2")" || die "cannot read source file: $2"
 }
 
+# Skipped entries (a __pycache__ directory; regular .pyc, .pyo, .DS_Store files)
+# are pruned from every skill walk. A junk name of another type is not skipped.
+skip_junk=( \( -type d -name __pycache__ -o -type f \( -name '*.pyc' -o -name '*.pyo' -o -name .DS_Store \) \) -prune -o )
+
 # Only regular files and directories are allowed; a symlink or special file is
 # refused rather than followed.
-if [ -n "$(find "$skill_src" "$cmd_src" ! -type f ! -type d -print -quit)" ]; then
+if [ -n "$(find "$skill_src" "${skip_junk[@]}" ! -type f ! -type d -print -quit)" ] ||
+  [ -n "$(find "$cmd_src" ! -type f ! -type d -print -quit)" ]; then
   die "source contains symlinks or special files; refusing"
 fi
 
 add_dir skills
 add_dir skills/second-brain
 while IFS= read -r -d '' d; do add_dir "skills/second-brain/${d#"$skill_src"/}"; done \
-  < <(find "$skill_src" -mindepth 1 -type d -print0)
+  < <(find "$skill_src" -mindepth 1 "${skip_junk[@]}" -type d -print0)
 while IFS= read -r -d '' f; do add_file "skills/second-brain/${f#"$skill_src"/}" "$f"; done \
-  < <(find "$skill_src" -type f -print0)
+  < <(find "$skill_src" "${skip_junk[@]}" -type f -print0)
 
 add_dir commands
 cmd_count=0

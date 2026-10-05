@@ -108,34 +108,24 @@ WRITE_TOOLS = ("Read", "Write", "Edit", "Bash", "Skill")
 READ_ONLY_TOOLS = ("Read", "Bash", "Skill")
 TOOLS = {"default": WRITE_TOOLS, "eod": WRITE_TOOLS, "guard": READ_ONLY_TOOLS}
 
-# The exact shell forms of SKILL.md "Vault path and today's date". The single
-# `printenv SECOND_BRAIN_VAULT` form is not written in the skill; a session needs
-# it to learn the vault path, and printing one named variable is harmless.
-# `date` forms are listed with and without the TZ prefix in case Claude Code
-# strips the assignment before matching.
-GUARD_BASH_ALLOW = (
-    "Bash(printenv SECOND_BRAIN_TEST_MODE SECOND_BRAIN_TODAY)",
-    "Bash(printenv SECOND_BRAIN_VAULT)",
-    "Bash(TZ=Asia/Manila date +%F)",
-    "Bash(TZ=Asia/Manila date +%Y%m%d%H%M%S)",
-    "Bash(TZ=Asia/Manila date +%H%M%S)",
-    "Bash(date +%F)",
-    "Bash(date +%Y%m%d%H%M%S)",
-    "Bash(date +%H%M%S)",
-    'Bash([ "$SECOND_BRAIN_VAULT" -ef "/mnt/d/Second Brain" ])',
-    'Bash(test "$SECOND_BRAIN_VAULT" -ef "/mnt/d/Second Brain")',
-    "Bash(echo *)",  # echo runs nothing; substitutions are denied below, redirections follow Edit rules
-)
+# A command learns the vault path, today's date and the clock from one
+# observable call, `python3 -I <skill>/scripts/vault_git.py env` (plan 2.12,
+# "Command sessions use one call"; 4.2). It is the only Bash command the guard
+# profile allows: a session in the guard scenario runs it, sees `refused:` and
+# stops. No printenv, date, `[`, `test` or echo rule exists in any profile.
 # Listing folders: `ls` runs no other program. `find` is not allowed (-exec,
 # -execdir, -ok, -okdir, -delete, -fprint, -fprintf, -fls); `ls` and Read suffice.
 BROWSE_BASH_ALLOW = ("Bash(ls)", "Bash(ls *)", "Bash(pwd)")
 
-VAULT_GIT_VERBS = ("remote", "status", "stage", "staged-diff", "head-subject", f"commit-eod {TODAY}")
+ENV_VERB = "env"  # every profile
+VAULT_GIT_VERBS = ("remote", "status", "stage", "staged-diff", "head-subject", f"commit-eod {TODAY}")  # eod only
 VAULT_GIT_RELATIVE = ".claude/skills/second-brain/scripts/vault_git.py"
 
 BASH_DENY = (
     "Bash(git)",
     "Bash(git *)",
+    # Backstops: `ls *` is the one wildcard Bash rule left, and `ls $(cmd)`
+    # must not run cmd. Kept although no allowed command needs them.
     "Bash(*$(*)",  # command substitution
     "Bash(*`*)",
     "Bash(*<(*)",  # process substitution
@@ -413,10 +403,10 @@ def _rule_path(path: Path) -> str:
     return "/" + str(path)
 
 
-def vault_git_rules(ws: Workspace) -> list[str]:
-    """Exact rules for the skill's git wrapper (plan 4.2), absolute and cwd-relative."""
+def vault_git_rules(ws: Workspace, verbs: tuple[str, ...] = VAULT_GIT_VERBS) -> list[str]:
+    """Exact rules for the skill's wrapper (plan 4.2), absolute and cwd-relative."""
     absolute = str(ws.cwd / VAULT_GIT_RELATIVE)
-    return [f"Bash(python3 -I {script} {verb})" for script in (absolute, VAULT_GIT_RELATIVE) for verb in VAULT_GIT_VERBS]
+    return [f"Bash(python3 -I {script} {verb})" for script in (absolute, VAULT_GIT_RELATIVE) for verb in verbs]
 
 
 def permission_settings(ws: Workspace, profile: str = "default") -> dict[str, Any]:
@@ -427,7 +417,7 @@ def permission_settings(ws: Workspace, profile: str = "default") -> dict[str, An
     if profile != "guard":
         allow.append(f"Edit({_rule_path(ws.vault)}/**)")
     allow.append("Skill")
-    allow += GUARD_BASH_ALLOW
+    allow += vault_git_rules(ws, (ENV_VERB,))
     if profile != "guard":
         allow += BROWSE_BASH_ALLOW
     if profile == "eod":

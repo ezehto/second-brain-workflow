@@ -897,3 +897,111 @@ def test_help_mentions_interrupted_update_and_hides_lint_directive(src):
     r = run(src, "--help")
     assert "interrupted update" in r.stdout
     assert "shellcheck" not in r.stdout
+
+
+def add_debris(src):
+    scripts = src / "skills/second-brain/scripts"
+    (scripts / "__pycache__").mkdir(parents=True, exist_ok=True)
+    (scripts / "vault_git.py").write_text("# dummy\n")
+    (scripts / "__pycache__" / "x.cpython-312.pyc").write_bytes(b"\x00bytecode")
+    (scripts / "__pycache__" / "y.pyo").write_bytes(b"\x00bytecode")
+    (src / "skills/second-brain/y.pyc").write_bytes(b"\x00bytecode")
+    (src / "skills/second-brain/.DS_Store").write_bytes(b"\x00debris")
+    (src / "skills/second-brain/reference/.DS_Store").write_bytes(b"\x00debris")
+
+
+def test_skips_bytecode_caches_and_os_debris(src, target):
+    add_debris(src)
+    r = install(src, target)
+    assert r.returncode == 0, r.stderr
+    assert (target / "skills/second-brain/scripts/vault_git.py").read_text() == "# dummy\n"
+    assert not (target / "skills/second-brain/scripts/__pycache__").exists()
+    assert not (target / "skills/second-brain/y.pyc").exists()
+    assert not (target / "skills/second-brain/.DS_Store").exists()
+    assert not (target / "skills/second-brain/reference/.DS_Store").exists()
+    manifest = (target / MANIFEST).read_text()
+    for needle in ("__pycache__", ".pyc", ".pyo", ".DS_Store"):
+        assert needle not in manifest
+    assert "skills/second-brain/scripts/vault_git.py" in manifest_files(target)
+    assert "skills/second-brain/scripts" in manifest_dirs(target)
+
+
+def test_other_dotfiles_still_ship(src, target):
+    add_debris(src)
+    (src / "skills/second-brain/.keep").write_text("kept\n")
+    assert install(src, target).returncode == 0
+    assert (target / "skills/second-brain/.keep").read_text() == "kept\n"
+
+
+def test_dry_run_does_not_list_skipped_entries(src, target):
+    add_debris(src)
+    r = install(src, target, "--dry-run")
+    assert r.returncode == 0, r.stderr
+    for needle in ("__pycache__", ".pyc", ".pyo", ".DS_Store"):
+        assert needle not in r.stdout
+    assert "scripts/vault_git.py" in r.stdout
+
+
+def test_previously_installed_bytecode_is_removed_as_stale(src, target):
+    (src / "skills/second-brain/scripts").mkdir()
+    (src / "skills/second-brain/scripts/vault_git.py").write_text("# dummy\n")
+    assert install(src, target).returncode == 0
+    add_debris(src)
+    # simulate an earlier install that shipped a cache: file, directory and manifest entries
+    import hashlib
+    extra = {
+        "skills/second-brain/scripts/__pycache__/x.cpython-312.pyc": b"old bytecode",
+        "skills/second-brain/y.pyc": b"old pyc",
+    }
+    lines = [(target / MANIFEST).read_text().rstrip("\n")]
+    lines.append("D skills/second-brain/scripts/__pycache__")
+    (target / "skills/second-brain/scripts/__pycache__").mkdir()
+    for rel, data in extra.items():
+        (target / rel).write_bytes(data)
+        lines.append(f"F {hashlib.sha256(data).hexdigest()} {rel}")
+    (target / MANIFEST).write_text("\n".join(lines) + "\n")
+    r = install(src, target)
+    assert r.returncode == 0, r.stderr
+    assert not (target / "skills/second-brain/scripts/__pycache__").exists()
+    assert not (target / "skills/second-brain/y.pyc").exists()
+    assert (target / "skills/second-brain/scripts/vault_git.py").exists()
+    assert "__pycache__" not in (target / MANIFEST).read_text()
+    assert ".pyc" not in (target / MANIFEST).read_text()
+
+
+def test_uninstall_is_clean_with_skipped_entries_in_source(src, target):
+    add_debris(src)
+    assert install(src, target).returncode == 0
+    r = run(src, "--uninstall", "--target", target)
+    assert r.returncode == 0, r.stderr
+    assert snapshot(target) == {}
+
+
+def test_directory_with_junk_name_is_not_skipped(src, target):
+    d = src / "skills/second-brain/x.pyc"
+    d.mkdir()
+    (d / "notes.md").write_text("real\n")
+    r = install(src, target)
+    assert r.returncode == 0, r.stderr
+    assert (target / "skills/second-brain/x.pyc/notes.md").read_text() == "real\n"
+    assert "skills/second-brain/x.pyc/notes.md" in manifest_files(target)
+
+
+def test_symlink_with_junk_name_is_refused(src, target, tmp_path):
+    outside = tmp_path / "outside.txt"
+    outside.write_text("secret\n")
+    (src / "skills/second-brain/leak.pyc").symlink_to(outside)
+    r = install(src, target)
+    assert r.returncode != 0
+    assert "symlinks or special files" in r.stderr
+    assert not (target / MANIFEST).exists()
+
+
+def test_regular_junk_files_and_real_pycache_dir_still_skipped(src, target):
+    (src / "skills/second-brain/y.pyc").write_bytes(b"\x00")
+    (src / "skills/second-brain/__pycache__").mkdir()
+    (src / "skills/second-brain/__pycache__/z.pyc").write_bytes(b"\x00")
+    r = install(src, target)
+    assert r.returncode == 0, r.stderr
+    assert not (target / "skills/second-brain/y.pyc").exists()
+    assert not (target / "skills/second-brain/__pycache__").exists()
