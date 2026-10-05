@@ -2394,3 +2394,481 @@ def test_env_os_error_is_a_refusal_on_both_streams(vg, env_vars, capsys, monkeyp
         PermissionError(13, "Permission denied", "/x")))
     code, out, err = run(vg, capsys, "env")
     assert code == 1 and err.startswith("refused: ") and out == err
+
+
+# ============================ vault path must be plainly printable (env)
+
+
+@pytest.mark.parametrize("suffix", [
+    "a today=2099-01-01",   # a line separator forging a line
+    "vault ",                     # trailing space
+    "a b",                   # no-break space
+    "a​b",                   # zero-width space
+    " leading/vault",             # a component with leading whitespace
+])
+@pytest.mark.parametrize("verb", ["env", "status", "stem"])
+def test_vault_path_must_be_plainly_printable(vg, env_vars, tmp_path, capsys, monkeypatch,
+                                              suffix, verb):
+    monkeypatch.setenv("SECOND_BRAIN_VAULT", f"{tmp_path}/{suffix}")
+    argv = [verb, "note"] if verb == "stem" else [verb]
+    code, out, err = run(vg, capsys, *argv)
+    assert code == 1 and err.startswith("refused: ")
+    assert "SECOND_BRAIN_VAULT" in err or "vault path" in err
+    assert "printable" in err or "whitespace" in err
+    assert "today=2099" not in out.replace("\\u2028", "")
+    for ch in "  ​":
+        assert ch not in out + err
+
+
+# ======================================================== the stem verb
+
+GOLDEN = REPO / "second-brain" / "fixtures" / "golden-vault" / "vault"
+BACKEND = REPO / "web-app" / "backend"
+
+
+def _backend_note_paths(root):
+    """The backend's 2.9 helper, imported by path for the agreement test only."""
+    previous = sys.dont_write_bytecode
+    sys.dont_write_bytecode = True
+    sys.path.insert(0, str(BACKEND))
+    try:
+        from vault import conformance
+        return conformance.note_paths(Path(root))
+    finally:
+        sys.path.remove(str(BACKEND))
+        sys.dont_write_bytecode = previous
+
+
+@pytest.fixture
+def notes(tmp_path, home, monkeypatch):
+    """A plain directory (no git repository) used as the vault, in test mode."""
+    root = tmp_path / "notes vault"
+    root.mkdir()
+    monkeypatch.setenv("SECOND_BRAIN_VAULT", str(root))
+    monkeypatch.setenv("SECOND_BRAIN_TEST_MODE", "1")
+    monkeypatch.setenv("SECOND_BRAIN_TODAY", TODAY)
+
+    def write(rel, text="x\n"):
+        path = root / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text)
+        return path
+
+    write.root = root
+    return write
+
+
+def stem_lines(vg, capsys, name):
+    code, out, err = run(vg, capsys, "stem", name)
+    assert (code, err) == (0, ""), err
+    return out.splitlines()
+
+
+def stem(vg, capsys, name):
+    """The paths on `note` lines only."""
+    return [line[5:] for line in stem_lines(vg, capsys, name) if line.startswith("note ")]
+
+
+def stem_ignored(vg, capsys, name):
+    return [line[8:] for line in stem_lines(vg, capsys, name)
+            if line.startswith("ignored ")]
+
+
+@pytest.fixture
+def golden(home, monkeypatch):
+    monkeypatch.setenv("SECOND_BRAIN_VAULT", str(GOLDEN))
+    monkeypatch.setenv("SECOND_BRAIN_TEST_MODE", "1")
+    monkeypatch.setenv("SECOND_BRAIN_TODAY", TODAY)
+    return GOLDEN
+
+
+@pytest.mark.parametrize("name,expected", [
+    ("Release checklist", ["02-Work/Tasks/Release checklist.md",
+                           "05-Knowledge/Lessons/Release checklist.md"]),
+    ("Lantern Festival", ["02-Work/Projects/Lantern Festival.md",
+                          "05-Knowledge/Decisions/Lantern Festival.md"]),
+    ("Fix gate latch", ["02-Work/Tasks/Fix gate latch.md"]),
+    ("fix GATE latch", ["02-Work/Tasks/Fix gate latch.md"]),
+    ("Fix gate latch.md", ["02-Work/Tasks/Fix gate latch.md"]),
+    ("Fix gate latch.MD", ["02-Work/Tasks/Fix gate latch.md"]),
+    ("Café lights need weatherproof plugs",                    # NFD
+     ["05-Knowledge/Lessons/Café lights need weatherproof plugs.md"]),
+    ("CAFÉ LIGHTS NEED WEATHERPROOF PLUGS",
+     ["05-Knowledge/Lessons/Café lights need weatherproof plugs.md"]),
+    ("No such note anywhere", []),
+    ("Ignored by sbignore", []),                  # a file listed in .sbignore
+    ("Draft ignored by directory rule", []),      # under a directory pattern
+    ("Scratch pad", []),                          # matched by a glob
+    ("task", []),                                 # only a template
+])
+def test_stem_on_the_golden_vault(vg, golden, capsys, name, expected):
+    assert stem(vg, capsys, name) == expected
+
+
+def test_stem_matches_the_backend_on_the_golden_vault(vg):
+    assert vg._note_paths(str(GOLDEN)) == _backend_note_paths(GOLDEN)
+
+
+def test_stem_ignore_rules_on_a_synthetic_vault(vg, notes, capsys):
+    notes("02-Work/Tasks/Alpha.md")
+    notes(".trash/Trashed.md")
+    notes(".obsidian/Settings note.md")
+    notes("02-Work/.hidden/Hidden.md")
+    notes("08-System/Templates/Tpl.md")
+    notes("08-SYSTEM/templates/TplUpper.md")
+    notes("08-System/Other/Kept.md")
+    notes("Upper.MD")
+    notes("Not a note.txt")
+    assert stem(vg, capsys, "Alpha") == ["02-Work/Tasks/Alpha.md"]
+    for hidden in ("Trashed", "Settings note", "Hidden", "Tpl", "TplUpper", "Not a note"):
+        assert stem(vg, capsys, hidden) == [], hidden
+    assert stem(vg, capsys, "Kept") == ["08-System/Other/Kept.md"]
+    assert stem(vg, capsys, "upper") == ["Upper.MD"]
+
+
+def test_stem_never_follows_symbolic_links(vg, notes, tmp_path, capsys):
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "Elsewhere.md").write_text("x\n")
+    (outside / "Inner.md").write_text("x\n")
+    notes("Real.md")
+    (notes.root / "Linked note.md").symlink_to(outside / "Elsewhere.md")
+    (notes.root / "Linked dir").symlink_to(outside, target_is_directory=True)
+    assert stem(vg, capsys, "Linked note") == []
+    assert stem(vg, capsys, "Elsewhere") == []
+    assert stem(vg, capsys, "Inner") == []
+    assert stem(vg, capsys, "Real") == ["Real.md"]
+
+
+SBIGNORE_CASES = [
+    # (sbignore text, files, names that must stay notes, names that must be ignored)
+    ("Exact.md\n", ["Exact.md", "Sub/Exact.md"], ["Sub/Exact.md"], ["Exact.md"]),
+    ("﻿# comment\r\n\r\n   Trimmed.md   \r\n", ["Trimmed.md", "# comment.md"],
+     ["# comment.md"], ["Trimmed.md"]),
+    ("ARCHIVE/*\n", ["archive/old.md", "archive/deep/older.md", "Archive.md"],
+     ["Archive.md"], ["archive/old.md", "archive/deep/older.md"]),          # * crosses /
+    ("Note?.md\n", ["Note1.md", "Note12.md"], ["Note12.md"], ["Note1.md"]),
+    ("Day[0-9].md\n", ["Day5.md", "DayX.md"], ["DayX.md"], ["Day5.md"]),
+    ("Drafts/\n", ["Drafts/a.md", "Drafts/deep/b.md", "Sub/Drafts/c.md", "Drafts.md"],
+     ["Sub/Drafts/c.md", "Drafts.md"], ["Drafts/a.md", "Drafts/deep/b.md"]),
+    ("*/Drafts/\n", ["Sub/Drafts/c.md", "Drafts/a.md"], ["Drafts/a.md"], ["Sub/Drafts/c.md"]),
+    ("Folder\n", ["Folder/inside.md"], ["Folder/inside.md"], []),         # no / : not contents
+    ("!Keep.md\n", ["!Keep.md", "Keep.md"], ["Keep.md"], ["!Keep.md"]),   # no negation
+    ("**/Deep.md\n", ["a/b/Deep.md", "Deep.md"], ["Deep.md"], ["a/b/Deep.md"]),  # ** is *
+]
+
+
+@pytest.mark.parametrize("text,files,kept,ignored", SBIGNORE_CASES,
+                         ids=[c[0].strip().splitlines()[-1][:20] for c in SBIGNORE_CASES])
+def test_stem_sbignore_dialect(vg, notes, capsys, text, files, kept, ignored):
+    (notes.root / ".sbignore").write_bytes(text.encode("utf-8"))
+    for rel in files:
+        notes(rel)
+    paths = vg._note_paths(str(notes.root))
+    assert paths == _backend_note_paths(notes.root)
+    for rel in kept:
+        assert rel in paths, rel
+        name = rel.rsplit("/", 1)[-1][:-3]
+        assert rel in stem(vg, capsys, name)
+    for rel in ignored:
+        assert rel not in paths, rel
+        name = rel.rsplit("/", 1)[-1][:-3]
+        assert rel not in stem(vg, capsys, name)
+
+
+def test_stem_symlinked_sbignore_is_absent(vg, notes, tmp_path, capsys):
+    real = tmp_path / "patterns"
+    real.write_text("Listed.md\n")
+    (notes.root / ".sbignore").symlink_to(real)
+    notes("Listed.md")
+    assert stem(vg, capsys, "Listed") == ["Listed.md"]
+    assert vg._note_paths(str(notes.root)) == _backend_note_paths(notes.root)
+
+
+def test_stem_agrees_with_the_backend_on_a_mixed_tree(vg, notes, tmp_path):
+    (notes.root / ".sbignore").write_bytes(
+        b"\xef\xbb\xbf# patterns\r\nskip/\r\n*.tmp.md\r\nA[bc]?.md\r\n  odd name.md  \r\n")
+    for rel in ["keep/One.md", "skip/Two.md", "keep/skip/Three.md", "x.tmp.md", "Abz.md",
+                "Adz.md", "odd name.md", "08-system/Templates/t.md", ".dot/d.md",
+                "keep/.dot.md", "UPPER/Case.MD", "a\\b.md", "sp ace/é.md"]:
+        notes(rel)
+    outside = tmp_path / "away"
+    outside.mkdir()
+    (outside / "far.md").write_text("x\n")
+    (notes.root / "link").symlink_to(outside, target_is_directory=True)
+    (notes.root / "keep" / "ln.md").symlink_to(outside / "far.md")
+    assert vg._note_paths(str(notes.root)) == _backend_note_paths(notes.root)
+
+
+def test_stem_output_is_escaped_and_capped(vg, notes, capsys):
+    notes("odd\x1bdir/Name.md")
+    notes("line sep/Name.md")
+    notes(".trash/zero​width/Name.md")
+    lines = stem_lines(vg, capsys, "Name")
+    assert lines == ["note line\\u2028sep/Name.md", "note odd\\x1bdir/Name.md",
+                     "ignored .trash/zero\\u200bwidth/Name.md"]
+    for i in range(55):
+        notes(f"many/{i:02d}/Same.md")
+    for i in range(5):
+        notes(f".trash/{i}/Same.md")
+    lines = stem_lines(vg, capsys, "Same")
+    assert len(lines) == 51
+    assert lines[:2] == ["note many/00/Same.md", "note many/01/Same.md"]
+    assert lines[49] == "note many/49/Same.md"
+    assert lines[-1] == "[10 more not shown]"
+
+
+@pytest.mark.parametrize("argv", [
+    ["stem"], ["stem", "a", "b"], ["stem", ""], ["stem", "a/b"], ["stem", "a\\b"],
+    ["stem", "-x"], ["stem", "--all"], ["stem", "a\x07b"], ["stem", "a b"],
+    ["stem", "a​b"], ["stem", ".md"], ["stem", "../x"],
+])
+def test_stem_usage_errors(vg, notes, capsys, monkeypatch, argv):
+    calls = []
+    monkeypatch.setattr(vg.os, "walk", lambda *a, **k: calls.append(a) or iter(()))
+    code, out, err = run(vg, capsys, *argv)
+    assert code == 2 and out == "" and "usage" in err
+    assert calls == []
+
+
+def test_stem_missing_vault(vg, home, tmp_path, capsys, monkeypatch):
+    monkeypatch.setenv("SECOND_BRAIN_VAULT", str(tmp_path / "nope"))
+    code, out, err = run(vg, capsys, "stem", "x")
+    assert code == 1 and "does not exist" in err and out == ""
+
+
+def test_stem_vault_is_a_file(vg, home, tmp_path, capsys, monkeypatch):
+    (tmp_path / "file").write_text("x")
+    monkeypatch.setenv("SECOND_BRAIN_VAULT", str(tmp_path / "file"))
+    assert run(vg, capsys, "stem", "x")[0] == 1
+
+
+def test_stem_test_mode_guard(vg, notes, capsys, monkeypatch):
+    monkeypatch.delenv("SECOND_BRAIN_VAULT")
+    code, _, err = run(vg, capsys, "stem", "x")
+    assert code == 1 and "SECOND_BRAIN_VAULT" in err
+
+
+def test_stem_test_mode_refuses_the_real_vault(vg, home, tmp_path, capsys, monkeypatch):
+    real = tmp_path / "real"
+    real.mkdir()
+    (real / "x.md").write_text("x\n")
+    monkeypatch.setattr(vg, "DEFAULT_VAULT", str(real))
+    monkeypatch.setenv("SECOND_BRAIN_VAULT", str(real))
+    monkeypatch.setenv("SECOND_BRAIN_TEST_MODE", "1")
+    code, out, err = run(vg, capsys, "stem", "x")
+    assert code == 1 and "real vault" in err and out == ""
+
+
+def test_stem_runs_no_git(vg, notes, capsys, monkeypatch):
+    notes("A.md")
+    calls = []
+    monkeypatch.setattr(vg.subprocess, "run", lambda *a, **k: calls.append(a))
+    monkeypatch.setattr(vg.subprocess, "Popen", lambda *a, **k: calls.append(a))
+    monkeypatch.setattr(vg.shutil, "which", lambda *a, **k: calls.append(a))
+    assert stem(vg, capsys, "A") == ["A.md"]
+    assert calls == []
+
+
+def test_stem_reads_no_file_but_sbignore(vg, notes, capsys, monkeypatch):
+    notes("A.md")
+    (notes.root / ".sbignore").write_text("B.md\n")
+    opened = []
+    real_open = open
+
+    def spy(path, *args, **kwargs):
+        opened.append(os.fsdecode(path))
+        return real_open(path, *args, **kwargs)
+
+    monkeypatch.setattr("builtins.open", spy)
+    monkeypatch.setattr(vg, "_read_mountinfo", lambda: "")
+    assert stem(vg, capsys, "A") == ["A.md"]
+    assert [p for p in opened if p.startswith(str(notes.root))] == [
+        str(notes.root / ".sbignore")]
+
+
+def test_stem_from_the_command_line(notes):
+    notes("02-Work/Tasks/Fix it.md")
+    result = cli("stem", "fix IT")
+    assert result.returncode == 0 and result.stdout == "note 02-Work/Tasks/Fix it.md\n"
+    assert cli("stem", "a/b").returncode == 2
+
+
+# ===================================== stem: ignored files of the same name
+
+
+@pytest.mark.parametrize("name,ignored", [
+    ("Scratch pad", ["02-Work/Tasks/Scratch pad.md"]),                 # .sbignore glob
+    ("Wire the dock lights", [".trash/Wire the dock lights.md"]),      # trash
+    ("task", ["08-System/Templates/task.md"]),                         # a template
+    ("Note inside the obsidian folder", [".obsidian/Note inside the obsidian folder.md"]),
+    ("Draft ignored by directory rule", ["00-Inbox/Drafts/Draft ignored by directory rule.md"]),
+])
+def test_stem_lists_ignored_files_on_the_golden_vault(vg, golden, capsys, name, ignored):
+    assert stem_ignored(vg, capsys, name) == ignored
+
+
+def test_stem_notes_come_first_then_ignored(vg, golden, capsys):
+    assert stem_lines(vg, capsys, "Wire the dock lights") == [
+        "note 02-Work/Tasks/Wire the dock lights.md",
+        "ignored .trash/Wire the dock lights.md",
+    ]
+
+
+def test_stem_symlinked_note_is_ignored_and_not_followed(vg, notes, tmp_path, capsys):
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "Far.md").write_text("x\n")
+    (outside / "Deep.md").write_text("x\n")
+    (notes.root / "Linked.md").symlink_to(outside / "Far.md")
+    (notes.root / "linkdir").symlink_to(outside, target_is_directory=True)
+    (notes.root / ".hidden").mkdir()
+    (notes.root / ".hidden" / "linkdir").symlink_to(outside, target_is_directory=True)
+    assert stem_lines(vg, capsys, "Linked") == ["ignored Linked.md"]
+    assert stem_lines(vg, capsys, "Deep") == []
+    assert stem_lines(vg, capsys, "Far") == []
+
+
+def test_stem_never_enters_git(vg, notes, capsys):
+    notes(".git/Inside git.md")
+    notes("sub/.git/Inside git.md")
+    notes(".trash/Inside git.md")
+    assert stem_lines(vg, capsys, "Inside git") == ["ignored .trash/Inside git.md"]
+
+
+def test_stem_only_md_files_count(vg, notes, capsys):
+    notes("Plan.txt")
+    notes("Plan.MD")
+    (notes.root / "Plan.md.d").mkdir()
+    assert stem_lines(vg, capsys, "Plan") == ["note Plan.MD"]
+
+
+# =================================================== the project verb
+
+BACKEND_SLUG_TESTS = BACKEND / "tests" / "test_slug.py"
+
+
+def _backend_slug():
+    previous = sys.dont_write_bytecode
+    sys.dont_write_bytecode = True
+    sys.path.insert(0, str(BACKEND))
+    try:
+        from vault import slug
+        spec = importlib.util.spec_from_file_location("backend_test_slug", BACKEND_SLUG_TESTS)
+        cases = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cases)
+        return slug, cases
+    finally:
+        sys.path.remove(str(BACKEND))
+        sys.dont_write_bytecode = previous
+
+
+def _param_values(test_function):
+    """The value lists of a backend test's parametrize mark."""
+    return [values for values in test_function.pytestmark[0].args[1]]
+
+
+_SLUG_MODULE, _SLUG_CASES = _backend_slug()
+EXTRA_SLUG_TEXTS = [
+    "Lantern Festival", "  Ünïcödé  Tëxt ", "áb̧c", "Ⅻ roman", "x²y", "½ half",
+    "émoji 🎉 party", "tab\tand\nnewline", "UPPER_lower-Mixed.123", "---a---", "a.md",
+    "[[Harbor Lights.MD]]", "[[a/b/c|d#e]]", "[[a\\b]]", "[[x]] [[y]]", "[[x\\|y]]",
+    "![[Embed]]", "[[ Spaced ]]", "[[Projects/Night-Owl#H|alias]]", "[[]] text",
+]
+
+
+@pytest.mark.parametrize("text,expected", _param_values(_SLUG_CASES.test_slugify))
+def test_slugify_agrees_with_the_backend_cases(vg, text, expected):
+    assert vg._slugify(text) == expected == _SLUG_MODULE.slugify(text)
+
+
+@pytest.mark.parametrize("value,expected", _param_values(_SLUG_CASES.test_project_slug))
+def test_project_slug_agrees_with_the_backend_cases(vg, value, expected):
+    assert (vg._project_slug(value) or None) == expected == _SLUG_MODULE.project_slug(value)
+
+
+@pytest.mark.parametrize("text", EXTRA_SLUG_TEXTS)
+def test_project_slug_agrees_with_the_backend_on_more_texts(vg, text):
+    assert vg._slugify(text) == _SLUG_MODULE.slugify(text)
+    assert (vg._project_slug(text) or None) == _SLUG_MODULE.project_slug(text)
+
+
+def project_lines(vg, capsys, text):
+    code, out, err = run(vg, capsys, "project", text)
+    assert (code, err) == (0, ""), err
+    return out.splitlines()
+
+
+@pytest.mark.parametrize("text,expected", [
+    ("harbor-lights", ["slug=harbor-lights", "note 02-Work/Projects/Harbor Lights.md"]),
+    ("Harbor Lights!", ["slug=harbor-lights", "note 02-Work/Projects/Harbor Lights.md"]),
+    ("night-owl", ["slug=night-owl", "note 02-Work/Projects/Night Owl.md",
+                   "note 02-Work/Projects/Night-Owl.md"]),
+    ("lighthouse-tour", ["slug=lighthouse-tour"]),
+    ("[[02-Work/Projects/Lantern Festival]]",
+     ["slug=lantern-festival", "note 02-Work/Projects/Lantern Festival.md"]),
+    ("[[Lantern Festival|the festival#Plan]]",
+     ["slug=lantern-festival", "note 02-Work/Projects/Lantern Festival.md"]),
+    ("[[Harbor Lights.md]]", ["slug=harbor-lights", "note 02-Work/Projects/Harbor Lights.md"]),
+    ("日本語", ["slug="]),
+    ("[[]]", ["slug="]),
+])
+def test_project_on_the_golden_vault(vg, golden, capsys, text, expected):
+    assert project_lines(vg, capsys, text) == expected
+
+
+def test_project_folder_restriction_and_ignore_rules(vg, notes, capsys):
+    notes("02-Work/Projects/Alpha Beta.md")
+    notes("02-work/PROJECTS/deep/alpha_beta.md")           # any depth, any folder case
+    notes("05-Knowledge/Decisions/Alpha Beta.md")           # outside the projects folder
+    notes("02-Work/Tasks/Alpha Beta.md")
+    notes(".trash/02-Work/Projects/Alpha Beta.md")          # under a dot segment
+    notes("02-Work/Projects/.old/Alpha Beta.md")
+    notes("02-Work/Projects/Skipped/Alpha-Beta.md")         # .sbignore
+    notes("02-Work/Projects/Alpha Beta.txt")
+    (notes.root / ".sbignore").write_text("02-Work/Projects/Skipped/\n")
+    assert project_lines(vg, capsys, "alpha-beta") == [
+        "slug=alpha-beta",
+        "note 02-Work/Projects/Alpha Beta.md",
+        "note 02-work/PROJECTS/deep/alpha_beta.md",
+    ]
+
+
+def test_project_symlinked_note_is_not_a_project(vg, notes, tmp_path, capsys):
+    (tmp_path / "far.md").write_text("x\n")
+    (notes.root / "02-Work" / "Projects").mkdir(parents=True)
+    (notes.root / "02-Work" / "Projects" / "Linked.md").symlink_to(tmp_path / "far.md")
+    assert project_lines(vg, capsys, "linked") == ["slug=linked"]
+
+
+@pytest.mark.parametrize("argv", [
+    ["project"], ["project", "a", "b"], ["project", ""], ["project", "-x"],
+    ["project", "a\x07b"], ["project", "a b"], ["project", "a​b"],
+])
+def test_project_usage_errors(vg, notes, capsys, argv):
+    code, out, err = run(vg, capsys, *argv)
+    assert code == 2 and out == "" and "usage" in err
+
+
+def test_project_accepts_wikilink_characters(vg, notes, capsys):
+    notes("02-Work/Projects/A B.md")
+    assert project_lines(vg, capsys, "[[02-Work/Projects/A B#x|y]]") == [
+        "slug=a-b", "note 02-Work/Projects/A B.md"]
+
+
+def test_project_missing_vault_guard_and_no_git(vg, notes, tmp_path, capsys, monkeypatch):
+    calls = []
+    monkeypatch.setattr(vg.subprocess, "run", lambda *a, **k: calls.append(a))
+    monkeypatch.setattr(vg.shutil, "which", lambda *a, **k: calls.append(a))
+    assert project_lines(vg, capsys, "x") == ["slug=x"]
+    assert calls == []
+    monkeypatch.setenv("SECOND_BRAIN_VAULT", str(tmp_path / "missing"))
+    code, out, err = run(vg, capsys, "project", "x")
+    assert code == 1 and "does not exist" in err and out == ""
+    monkeypatch.delenv("SECOND_BRAIN_VAULT")
+    code, _, err = run(vg, capsys, "project", "x")
+    assert code == 1 and "SECOND_BRAIN_VAULT" in err
+
+
+def test_project_usage_text_says_type_is_not_checked(vg):
+    assert "type: project" in vg.__doc__

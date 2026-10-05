@@ -41,5 +41,8 @@ result with the rules above.
   capture only, retry once first with seconds added: `YYYY-MM-DD HHmmss <words>`.
 - **Same name in a different folder:** allowed (C22). When you later link to
   such a note, use the folder-qualified form, see [links.md](links.md).
-- Check the filesystem at write time. Never rely on an index; it can be a poll
-  interval out of date.
+- Find clashes with the `stem` verb at write time (see
+  [../SKILL.md](../SKILL.md#running-tools)). Any line, `note` or `ignored`, whose
+  path is in the target folder is a clash, because an ignored file of that name
+  is still a file a write would overwrite. Lines in other folders are not
+  clashes. Never rely on an index; it can be a poll interval out of date.

@@ -5,6 +5,15 @@ Usage: python3 -I vault_git.py VERB [ARGUMENT]
 
   env                     print vault=, today=, now= and test_mode= (section 2.12);
                           runs no git and needs no vault
+  stem NAME               print "note <path>" for every real note whose file stem
+                          is NAME (NFC, case-insensitive), then "ignored <path>" for
+                          every other .md file of that name (template, dot folder,
+                          .sbignore, symbolic link); each group sorted; runs no git
+  project TEXT            print "slug=<slug>" (the section 2.1 slug of a slug, title
+                          or wikilink), then "note <path>" for every real note under
+                          02-Work/Projects/ whose file stem has that slug. Matches
+                          by file name only: it reads no note, so it cannot check
+                          type: project. Runs no git
   remote                  print the configured remotes, one per line
   status                  print `git status --porcelain` (capped at 256 KiB)
   stage                   `git add -A`
@@ -29,6 +38,7 @@ refused outright, as is any symbolic link under .git.
 """
 
 import datetime
+import fnmatch
 import os
 import re
 import shlex
@@ -36,6 +46,7 @@ import shutil
 import stat
 import subprocess
 import sys
+import unicodedata
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 DEFAULT_VAULT = "/mnt/d/Second Brain"
@@ -50,10 +61,15 @@ OUTPUT_LIMIT = 256 * 1024
 MAX_LISTED = 10
 NOT_A_SECRET = "<!-- sbw: not-a-secret -->"
 
-VERBS = {"env": 0, "remote": 0, "status": 0, "stage": 0, "staged-diff": 0,
+VERBS = {"env": 0, "stem": 1, "project": 1, "remote": 0, "status": 0, "stage": 0, "staged-diff": 0,
          "head-subject": 0, "commit-eod": 1}
-USAGE = ("usage: vault_git.py env | remote | status | stage | staged-diff | head-subject"
-         " | commit-eod YYYY-MM-DD")
+USAGE = ("usage: vault_git.py env | stem NAME | project TEXT | remote | status | stage"
+         " | staged-diff"
+         " | head-subject | commit-eod YYYY-MM-DD")
+# Notes (section 2.9): the templates folder, and how many stem lines are printed.
+TEMPLATES_FOLDER = "08-System/Templates"
+SBIGNORE = ".sbignore"
+MAX_STEM_LINES = 50
 
 # Pinned on every call. Command-line -c beats the repository's own config.
 GIT_OVERRIDES = [
@@ -168,18 +184,20 @@ class Refusal(Exception):
 
 
 def _escape(text: str, keep: str = "") -> str:
-    """Control (C0, DEL, C1) and bidi characters as visible escapes, except keep."""
+    """Every non-printable character (C0, DEL, C1, bidi controls, line and
+    paragraph separators, other format characters, non-space whitespace) as a
+    visible escape, except those in keep."""
     out = []
     for ch in text:
         code = ord(ch)
-        if ch in keep:
+        if ch in keep or ch.isprintable():
             out.append(ch)
-        elif code < 0x20 or 0x7F <= code <= 0x9F:
+        elif code <= 0xFF:
             out.append(f"\\x{code:02x}")
-        elif ch in _BIDI:
+        elif code <= 0xFFFF:
             out.append(f"\\u{code:04x}")
         else:
-            out.append(ch)
+            out.append(f"\\U{code:08x}")
     return "".join(out)
 
 
@@ -358,7 +376,12 @@ def _lexical_checks(raw: str) -> str:
         raise Refusal("the vault must be an absolute path (set SECOND_BRAIN_VAULT)")
     if ".." in raw.split("/"):
         raise Refusal("the vault path contains a '..' component")
+    if not raw.isprintable():
+        raise Refusal("the vault path contains a control character or other non-printable"
+                      " character")
     path = _norm(raw)
+    if any(part != part.strip() for part in path.split("/")):
+        raise Refusal("a component of the vault path has leading or trailing whitespace")
     if _at_or_under(path, OLD_VAULT):
         raise Refusal("refusing to touch the old vault")
     if _at_or_under(path, C_DRIVE_MOUNT):
@@ -410,9 +433,6 @@ def _resolve_vault(test_mode: bool) -> str:
 def env(test_mode: bool, pinned) -> str:
     """The env verb's four lines. Runs no git and needs no vault, so it works
     before the vault exists and for a command that will only refuse."""
-    raw = os.environ.get("SECOND_BRAIN_VAULT")
-    if raw is not None and _escape(raw) != raw:
-        raise Refusal("SECOND_BRAIN_VAULT contains a control character or line break")
     try:
         path = _vault_path(test_mode)
         _check_no_symlink_in_path(path)
@@ -484,6 +504,157 @@ def _check_git_dir(vault: str) -> None:
             raise Refusal(f".git/{rel} {why}; inspect it, then remove it in a terminal:"
                           f" {_shell('rm', f'{gitdir}/{rel}')}")
     _check_no_links(vault)
+
+
+# ------------------------------------------------- notes by name (section 2.9)
+# A second implementation of the backend's read_sbignore / is_ignored /
+# note_paths (web-app/backend/vault/conformance.py), kept identical; a test runs
+# both over the same trees.
+
+
+def _read_sbignore(root: str) -> list:
+    """The .sbignore patterns. A missing or symlinked file means none."""
+    path = f"{root}/{SBIGNORE}"
+    if os.path.islink(path):
+        return []
+    try:
+        with open(path, "rb") as fh:
+            text = fh.read().decode("utf-8-sig", errors="replace")
+    except FileNotFoundError:
+        return []
+    lines = (line.strip() for line in text.splitlines())
+    return [line for line in lines if line and not line.startswith("#")]
+
+
+def _not_a_note(path: str, patterns: list) -> bool:
+    """A dot segment, the templates folder, a non-.md file, or an .sbignore match."""
+    folded = path.casefold()
+    segments = folded.split("/")
+    if any(segment.startswith(".") for segment in segments):
+        return True
+    if not folded.endswith(".md"):
+        return True
+    if folded.startswith(TEMPLATES_FOLDER.casefold() + "/"):
+        return True
+    directories = ["/".join(segments[:depth]) for depth in range(1, len(segments))]
+    for pattern in (p.casefold() for p in patterns):
+        if pattern.endswith("/"):
+            if any(fnmatch.fnmatchcase(d, pattern[:-1]) for d in directories):
+                return True
+        elif fnmatch.fnmatchcase(folded, pattern):
+            return True
+    return False
+
+
+def _walk_error(error: OSError) -> None:
+    if not isinstance(error, FileNotFoundError):
+        raise error
+
+
+def _md_files(root: str) -> list:
+    """(vault-relative path, is a note) for every file whose name ends in .md
+    (any case), sorted by path. Symlinked directories and .git are never
+    entered; other dot folders are, so their files can be listed as ignored.
+    A symbolic link (or any non-regular file) is never a note. No file is read
+    except .sbignore."""
+    patterns = _read_sbignore(root)
+    found = []
+    for directory, subdirs, files in os.walk(root, onerror=_walk_error):
+        subdirs[:] = [name for name in subdirs if name.casefold() != ".git"]
+        for name in files:
+            if not name.casefold().endswith(".md"):
+                continue
+            full = os.path.join(directory, name)
+            try:
+                regular = stat.S_ISREG(os.lstat(full).st_mode)
+            except FileNotFoundError:
+                continue
+            rel = os.path.relpath(full, root).replace(os.sep, "/")
+            found.append((rel, regular and not _not_a_note(rel, patterns)))
+    return sorted(found)
+
+
+def _note_paths(root: str) -> list:
+    """Vault-relative paths of every note, sorted (the backend's note_paths)."""
+    return [rel for rel, is_note in _md_files(root) if is_note]
+
+
+def _fold(text: str) -> str:
+    return unicodedata.normalize("NFC", unicodedata.normalize("NFC", text).casefold())
+
+
+def _stem_name(raw: str):
+    """The note name to look up, or None when the argument is not a plain name."""
+    name = raw[:-3] if raw.casefold().endswith(".md") else raw
+    if (not name or name.startswith("-") or "/" in name or "\\" in name
+            or not name.isprintable()):
+        return None
+    return name
+
+
+def _file_stem(rel: str) -> str:
+    return rel.rsplit("/", 1)[-1][:-3]
+
+
+def _capped(lines: list) -> str:
+    shown = lines[:MAX_STEM_LINES]
+    if len(lines) > MAX_STEM_LINES:
+        shown.append(f"[{len(lines) - MAX_STEM_LINES} more not shown]")
+    return "".join(line + "\n" for line in shown)
+
+
+def stem(root: str, name: str) -> str:
+    """`note <path>` for each real note whose stem is name, then `ignored
+    <path>` for each other .md file of that name; each group sorted."""
+    target = _fold(name)
+    files = [(rel, is_note) for rel, is_note in _md_files(root)
+             if _fold(_file_stem(rel)) == target]
+    lines = ([f"note {_escape(rel)}" for rel, is_note in files if is_note]
+             + [f"ignored {_escape(rel)}" for rel, is_note in files if not is_note])
+    return _capped(lines)
+
+
+# ------------------------------------------------ projects by slug (section 2.1)
+# A second implementation of web-app/backend/vault/slug.py (slugify,
+# project_slug); a test runs both over the backend's own cases.
+
+PROJECTS_FOLDER = "02-Work/Projects"
+_NON_SLUG_RUN = re.compile(r"[^a-z0-9]+")
+_WIKILINK = re.compile(r"!?\[\[([^\[\]\n]*)\]\]")
+
+
+def _slugify(text: str) -> str:
+    """NFKD, drop combining marks, lower-case, runs outside [a-z0-9] to "-", trim "-"."""
+    decomposed = unicodedata.normalize("NFKD", text)
+    without_marks = "".join(c for c in decomposed if not unicodedata.combining(c))
+    return _NON_SLUG_RUN.sub("-", without_marks.lower()).strip("-")
+
+
+def _project_slug(value: str) -> str:
+    """The section 2.1 "Indexed value": a whole-value wikilink loses its
+    brackets, alias, heading, folder prefix and a trailing .md; then slugify.
+    An empty string means no slug."""
+    link = _WIKILINK.fullmatch(value.strip())
+    if link:
+        target, pipe, _ = link.group(1).partition("|")
+        if pipe and target.endswith("\\"):
+            target = target[:-1]  # [[A\|alias]], the escaped pipe used in tables
+        target = target.partition("#")[0].replace("\\", "/").rpartition("/")[2]
+        value = target[:-3] if target.casefold().endswith(".md") else target
+    return _slugify(value)
+
+
+def project(root: str, text: str) -> str:
+    """`slug=<slug>`, then `note <path>` for each real note under the projects
+    folder (any depth, folder names in any case) whose stem has that slug."""
+    slug = _project_slug(text)
+    prefix = PROJECTS_FOLDER.casefold() + "/"
+    lines = []
+    if slug:
+        lines = [f"note {_escape(rel)}" for rel, is_note in _md_files(root)
+                 if is_note and rel.casefold().startswith(prefix)
+                 and _slugify(_file_stem(rel)) == slug]
+    return f"slug={slug}\n" + _capped(lines)
 
 
 def _identity_of(path: str) -> tuple:
@@ -1040,7 +1211,10 @@ def commit_eod(repo: Repo, date: str) -> int:
 def main(argv: list | None = None) -> int:
     argv = sys.argv[1:] if argv is None else list(argv)
     if (not argv or argv[0] not in VERBS or len(argv) != 1 + VERBS[argv[0]]
-            or any(a.startswith("-") for a in argv)):
+            or any(a.startswith("-") for a in argv)
+            or (argv[0] == "stem" and _stem_name(argv[1]) is None)
+            or (argv[0] == "project" and not argv[1].isprintable())
+            or (argv[0] == "project" and not argv[1])):
         print(USAGE, file=sys.stderr)
         return 2
     verb = argv[0]
@@ -1058,6 +1232,12 @@ def main(argv: list | None = None) -> int:
                 raise Refusal(f"the date {date} is not today ({expected})")
         if verb == "env":
             sys.stdout.write(env(test_mode, pinned))
+            return 0
+        if verb == "stem":  # needs the vault directory, not a repository
+            sys.stdout.write(stem(_resolve_vault(test_mode), _stem_name(argv[1])))
+            return 0
+        if verb == "project":
+            sys.stdout.write(project(_resolve_vault(test_mode), argv[1]))
             return 0
         repo = open_vault(test_mode)
         if verb == "remote":

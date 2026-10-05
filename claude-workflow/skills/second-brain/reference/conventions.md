@@ -13,13 +13,14 @@ folders and statuses; the other reference files must agree with it.
 - [Type](#type)
 - [Tags](#tags)
 - [Dates](#dates)
+- [Dates given to a command](#dates-given-to-a-command)
 - [Defaults](#defaults)
 - [Ignored paths](#ignored-paths)
 - [Vault git](#vault-git)
 
 ## Vault path
 
-The `vault` line of the `env` verb, see [../SKILL.md](../SKILL.md#vault-path-and-todays-date). The old vault at
+The `vault` line of the `env` verb, see [../SKILL.md](../SKILL.md#running-tools). The old vault at
 `/mnt/c/Users/User/Documents/Obsidian Vault` is never read or written.
 
 ## Folders
@@ -123,6 +124,15 @@ that is exactly `YYYY-MM-DD` and a real calendar date. Anything else is invalid.
 An invalid `due` behaves like no due date everywhere, including carry-forward.
 Write dates as `YYYY-MM-DD`.
 
+## Dates given to a command
+
+A date given to a command (for example `/task ... due:<date>`): the value
+written is always `YYYY-MM-DD`. That form is accepted as given. A relative
+expression (`tomorrow`, `friday`, `next week`) is resolved against today's date
+from `today` (see [../SKILL.md](../SKILL.md#running-tools)), written as `YYYY-MM-DD`, and reported back in the
+output. `friday` means the next Friday strictly after today. An expression with
+more than one reasonable reading is not guessed: ask the user.
+
 ## Defaults
 
 | Topic | Rule |
@@ -135,7 +145,8 @@ Write dates as `YYYY-MM-DD`.
 
 ## Ignored paths
 
-These are not notes: any path segment that starts with `.` (covers `.obsidian`,
+`stem` applies the ignore rules, so a session never decides by hand what is a
+note. This list is for understanding. These are not notes: any path segment that starts with `.` (covers `.obsidian`,
 `.git`, `.trash` and writer temp files), `08-System/Templates`, files that do
 not end in `.md`, and anything listed in `<vault>/.sbignore`. `.sbignore` has one vault-relative
 glob per line, `#` comments, and a trailing `/` means a directory. Do not treat a

@@ -1,6 +1,6 @@
 """/task scenarios (P1-10, P1-11; plan sections 2.1, 2.3, 2.5, 4; SKILL.md dates rule).
 
-Live: one `claude -p` call per test, two for the two-turn `done` tests.
+Live: one `claude -p` call per test, two for the two-turn `done` tests; ten calls.
 """
 
 import re
@@ -86,3 +86,49 @@ def test_task_done_changes_nothing_on_no(sb):
     turn2 = sb.reply(turn1, "No, do not mark it done.")
 
     sb.unchanged(before, turn2)
+
+
+def test_task_refuses_to_change_a_template(sb):
+    """Plan 4.1 "Changing an existing note": a path the user gives is accepted only
+    if `stem` prints it as a `note` line; a template is only ever an `ignored`
+    line (4.2), so this is refused."""
+    template = "08-System/Templates/task.md"
+    before = sb.snapshot()
+    original = sb.read(template)
+
+    session = sb.run("/task", f"{template} status:in-progress")
+
+    sb.unchanged(before, session)
+    sb.expect(sb.read(template) == original, "the template changed", session)
+
+
+def test_task_with_an_existing_title_writes_nothing_and_asks_for_another(sb):
+    """`02-Work/Tasks/Paint the gate.md` exists in the fixture: a same-folder name
+    clash (2.5) is refused and the command asks for a different title."""
+    assert sb.path(PAINT).is_file()
+    before = sb.snapshot()
+
+    session = sb.run("/task", "Paint the gate")
+
+    sb.unchanged(before, session)
+    text = session.all_text.lower()
+    sb.expect("title" in text and ("exist" in text or "already" in text),
+              "the reply does not say the title exists and ask for another", session)
+
+
+def test_task_named_like_an_ignored_note_writes_nothing_and_asks_for_another(sb):
+    """`02-Work/Tasks/Scratch pad.md` is ignored by the fixture's `.sbignore`, so
+    `stem` reports it as an `ignored` line, not a note; the file still occupies
+    the name in the folder (2.5 clash check reads the filesystem). Asserted:
+    nothing written or overwritten, the file byte-identical, and the command
+    asks for a different title."""
+    scratch = "02-Work/Tasks/Scratch pad.md"
+    assert sb.path(scratch).is_file()
+    before = sb.snapshot()
+    original = sb.read(scratch)
+
+    session = sb.run("/task", "Scratch pad")
+
+    sb.unchanged(before, session)
+    sb.expect(sb.read(scratch) == original, f"{scratch} changed", session)
+    sb.expect("title" in session.all_text.lower(), "the reply does not ask for a different title", session)

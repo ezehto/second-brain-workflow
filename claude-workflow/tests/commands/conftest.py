@@ -37,6 +37,14 @@ run by `addopts = ["-m", "not commands"]` in claude-workflow/pyproject.toml. Any
 `-m` expression given on the command line replaces that default and can select
 the live scenarios: they launch `claude` and spend tokens.
 
+Live calls for a full `-m commands` run: 39 (capture 2, daily 4, decision 1,
+eod 9, guard 1, knowledge 1, project 4, standup 1, task 10, template edit 1,
+triage 4, canary 1).
+
+Every turn of every scenario also fails if the session ran any Bash command
+other than the wrapper's verbs its profile allows (`env`; `stem` and `project`
+outside the guard; the six git verbs in /eod), `ls` and `pwd`.
+
 Knobs, all optional environment variables:
 
     SB_COMMANDS_MODEL           --model for every session (default: account default)
@@ -118,10 +126,24 @@ TOOLS = {"default": WRITE_TOOLS, "eod": WRITE_TOOLS, "guard": READ_ONLY_TOOLS}
 BROWSE_BASH_ALLOW = ("Bash(ls)", "Bash(ls *)", "Bash(pwd)")
 
 ENV_VERB = "env"  # every profile
+# `stem <name>` (plan 4.1 "Finding notes by name") and `project <value>` (a
+# slug, a title or a wikilink), default and eod profiles only. They are the two
+# wrapper rules with a wildcard: each verb takes one argument, which no exact
+# rule can list; both are read-only and run no git. The script validates the
+# argument itself, and the substitution deny rules below cover `$(`, backticks
+# and process substitution.
+LOOKUP_VERBS = ("stem *", "project *")
 VAULT_GIT_VERBS = ("remote", "status", "stage", "staged-diff", "head-subject", f"commit-eod {TODAY}")  # eod only
 VAULT_GIT_RELATIVE = ".claude/skills/second-brain/scripts/vault_git.py"
 
-BASH_DENY = (
+# Claude Code runs a built-in set of read-only commands inside the working
+# directories without any allow rule. The skill tells a session to read files
+# with the Read tool and to use Bash only for the wrapper and plain `ls`, so
+# these are denied in every profile (deny rules also match inside compound
+# commands). `ls`, `ls *` and `pwd` stay allowed.
+READ_ONLY_DENIED = ("cat", "head", "tail", "find", "grep", "cd", "wc", "stat", "sort", "diff", "awk", "sed")
+
+BASH_DENY = tuple(f"Bash({name}{form})" for name in READ_ONLY_DENIED for form in ("", " *")) + (
     "Bash(git)",
     "Bash(git *)",
     # Backstops: `ls *` is the one wildcard Bash rule left, and `ls $(cmd)`
@@ -419,6 +441,7 @@ def permission_settings(ws: Workspace, profile: str = "default") -> dict[str, An
     allow.append("Skill")
     allow += vault_git_rules(ws, (ENV_VERB,))
     if profile != "guard":
+        allow += vault_git_rules(ws, LOOKUP_VERBS)
         allow += BROWSE_BASH_ALLOW
     if profile == "eod":
         allow += vault_git_rules(ws)
@@ -706,6 +729,11 @@ def describe(session: SessionResult) -> str:
         )
     lines.append("session text:")
     lines.append(session.all_text or "(none)")
+    denied_bash = [(d.get("tool_input") or {}).get("command") for d in session.permission_denials
+                   if d.get("tool_name") == "Bash"]
+    if denied_bash:
+        lines.append(f"denied Bash commands: {len(denied_bash)}")
+        lines += [f"  {c}" for c in denied_bash]
     if session.permission_denials:
         lines.append("permission denials (Bash commands are allowed only as exact commands, so an added "
                       "redirection, `; echo $?` or a different path is denied):")
@@ -735,6 +763,32 @@ def allowed_bash_commands(ws: Workspace, profile: str) -> set[str]:
     """The exact commands (no wildcard) a profile allows."""
     rules = permission_settings(ws, profile)["permissions"]["allow"]
     return {r[len("Bash("):-1] for r in rules if r.startswith("Bash(") and "*" not in r}
+
+
+SHELL_OPERATORS = re.compile(r"&&|\|\||[;|&\n`<>]|\$\(")
+
+
+def _rule_matches(rule_command: str, command: str) -> bool:
+    if rule_command.endswith(" *"):
+        prefix = rule_command[:-1]  # keeps the space: "ls *" needs an argument after "ls "
+        return command.startswith(prefix) and command[len(prefix):].strip() != ""
+    return command == rule_command
+
+
+def unexpected_bash(session: SessionResult, ws: Workspace, profile: str) -> list[str]:
+    """Bash commands the session ran (or tried) that are not one of the profile's
+    allowed commands: the wrapper's verbs, `ls` and `pwd`. A compound command,
+    a redirection or a substitution is never one of them."""
+    rules = [r[len("Bash("):-1] for r in permission_settings(ws, profile)["permissions"]["allow"]
+             if r.startswith("Bash(")]
+    out = []
+    for name, args in session.tool_uses:
+        if name != "Bash":
+            continue
+        command = (args.get("command") or "").strip()
+        if SHELL_OPERATORS.search(command) or not any(_rule_matches(r, command) for r in rules):
+            out.append(command)
+    return out
 
 
 def denials_outside_root(session: SessionResult, ws: Workspace, profile: str) -> list[dict[str, Any]]:
@@ -1082,9 +1136,19 @@ class Harness:
             after = git_marks(self.ws)  # verifies .git/config and hooks first
         except GitTamperError as exc:
             pytest.fail(f"{exc}\n\n{describe(session)}", pytrace=False)
+        self.assert_bash_usage(session)
         if not self.allow_git_writes:
             expect(after[0] == marks[0], f"HEAD moved from {marks[0]} to {after[0]}: only /eod commits (4.1)", session)
             expect(after[1] == marks[1], "the git index changed: only /eod stages (4.1)", session)
+
+    def assert_bash_usage(self, session: SessionResult) -> None:
+        """Fail when the session ran any Bash command other than the wrapper's
+        verbs, `ls` and `pwd` (the skill's rule), even if it then recovered:
+        a command that works only by flailing is caught. Run on every turn of
+        every scenario by run() and reply()."""
+        other = unexpected_bash(session, self.ws, session.profile)
+        expect(not other, "the session ran Bash commands other than the wrapper's verbs, ls and pwd:\n"
+               + "\n".join(f"  {c}" for c in other), session)
 
     def changes(self, before: Snapshot, session: SessionResult | None = None, **expected: Any) -> dict:
         """Compare the vault now with `before`; see match_changes."""

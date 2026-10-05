@@ -227,7 +227,6 @@ def skill_text(*parts: str) -> str:
         (("reference", "links.md"), "## Resolving a link or project value"),
         (("reference", "links.md"), "neither resolves"),
         (("reference", "links.md"), "lexicographic"),
-        (("reference", "links.md"), "slugify(arg) == slugify(stem)"),
         (("reference", "naming.md"), "100 characters"),
         (("reference", "naming.md"), "200 characters"),
         (("reference", "triage.md"), "Set `triaged_to` only after its target note exists"),
@@ -285,7 +284,7 @@ def test_reference_files_hold_no_script_command(name):
     "needle",
     [
         "`today` value from the `env` call",
-        "described in [../SKILL.md](../SKILL.md#vault-path-and-todays-date)",
+        "described in [../SKILL.md](../SKILL.md#running-tools)",
         "read once per operation",
         "a `refused:` line means report it and stop",
     ],
@@ -329,7 +328,7 @@ def test_no_default_vault_fallback_or_time_of_day_shell():
         "applied to `now` and wrapping within the day",
         "`test_mode` is informational",
         "the script decides the vault path",
-        "Every command runs the `env` verb; only `/eod` runs the others",
+        "Every command runs the `env` verb, and any command may run `stem` and `project`; only `/eod` runs the others",
     ],
 )
 def test_env_output_meaning(needle):
@@ -427,12 +426,12 @@ SK = ("SKILL.md",)
     "rel,needle",
     [
         (SK, "Any other missing folder is an error"),
-        (SK, "the value written is always `YYYY-MM-DD`"),
-        (SK, "accepted as given"),
-        (SK, "resolved against today's date"),
-        (SK, "reported back in the output"),
-        (SK, "`friday` means the next Friday strictly after today"),
-        (SK, "more than one reasonable reading"),
+        (CONV, "the value written is always `YYYY-MM-DD`"),
+        (CONV, "accepted as given"),
+        (CONV, "resolved against today's date"),
+        (CONV, "reported back in the output"),
+        (CONV, "`friday` means the next Friday strictly after today"),
+        (CONV, "more than one reasonable reading"),
         (SK, "`/task` due value follows the dates rule"),
         (CF, "A `planned` task whose `due` is invalid is **not** carried"),
         (CF, "sorted by project title, then path"),
@@ -572,7 +571,7 @@ def test_old_code_rule_and_attachment_wording_gone():
 
 # ---- git only through vault_git.py (plan 4.1, 4.2) ---------------------------------
 
-VERBS = ["env", "remote", "status", "stage", "staged-diff", "head-subject", "commit-eod YYYY-MM-DD"]
+VERBS = ["env", "stem <name>", "project <text>", "remote", "status", "stage", "staged-diff", "head-subject", "commit-eod YYYY-MM-DD"]
 
 
 def section(text: str, heading: str) -> str:
@@ -583,7 +582,7 @@ def section(text: str, heading: str) -> str:
 
 def test_git_section_lists_the_six_verbs_exactly():
     sec = section(read(SKILL_MD), "## Git and `/eod`")
-    rows = [c[0] for c in (r for r in table_rows(SKILL_MD) if r) if re.fullmatch(r"`[a-z -]+( YYYY-MM-DD)?`", c[0])]
+    rows = [c[0] for c in (r for r in table_rows(SKILL_MD) if r) if re.fullmatch(r"`[a-z -]+( YYYY-MM-DD| <name>| <text>)?`", c[0])]
     verbs = [r.strip("`") for r in rows if r.strip("`") in VERBS or r.startswith("`commit")]
     assert verbs == VERBS
     for v in VERBS:
@@ -597,7 +596,7 @@ def test_git_section_lists_the_six_verbs_exactly():
         "python3 -I ${CLAUDE_SKILL_DIR}/scripts/vault_git.py <verb>",
         "Never run `git` in any other way, in any command",
         "refused:",
-        "Every command runs the `env` verb; only `/eod` runs the others",
+        "Every command runs the `env` verb, and any command may run `stem` and `project`; only `/eod` runs the others",
         "refuses a vault that has a remote",
         "runs the secret scan",
         "commits or amends",
@@ -706,7 +705,7 @@ def test_git_written_only_by_init_and_eod():
         "stages every change itself, scans the staged diff, then commits or amends",
         "refuses unless the date is today (the pinned date in test mode)",
         "a remote, a merge, rebase, cherry-pick or revert in progress, unmerged paths, a detached `HEAD`, a nested git repository, or links under `.git`",
-        "always passes today's date from the date rule",
+        "always passes `today` from the `env` call",
         # exit codes (item 4)
         "0 is success and includes \"nothing to commit\"",
         "one line on stdout, which the session reports as the outcome, not as a failure",
@@ -758,3 +757,120 @@ def test_marker_is_not_instructed_to_the_session():
 )
 def test_task_evidence_and_project_summary(needle):
     assert has(read(SKILL_MD), needle)
+
+
+# ---- running tools, finding and changing notes (plan 4.1, 4.2 stem) ----------------
+
+ENV_LINE = "vault_git.py env"
+PROJECT_LINE = 'python3 -I ${CLAUDE_SKILL_DIR}/scripts/vault_git.py project "<text>"'
+STEM_LINE = 'python3 -I ${CLAUDE_SKILL_DIR}/scripts/vault_git.py stem "<name>"'
+
+
+def test_env_and_stem_command_lines_once_in_skill_and_never_in_references():
+    text = read(SKILL_MD)
+    assert text.count(ENV_LINE) == 1
+    assert text.count("vault_git.py stem") == 1
+    assert text.count("vault_git.py project") == 1
+    assert PROJECT_LINE in text
+    assert STEM_LINE in text
+    for name in REFERENCE:
+        ref = read(SKILL / "reference" / f"{name}.md")
+        assert "vault_git.py" not in ref and "CLAUDE_SKILL_DIR" not in ref
+
+
+@pytest.mark.parametrize(
+    "needle",
+    [
+        "## Running tools",
+        "Run `env` first, before reading anything in the vault",
+        "Bash is used only for the script's verbs and for plain `ls`",
+        "each as its own call with nothing added",
+        "no `cd`, `;`, `&&`, pipes, redirection, loops or variables",
+        "Read every file with the Read tool, one file per call",
+        "A missing Phase 1 folder means \"no clash\", not an error",
+        "created by writing the note",
+        "prints one line per file with that name: `note <path>` for a real note, `ignored <path>` for a file that is not one",
+        "Never decide from a directory listing whether a name is unique or a file is a real note",
+        "a command's argument text is delimited in the command file",
+        "if the delimiter appears inside the text, the command refuses and says so",
+        "Every command runs the `env` verb, and any command may run `stem` and `project`; only `/eod` runs the others",
+        "edits only a note that `stem` prints on a `note` line for its name",
+        "A path the user gives is accepted only if it equals one of those `note` paths",
+        "a template, a note in `.trash`, a note ignored by `.sbignore` and anything outside the vault are refused",
+        "a note whose frontmatter is malformed is never edited",
+        "says so and stops",
+        "an option may be the first word, in which case the title is empty and the command asks",
+        "an option given twice, or a title or name that sanitises or slugifies to nothing, is asked about, not guessed",
+        "the evidence is appended first and the status line is changed second",
+    ],
+)
+def test_running_tools_and_note_rules(needle):
+    assert has(read(SKILL_MD), needle)
+
+
+@pytest.mark.parametrize(
+    "rel,needle",
+    [
+        (("reference", "links.md"), "bare when `stem` prints at most one `note` line for the target's name and folder-qualified otherwise"),
+        (("reference", "links.md"), "the note being created does not count"),
+        (("reference", "naming.md"), "`stem` verb"),
+        (("reference", "conventions.md"), "`stem` applies the ignore rules"),
+    ],
+)
+def test_reference_stem_rules(rel, needle):
+    assert has(skill_text(*rel), needle)
+
+
+def test_bash_rule_section_order_and_toc():
+    text = read(SKILL_MD)
+    assert text.index("## Hard rules") < text.index("## Running tools") < text.index("## Folders and note types")
+    assert "## Vault path and today's date" not in text
+
+
+@pytest.mark.parametrize("doc", DOCS, ids=lambda p: p.name)
+def test_no_uniqueness_or_notehood_from_ls(doc):
+    for sentence in re.split(r"(?<=[.!?])\s+", norm(read(doc))):
+        s = sentence.lower()
+        if ("`ls`" in s or "directory listing" in s or "walk the directory" in s) and re.search(r"unique|real note|clash", s):
+            assert re.search(r"\bnever\b|\bdo not\b", s), sentence
+    assert "Walk the directory" not in read(doc)
+
+
+# ---- stem note/ignored lines, finding a project (plan 4.1, 4.2) -------------------
+
+@pytest.mark.parametrize(
+    "rel,needle",
+    [
+        (SK, "A new note's name clashes when any line, `note` or `ignored`, has its path in the target folder"),
+        (SK, "an ignored file of that name is still a file a write would overwrite"),
+        (SK, "Lines in other folders are not clashes"),
+        (("reference", "naming.md"), "any line, `note` or `ignored`, whose path is in the target folder is a clash"),
+        (("reference", "naming.md"), "an ignored file of that name is still a file a write would overwrite"),
+        (("reference", "naming.md"), "lines in other folders are not clashes"),
+        (SK, "Only a note on a `note` line may be edited"),
+        (SK, "a template, a note in `.trash`"),
+        (SK, "Never slugify by hand and never scan the projects folder"),
+        (SK, "prints `slug=<slug>`, then one `note <path>` line per matching project note under `02-Work/Projects`"),
+        (SK, "Exactly one line means that project"),
+        (SK, "None means unknown"),
+        (SK, "plain `ls` of `02-Work/Projects`, for display only, never for deciding"),
+        (SK, "More than one means the slug is duplicated: name them and ask"),
+        (("reference", "links.md"), "run the `project` verb"),
+        (("reference", "links.md"), "a description of what the script and the indexer do"),
+        (("reference", "links.md"), "a session never computes it"),
+    ],
+)
+def test_stem_and_project_rules(rel, needle):
+    assert has(skill_text(*rel), needle)
+
+
+@pytest.mark.parametrize("doc", DOCS, ids=lambda p: p.name)
+def test_no_hand_slug_or_folder_scan_instruction(doc):
+    text = norm(read(doc))
+    assert "matches by `slugify(arg) == slugify(stem)`" not in text
+    assert "read from disk" not in text or "project" not in text.split("read from disk")[0][-80:]
+    assert "Match by `slugify(arg)" not in text
+    for sentence in re.split(r"(?<=[.!?])\s+", text):
+        s = sentence.lower()
+        if "slugify" in s and re.search(r"\b(match|compare|compute|find)\b", s):
+            assert re.search(r"\bnever\b|script|indexer|description", s), sentence

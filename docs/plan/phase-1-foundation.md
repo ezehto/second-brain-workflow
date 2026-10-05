@@ -953,6 +953,43 @@ Settled on 2026-10-05 after the command-test and security reviews.
   assert `HEAD` and the index are unchanged after every other command.
 - **Created notes:** keys the user did not give keep the template's values;
   `project:` stays empty unless a project was given.
+- **Finding notes by name.** A command never decides by reading a directory
+  listing whether a note name is unique or whether a file is a real note: a
+  listing ignores the `.sbignore` rules, does not show which entries are
+  templates, trash or symbolic links, and is cut off on a large vault. It runs
+  `vault_git.py stem <name>` and uses the lines printed. An emitted link is
+  bare when `stem` prints at most one `note` line for the target's name and
+  folder-qualified otherwise (section 2.5); the note being created does not
+  count. A new note's name clashes when `stem` prints any line, `note` or
+  `ignored`, whose path is in the target folder: an ignored file of the same
+  name is still a file that a write would overwrite.
+- **Finding a project.** A command never slugifies by hand or scans the
+  projects folder: it runs `vault_git.py project <text>` with the slug, title
+  or wikilink the user gave and uses the result (one `note` line: that
+  project; none: unknown, list the known projects and ask; several: the slug
+  is duplicated, name them and ask). Commands look for project notes under
+  `02-Work/Projects/` only; a project note anywhere else is already a checker
+  failure (F4).
+- **Changing an existing note.** A command edits only a note that `stem`
+  prints on a `note` line for its name. A path the user gives is accepted only
+  if it equals one of those `note` paths, so a template, a note in `.trash`, a note
+  ignored by `.sbignore` and anything outside the vault are refused. A note
+  whose frontmatter is malformed is never edited by a command; it says so and
+  stops.
+- **Missing folders.** A missing Phase 1 folder means "no clash", not an error
+  (section 2.5); the note's folder is created by writing the note.
+- **Options.** In a command with options, an option may also be the first
+  word, in which case the title is empty and the command asks for it. An
+  option given twice, or a title or name that sanitises or slugifies to
+  nothing, is asked about, not guessed.
+- **Argument text is data.** Each command file wraps `$ARGUMENTS` in a named
+  delimiter that ordinary text is unlikely to contain and says the text runs
+  to that delimiter; if the delimiter itself appears inside the text, the
+  command refuses and says so, because it can no longer tell where the text
+  ends.
+- **`/task`:** when marking a task `done`, the evidence is appended first and
+  the status line is changed second, so a stop in between never leaves a
+  `done` task without evidence.
 - **`/task`:** a resolved relative due date is reported back in the reply
   (section 2.10). Marking a task `done` asks for evidence first, and records
   it as a list item `- Evidence: <text>` under `## Notes`.
@@ -985,8 +1022,8 @@ Settled on 2026-10-05 after the command-test and security reviews.
 
 ### 4.2 `vault_git.py`: the only way a command runs git
 
-A session never runs `git` directly. Every command calls the `env` verb; only
-`/eod` calls the others. The skill ships
+A session never runs `git` directly. Every command calls the `env` verb, and
+any command may call `stem` and `project`; only `/eod` calls the others. The skill ships
 `claude-workflow/skills/second-brain/scripts/vault_git.py` (Python standard library only),
 and `/eod` calls `python3 -I <skill directory>/scripts/vault_git.py <verb>`
 (`-I` is Python's isolated mode: it ignores `PYTHONPATH` and the other
@@ -1000,6 +1037,8 @@ fixed verbs, and the same protection applies to the real vault.
 | Verb | Does |
 |---|---|
 | `env` | prints `vault`, `today`, `now` and `test_mode` (section 2.12); runs no git; the one verb every command uses |
+| `stem <name>` | prints one line per file in the vault whose stem equals `<name>` (NFC, case-insensitive): `note <vault-relative path>` for a real note under the ignore rules of section 2.9, `ignored <vault-relative path>` for a file of that name that is not a real note (a template, a file under a dot folder such as `.trash`, a file matched by `.sbignore`, a symbolic link). Nothing printed means no file of that name exists. Runs no git. The argument is a note name, never a path (a `/`, a leading `-` or a control character is a usage error) |
+| `project <text>` | prints `slug=<slug>` (the section 2.1 slug of `<text>`, which may be a slug, a title or a wikilink), then one line `note <vault-relative path>` for each real note under `02-Work/Projects/` whose stem has that slug. No path line means an unknown project; more than one means the slug is duplicated and resolves to none. Runs no git |
 | `remote` | prints the configured remotes, one per line (nothing means none) |
 | `status` | prints `git status --porcelain` |
 | `stage` | `git add -A` |
@@ -1686,7 +1725,7 @@ recorded.
 - **Tests first:** the P1-10 scenarios for these five, including the two-turn
   `done` with evidence, a refused `/project` slug clash, and an unknown project
   on `/task`.
-- **Run:** `uv run --project claude-workflow pytest -m commands claude-workflow/tests/commands -k "capture or task or project or decision or knowledge"`.
+- **Run:** `cd claude-workflow && uv run pytest -m commands tests/commands/test_{capture,task,project,decision,knowledge,template_edit,guard}.py` (selected by file: a `-k` expression on "capture" would also pick up a triage scenario).
 - **Acceptance:** scenarios pass on two consecutive runs.
 
 #### P1-12 `/triage`

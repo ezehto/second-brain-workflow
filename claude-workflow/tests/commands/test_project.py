@@ -67,3 +67,20 @@ def test_project_slug_shows_the_summary_and_writes_nothing(sb):
 
     sb.unchanged(before, session)
     sb.expect("Harbor Lights" in session.all_text, "the summary does not name the project", session)
+
+
+@pytest.mark.commands
+def test_project_with_a_duplicated_slug_names_both_notes_and_writes_nothing(sb):
+    """`Night Owl` and `Night-Owl` both slugify to `night-owl`. Plan 2.1: with a
+    duplicated slug neither resolves (fixture README: "so neither resolves"), so
+    the command must not pick one silently. Section 4.1 does not fix the wording;
+    asserted: nothing written, and the reply names both notes by title (the
+    argument was typed in lower case, so neither title is an echo)."""
+    before = sb.snapshot()
+
+    session = sb.run("/project", "night-owl")
+
+    sb.unchanged(before, session)
+    text = session.all_text
+    sb.expect("Night Owl" in text and "Night-Owl" in text,
+              "the reply does not name both notes that share the slug", session)

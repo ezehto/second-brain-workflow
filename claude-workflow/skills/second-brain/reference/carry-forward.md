@@ -14,7 +14,7 @@ text under a heading. Source: plan sections 2.2 and 2.4.
 ## When carry-forward runs
 
 "Today" is the `today` value from the `env` call described in
-[../SKILL.md](../SKILL.md#vault-path-and-todays-date), read once per operation.
+[../SKILL.md](../SKILL.md#running-tools), read once per operation.
 A `refused:` line means report it and stop. Take the date from nowhere else. The
 daily note is `01-Daily/YYYY/YYYY-MM-DD.md`.
 

@@ -68,6 +68,15 @@ def approved_env(ws):
     return {f"Bash(python3 -I {s} env)" for s in _wrapper_scripts(ws)}
 
 
+def approved_stem(ws):
+    """`stem <name>` and `project <value>`: the two wrapper rules with a wildcard
+    (each takes one argument), default and eod profiles only."""
+    return {f"Bash(python3 -I {s} {verb} *)" for s in _wrapper_scripts(ws) for verb in ("stem", "project")}
+
+
+READ_ONLY_DENIED = ("cat", "head", "tail", "find", "grep", "cd", "wc", "stat", "sort", "diff", "awk", "sed")
+
+
 def approved_vault_git(ws):
     return {f"Bash(python3 -I {s} {verb})" for s in _wrapper_scripts(ws) for verb in VAULT_GIT_VERBS}
 
@@ -258,8 +267,8 @@ def _bash_rules(rules):
 
 def test_every_bash_allow_rule_is_in_the_approved_exact_set(hx, ws):
     approved = {
-        "default": approved_env(ws) | APPROVED_BROWSE_BASH,
-        "eod": approved_env(ws) | APPROVED_BROWSE_BASH | approved_vault_git(ws),
+        "default": approved_env(ws) | approved_stem(ws) | APPROVED_BROWSE_BASH,
+        "eod": approved_env(ws) | approved_stem(ws) | APPROVED_BROWSE_BASH | approved_vault_git(ws),
         "guard": approved_env(ws),
     }
     for profile, expected in approved.items():
@@ -278,14 +287,28 @@ def test_no_bash_allow_rule_runs_a_shell_form_git_or_find(hx, ws):
             assert " git " not in f" {command} ", rule
 
 
-def test_every_profile_allows_the_env_verb_and_only_eod_the_other_verbs(hx, ws):
+def test_every_profile_allows_the_env_verb_stem_outside_the_guard_and_only_eod_the_git_verbs(hx, ws):
     for profile in hx.PROFILES:
         allow = set(hx.permission_settings(ws, profile)["permissions"]["allow"])
         assert approved_env(ws) <= allow, profile
         wrapper = {r for r in allow if "vault_git" in r}
-        expected = approved_env(ws) | (approved_vault_git(ws) if profile == "eod" else set())
+        expected = approved_env(ws)
+        if profile != "guard":
+            expected |= approved_stem(ws)
+        if profile == "eod":
+            expected |= approved_vault_git(ws)
         assert wrapper == expected, profile
-        assert not any("*" in r for r in wrapper), profile
+        assert {r for r in wrapper if "*" in r} == (approved_stem(ws) if profile != "guard" else set()), profile
+
+
+def test_every_profile_denies_the_built_in_read_only_commands(hx, ws):
+    for profile in hx.PROFILES:
+        deny = set(hx.permission_settings(ws, profile)["permissions"]["deny"])
+        for name in READ_ONLY_DENIED:
+            assert {f"Bash({name})", f"Bash({name} *)"} <= deny, (profile, name)
+        allow = set(hx.permission_settings(ws, profile)["permissions"]["allow"])
+        assert not any(r.startswith(f"Bash({name}") for r in allow for name in READ_ONLY_DENIED), profile
+    assert {"Bash(ls)", "Bash(ls *)", "Bash(pwd)"} <= set(hx.permission_settings(ws, "default")["permissions"]["allow"])
 
 
 def test_guard_profile_has_no_write_tool_and_only_the_skill_shell_forms(hx, ws):
@@ -946,3 +969,74 @@ def test_run_claude_adds_the_session_cost_to_the_run_total(hx, ws, tmp_path, mon
     hx.run_claude(ws, "y", hx.HarnessConfig(claude_bin=fake))
     assert hx.RUN_COSTS == [0.25, 0.25]
     assert "0.5000" in hx.cost_summary()
+
+
+# --- Bash usage ----------------------------------------------------------------------------------
+
+
+def _bash_session(*commands, denied=()):
+    content = [{"type": "tool_use", "id": f"t{i}", "name": "Bash", "input": {"command": c}}
+               for i, c in enumerate(commands)]
+    events = [INIT_EVENT, {"type": "assistant", "message": {"content": content}},
+              {**RESULT_EVENT, "permission_denials": [
+                  {"tool_name": "Bash", "tool_input": {"command": c}} for c in denied]}]
+    return events
+
+
+def test_bash_usage_accepts_the_wrapper_verbs_ls_and_pwd(hx, ws):
+    script = ".claude/skills/second-brain/scripts/vault_git.py"
+    commands = [
+        f"python3 -I {script} env",
+        f"python3 -I {ws.cwd}/{script} env",
+        f"python3 -I {script} stem Paint the gate",
+        f"python3 -I {script} project night-owl",
+        f'python3 -I {script} project "[[Harbor Lights]]"',
+        "ls", f"ls {ws.vault}/02-Work/Tasks", "pwd",
+    ]
+    session = hx.SessionResult(argv=[], prompt="p", events=_bash_session(*commands))
+    assert hx.unexpected_bash(session, ws, "default") == []
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "cat a.md",
+        "cd /tmp && ls",
+        "ls && cat a.md",
+        "python3 -I .claude/skills/second-brain/scripts/vault_git.py env 2>&1; echo $?",
+        "python3 -I .claude/skills/second-brain/scripts/vault_git.py stage",  # eod-only verb
+        "printenv SECOND_BRAIN_VAULT",
+        "git status",
+    ],
+)
+def test_bash_usage_rejects_anything_else(hx, ws, command):
+    session = hx.SessionResult(argv=[], prompt="p", events=_bash_session(command))
+    assert hx.unexpected_bash(session, ws, "default") == [command]
+
+
+def test_bash_usage_follows_the_profile(hx, ws):
+    stage = "python3 -I .claude/skills/second-brain/scripts/vault_git.py stage"
+    stem = "python3 -I .claude/skills/second-brain/scripts/vault_git.py stem Harbor Lights"
+    project = "python3 -I .claude/skills/second-brain/scripts/vault_git.py project harbor-lights"
+    session = hx.SessionResult(argv=[], prompt="p", events=_bash_session(stage, stem, project, "ls"))
+    assert hx.unexpected_bash(session, ws, "eod") == []
+    assert hx.unexpected_bash(session, ws, "default") == [stage]
+    assert hx.unexpected_bash(session, ws, "guard") == [stage, stem, project, "ls"]
+
+
+def test_run_fails_a_session_that_ran_other_bash_commands(hx, ws, tmp_path):
+    _install_command(ws, "capture")
+    events = _bash_session("cat 00-Inbox/x.md", denied=("cat 00-Inbox/x.md",))
+    fake = _fake_claude(tmp_path, _emit(*events))
+    harness = hx.Harness(ws, hx.HarnessConfig(claude_bin=fake))
+    with pytest.raises(pytest.fail.Exception, match="Bash commands other than") as info:
+        harness.run("/capture", "x")
+    assert "cat 00-Inbox/x.md" in str(info.value)
+
+
+def test_describe_counts_denied_bash_commands(hx):
+    session = hx.SessionResult(argv=[], prompt="p", events=_bash_session(
+        "cat a", "head b", "ls", denied=("cat a", "head b")))
+    text = hx.describe(session)
+    assert "denied Bash commands: 2" in text
+    assert "cat a" in text and "head b" in text

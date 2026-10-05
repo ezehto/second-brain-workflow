@@ -13,15 +13,17 @@ Source: plan sections 2.1, 2.5 and 2.8, decisions C19 and C22.
 ## Emitted links
 
 Whenever you write a wikilink (in `project`, `triaged_to`, carry-forward items
-or a `## Links` section), first check whether the target's stem is unique on
-disk among the vault's `.md` files that are not ignored, ignoring case.
+or a `## Links` section), run the `stem` verb for the target's name (see
+[../SKILL.md](../SKILL.md#running-tools)). The link is bare when `stem` prints at
+most one `note` line for the target's name and folder-qualified otherwise. The
+note being created does not count. `ignored` lines do not count either.
 
-- Unique: write `[[Name]]`.
-- Not unique: write the vault-relative path without `.md`:
+- At most one `note` line: write `[[Name]]`.
+- More than one: write the vault-relative path without `.md`:
   `[[02-Work/Tasks/Name]]`.
 
-Walk the directory once per operation and reuse the result for every link in
-that operation. Read the filesystem, never an index.
+Reuse the result for every link to the same name in that operation. Never decide
+from a directory listing, and never use an index.
 
 ## Project values and slugs
 
@@ -30,10 +32,11 @@ that operation. Read the filesystem, never an index.
 | What you write | `project: "[[<Project title>]]"`, or `project: "[[02-Work/Projects/<Project title>]]"` when the stem is not unique on disk (C19). The templates keep `project:` empty. |
 | Forms a person may type | A wikilink with or without alias, or a plain slug such as `project: loadup`. |
 | A project's slug | `slugify` of the file name stem of a note with `type: project`. There is no `slug` key. |
-| Given by slug or title | A `project:` argument matches by `slugify(arg) == slugify(stem)` over `type: project` notes, read from disk. No match: do not create the note, list the known projects and ask. More than one match: ask. |
-| Slug clash | Creating a project is refused if a project note with the same slug already exists in `02-Work/Projects`. Check the filesystem. |
+| Given by slug, title or wikilink | Run the `project` verb (see [../SKILL.md](../SKILL.md#running-tools)). One `note` line is that project. None: do not create the note, list the known projects and ask. More than one: the slug is duplicated, name them and ask. |
+| Slug clash | Creating a project is refused if the `project` verb prints a `note` line for the new title's slug. |
 
-`slugify(s)`: Unicode NFKD, drop combining marks, lower-case, replace every run
+`slugify(s)` is a description of what the script and the indexer do; a session
+never computes it. Unicode NFKD, drop combining marks, lower-case, replace every run
 of characters outside `[a-z0-9]` with `-`, trim leading and trailing `-`.
 `"LoadUp"` becomes `loadup`. `"Strato GIDA v2"` becomes `strato-gida-v2`.
 
@@ -46,14 +49,12 @@ Apply these rules whenever you need to know which note a link or a `project`
 value points at. Carry-forward needs them, and the commands and the app must
 agree on the golden fixture.
 
-**A project value to a slug** (the indexed value). If the value is a wikilink,
-drop the brackets, any alias, any heading and any folder prefix, then
-`slugify`. Otherwise `slugify` the value.
-
-**A slug to a project note.** The project note whose slug equals that value.
-Match by `slugify(arg) == slugify(stem)` over notes with `type: project`. If no
-note matches, it is an unknown project slug: not an error, do not invent one.
-If two project notes have the same slug, neither resolves.
+**A project value to a project note.** Run the `project` verb with the value
+(see [../SKILL.md](../SKILL.md#running-tools)). Behind it, a wikilink value loses
+its brackets, alias, heading and folder prefix and is slugified, and the project
+note is the one under `02-Work/Projects` whose stem has that slug. No `note`
+line means an unknown project slug: not an error, do not invent one. If two
+project notes have the same slug, neither resolves.
 
 **A wikilink target.** Normalise it: NFC, case-fold, trim, collapse internal
 whitespace, strip `.md`, use `/` as separator. Drop the alias, heading and block
