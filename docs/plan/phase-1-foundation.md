@@ -1096,8 +1096,9 @@ Settled on 2026-10-05 after the command-test and security reviews.
 - **`/eod`, in order:** (1) refuse, before writing anything, if the vault has a
   git remote; (2) ensure today's daily note exists, as `/daily` does; (3)
   append the user's text to `## Done`, leaving every other section unchanged;
-  (4) list the `in-progress` tasks by title and offer a status change for
-  each, asking before any change; (5) apply the answers; (6) run
+  (4) list the `in-progress` tasks by title (each confirmed with `stem` as a
+  `note` line; with none, go straight to step 6) and offer a status change
+  for each, asking before any change; (5) apply the answers; (6) run
   `vault_git.py commit-eod <today>`, which stages, scans and commits. Step 1
   uses the `remote` verb; the script's own refusal of a vault with a remote
   is the backstop if the session misreads it. `status`, `stage`,
