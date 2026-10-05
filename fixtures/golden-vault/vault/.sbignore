@@ -1,0 +1,4 @@
+# Vault-relative globs the indexer skips. A trailing / means a directory.
+02-Work/Tasks/Ignored by sbignore.md
+02-Work/Tasks/Scratch *.md
+00-Inbox/Drafts/

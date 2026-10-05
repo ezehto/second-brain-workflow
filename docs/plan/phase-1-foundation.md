@@ -29,11 +29,17 @@ design (C14 to C24) and summarised in
   - [2.7 Poll interval and scan budgets](#27-poll-interval-and-scan-budgets)
   - [2.8 Wikilink resolution rules](#28-wikilink-resolution-rules)
   - [2.9 Other defaults this plan fixes](#29-other-defaults-this-plan-fixes)
+  - [2.10 Parsing details: types, tags and dates](#210-parsing-details-types-tags-and-dates)
+  - [2.11 Conformance checker rules](#211-conformance-checker-rules)
+  - [2.12 Test clock](#212-test-clock)
+  - [2.13 Triage rules](#213-triage-rules)
 - [3. Templates](#3-templates)
   - [3.1 Placeholder subset](#31-placeholder-subset)
   - [3.2 Template content](#32-template-content)
   - [3.3 Obsidian settings for the vault](#33-obsidian-settings-for-the-vault)
 - [4. Command contracts](#4-command-contracts)
+  - [4.1 Command details](#41-command-details)
+  - [4.2 `vault_git.py`: the only way a command runs git](#42-vault_gitpy-the-only-way-a-command-runs-git)
 - [5. API surface](#5-api-surface)
 - [6. Repository layout and Compose](#6-repository-layout-and-compose)
   - [Test isolation](#test-isolation)
@@ -126,12 +132,17 @@ every project note is guaranteed to have.
 
 ### 2.2 Standup carry-forward semantics
 
-"Today" is the date in `TZ=Asia/Manila`. Carry-forward fills today's daily
+"Today" is the date in `TZ=Asia/Manila`, or the pinned test date of section
+2.12. Carry-forward fills today's daily
 note in one of two cases:
 
 1. **Today's note does not exist**: it is created from the template and filled.
 2. **Today's note exists and is untouched** (review M-1): it is filled in place
    through the writer (or the command's own edit) with the on-disk hash check.
+   For the writer that is the hash comparison of the design's write-safety
+   rules. For a command it means: immediately before writing, re-read the file
+   and confirm it is byte-identical to the content judged untouched; if it
+   differs, treat the note as touched and leave it unchanged.
    This covers Obsidian's Daily notes plugin having created the note first.
 
 **Untouched** is defined against the **current** vault template
@@ -163,21 +174,40 @@ with the latest date strictly before today (weekends and gaps are handled).
 | Section | Content |
 |---|---|
 | Done | Empty. Nothing is assumed complete. |
-| Today | 1. `- [ ] [[Task]]` for every task with status `in-progress`, then `review`, then `planned` with `due` on or before today. Within each status: `due` ascending (no due last), then title, then path. 2. Every unchecked `- [ ]` item from `P`'s **Today** section whose text contains no wikilink to a task note, copied verbatim. |
-| Blockers | `- [[Task]]` for every task with status `blocked`, followed by ` (blocked by: <value>)` when `blocked_by` is set. |
+| Today | 1. Task items: `- [ ] [[Task]]` for every task with status `in-progress`, then `review`, then `planned` with a valid `due` on or before today. Within each status: `due` ascending (no valid due last), then title, then path. 2. Then free-text items: every unchecked `- [ ]` item from `P`'s **Today** section that contains no wikilink to a task note, copied verbatim, in the order they appear in `P`. |
+| Blockers | `- [[Task]]` for every task with status `blocked`, followed by ` (blocked by: <value>)` when `blocked_by` is set. Ordered as task items in Today: `due` ascending (no valid due last), then title, then path. |
 | Decisions / Updates | Empty. |
-| Follow-ups | Every unchecked `- [ ]` item from `P`'s **Follow-ups** section, copied verbatim. |
-| Related Tasks / Projects | `- [[Project]]` for each distinct resolved project of the listed tasks, sorted by title. |
+| Follow-ups | Every unchecked `- [ ]` item from `P`'s **Follow-ups** section, copied verbatim in the order they appear in `P`, **including items that link a task** (the task-link rule below applies to Today only). |
+| Related Tasks / Projects | `- [[Project]]` for each distinct resolved project of the task items placed under **Today and Blockers**, sorted by project title, then path. Projects of free-text items are not considered; unknown or duplicate project slugs are skipped. |
 
 Rules:
 
-- **Task status is authoritative for task links; checkboxes are authoritative
-  for free text.** An unchecked item in `P` that links a task is dropped,
-  because the task's current status already decides whether it is carried.
-- Duplicates (same link target, or identical free text) appear once.
-- Checked `- [x]` items are never carried.
-- Tasks with status `inbox`, `done`, `cancelled`, and `planned` tasks without a
-  due date or with a future one are not carried.
+- **Task status is authoritative for task links in Today; checkboxes are
+  authoritative for free text.** An unchecked item in `P`'s Today section that
+  contains a wikilink resolving (section 2.8, including "ambiguous") to a note
+  with `type: task` is dropped, because the task's current status already
+  decides whether it is carried. An unresolved link does not count; such an
+  item is free text. Reason: a stale checkbox must not resurrect a task closed
+  in Obsidian.
+- **Follow-ups are always copied** when unchecked, even if they link a task.
+  Reason: a follow-up is a separate action about the task, it exists nowhere
+  else in today's note, and dropping it would assume completion.
+- **Duplicates are removed within a section only**, keeping the first
+  occurrence. The key is the task's path for task items, and for free-text
+  items the text after `- [ ] ` with whitespace runs collapsed and both ends
+  trimmed (case-sensitive). Nothing is de-duplicated across sections; a task
+  cannot appear in two sections because its status puts it in exactly one.
+  Reason: one key per section is easy to apply identically in code and prose.
+- An unchecked item is a line matching `- [ ] ` (also `* [ ] ` and `+ [ ] `,
+  any indentation, which is kept). `- [x]` and `- [X]` are checked and never
+  carried; any other marker (`- [/]`, `- [-]`) counts as checked. Reason:
+  Obsidian treats only a space as unchecked.
+- Tasks with status `inbox`, `done`, `cancelled`, and `planned` tasks with no
+  valid due date or a future one are not carried. A `due` that cannot be
+  parsed (section 2.10) counts as no valid due date, so such a `planned` task
+  is **not** carried. Reason: carrying on a guessed date would invent a
+  deadline; the note is listed under "invalid dates" on the Index Status page
+  so the user can fix it.
 - Links emitted follow section 2.5 (folder-qualified when the stem is not
   unique on disk).
 
@@ -186,9 +216,11 @@ copying free-text checkboxes keeps the small items that never became tasks,
 and the untouched rule makes the result the same whether Obsidian, a command
 or the app opened the day.
 
-The golden fixture (P1-06) holds two scenarios, "no note yet" and "untouched
-note created by Obsidian", each with the expected output. The commands
-(P1-13) and the API (P1-29) are tested against both.
+The golden fixture (P1-06) holds three scenarios under
+`expected/carry-forward/`: `new-note` (no note yet), `untouched-note` (an
+untouched note created by Obsidian) and `touched-note` (a note the user has
+typed in, which must come back unchanged), each with the expected output. The
+commands (P1-13) and the API (P1-29) are tested against all three.
 
 ### 2.3 Status vocabulary per type
 
@@ -200,8 +232,11 @@ note created by Obsidian", each with the expected output. The commands
 | `lesson` | `active`, `archived` | `active` |
 | `capture` | `inbox`, `triaged`, `dismissed` | `inbox` |
 | `daily` | no `status` key | n/a |
-| `note` (no frontmatter or unknown type) | none enforced | n/a |
+| `note` (no frontmatter, no usable `type`, or malformed frontmatter) | none enforced | n/a |
+| any other `type` value | none enforced | n/a |
 
+- Unknown `type` values are indexed as written, trimmed and lower-cased (section 2.10),
+  not as `note`; they have no status vocabulary.
 - The indexer stores any status value as-is; values outside the vocabulary are
   counted under "unknown statuses" on the Index Status page.
 - The API's status-change endpoint and the commands accept only the vocabulary
@@ -232,7 +267,17 @@ that type.
 6. If no heading matches, the heading is appended at the end of the file at the
    requested level, followed by the text, and the API response says
    `section_created: true`.
-7. The file's existing line endings (LF or CRLF) and BOM are preserved.
+7. The file's existing line endings and BOM are preserved. The line ending is
+   that of the file's first line break (`\r\n` means CRLF); a file with no line
+   break uses LF.
+8. **End of file.** When the insertion point is the end of the file (the target
+   section is last, or rule 6 applies): trailing blank lines at the end of the
+   file are removed; if the last remaining line has no line ending, one is
+   added; for rule 6 exactly one blank line is written before the new heading;
+   then the new text is written, and the file ends with **exactly one** line
+   ending. Nothing earlier in the file changes. Reason: one fixed end state is
+   the only result that code and a Claude session produce identically, and it
+   is what Obsidian itself writes.
 
 Reason: these are the rules a person reading the file would apply, they need no
 Markdown AST, and rule 6 means a renamed heading never loses appended text.
@@ -271,6 +316,14 @@ Collisions (C22):
 - Uniqueness checks always read the filesystem, never the index, so a check
   cannot be wrong by a poll interval.
 
+Missing folders: the writer and the commands create a note's parent folder
+when it does not exist, but only when it is a Phase 1 folder of design
+section D or a year folder `01-Daily/YYYY`. The init script creates only the
+current year's folder and git does not track empty folders, so a folder can be
+absent after a new year or a `git clean`. Any other missing folder is an error,
+never created. The command scenarios (P1-10, P1-13) and the writer tests
+(P1-22) assert both cases.
+
 Emitted links (C22): whenever the writer or a command writes a wikilink (in
 `project`, `triaged_to`, carry-forward items, `## Links`), it first checks
 whether the target's stem is unique on disk among non-ignored `.md` files,
@@ -278,6 +331,11 @@ case-insensitively. If it is, it writes `[[Name]]`; if not, it writes the
 vault-relative path without `.md`: `[[02-Work/Tasks/Name]]`. One directory
 walk per operation is enough; its result is reused for every link in that
 operation.
+
+Spike finding (M11, 2026-10-05): drvfs does not refuse `:` or `?` in a name
+created from WSL or a container; it stores a private-use substitute character
+(U+F03A, U+F03F) that Windows shows as a different name. Rule 3 is therefore
+the only protection: the filesystem will not reject such a name.
 
 Reason: rules 3 to 7 cover what Windows, drvfs and Obsidian each refuse or
 mangle; allowing duplicates across folders matches how Obsidian is used, and
@@ -309,7 +367,7 @@ initial commit) and `/eod`.
 |---|---|
 | Poll interval | `INDEXER_POLL_SECONDS=10` in `.env` (default 10), or the value the spike sets (section 8, M1). |
 | Change detection | Each pass walks the vault (honouring the ignore rules), `stat`s every `.md` file and compares `(mtime_ns, size)` with the index. Only changed, new and missing files are read, hashed (SHA-256 of raw bytes) and parsed. |
-| Racy files | A file whose mtime is within 2 seconds of the previous pass's start time is re-hashed on the next pass even if `(mtime_ns, size)` are unchanged. The window is adjusted to the resolution the spike measures (M4). |
+| Racy files | No clock comparison. Every file that a pass read (because it was new or its `(mtime_ns, size)` changed) is read and hashed again on the next pass, whatever its stat says, and only then trusted by stat alone. This catches a second write that left `(mtime_ns, size)` unchanged. It is deliberately independent of the difference between Windows-stamped mtimes and the WSL clock, which the spike (2026-10-05) measured over 11 minutes as a sawtooth: drifting about 0.105 s per second and stepping back about 3 s every 33 s, between -1.74 s and +1.32 s. That is one session on one boot, so the difference is treated as unbounded and no fixed window is relied on. The spike also showed stamped mtime resolution no coarser than about 7 ms (stored in 100 ns units), far below the poll interval. |
 | Budget: steady-state pass (nothing changed) | Target at most 3 s at 1,000 notes; must stay under the poll interval at 1,000 notes. The 5,000-note projection from the spike is recorded as a risk, not a gate. |
 | Budget: full `reindex` | Target at most 30 s at 1,000 notes; the 5,000-note projection is recorded. |
 | Overrun | Each pass logs one JSON line with duration, files scanned, changed, added, removed. A pass over budget logs a warning; it is not an error. |
@@ -339,10 +397,18 @@ Extraction (indexer):
 | `![[A]]` (embed) | `a`, stored like a link |
 | `[[folder/A]]` | `folder/a` |
 | `[[A.md]]` | `a` (`.md` stripped) |
-| `[[image.png]]`, `![[file.pdf]]` (any other extension) | not stored (attachments are not notes) |
+| `[[image.png]]`, `![[file.pdf]]` (a known attachment extension) | not stored (attachments are not notes). The extensions are a fixed list in `conventions.py`, matched case-insensitively on the final path segment: `png`, `jpg`, `jpeg`, `gif`, `bmp`, `svg`, `webp`, `avif`, `pdf`, `mp3`, `wav`, `m4a`, `ogg`, `flac`, `3gp`, `mp4`, `webm`, `mov`, `mkv`, `ogv`, `canvas`, `base`. Any other dotted name is a note title, so `[[Notes on Node.js]]` and `[[Version 2.0]]` are note links |
 
 Normalisation: NFC, casefold, trim, collapse internal whitespace, strip `.md`,
 use `/` as separator.
+
+Link set: the index stores **one `Link` row per distinct `(source note,
+target_title)` pair**. Repeated links to the same target, and a link plus an
+embed of it, collapse into one row; links whose spellings normalise to the same
+target (`[[A]]`, `[[a|x]]`, `[[A#H]]`) also collapse. The note detail's `links`
+map keeps one entry per spelling as written, each pointing at the same
+resolution. Reason: backlinks and resolution only need "does A link B", and a
+set is order-free, so the rebuild invariant cannot depend on link order.
 
 Resolution (at query time, as the design requires):
 
@@ -374,10 +440,10 @@ duplicate names, and flagging ambiguity is more honest than guessing.
 | `id` value | Written as `{{date:YYYYMMDDHHmmss}}`, parsed by YAML as an integer, stored as a string in `note_id`. Within one operation that creates several notes, each gets a distinct id by advancing one second per note (C20). | Obsidian's core Templates can generate nothing else. |
 | Renames | Delete plus add; logged as "moved" when the `id` matches (C21). | The index is keyed on path; nothing observable depends on more. |
 | Frontmatter detection | File starts (after an optional BOM) with a line `---`; ends at the next line `---` or `...`. | Same as Obsidian. |
-| Malformed frontmatter | Unterminated block, YAML syntax error, duplicate keys, or a non-mapping document: `parse_error` set, `frontmatter = {}`, body is the whole file, `type = note`. | Indexed, flagged, never fatal (design). |
-| Promoted fields | `type` (default `note`), `status`, `priority`, `project` (slug), `due`, `created`. An unparseable date leaves the column null; the raw value stays in `frontmatter`, and the Index Status page lists such notes as "invalid dates" (computed, no extra column). | Only fields the UI filters on are promoted (design F). |
-| Tags | Frontmatter `tags` (list or comma string) plus inline `#tag` outside code; stored lower-case without `#`; nested tags kept whole (`eng/backend`). | Matches Obsidian's tag pane. |
-| Ignore rules | Any path segment starting with `.` (covers `.obsidian`, `.git`, `.trash`, temp files), `08-System/Templates/`, non-`.md` files, plus patterns in `<vault>/.sbignore` (one vault-relative glob per line, `#` comments, trailing `/` means a directory). | Design "Ignored paths"; dot-prefixed so Obsidian hides it. |
+| Malformed frontmatter | Unterminated block, YAML syntax error, duplicate keys, or a non-mapping document (a list or a scalar): `parse_error` set, `frontmatter = {}`, body is the whole file, `type = note`. A file that is not valid UTF-8 is malformed too (`parse_error` names the first bad byte; the text is decoded with replacement characters so links and tags in it are still found), which also keeps the writer from editing it. An empty block (`---` directly followed by `---`, or holding only comments or blank lines) is **not** malformed: it is valid frontmatter with no keys, as in Obsidian after every property is deleted, so `parse_error` is not set, `type = note` and the body starts after the closing line. An unquoted value the YAML library cannot load as its implied type (for example `due: 2026-13-01`) is an invalid value under section 2.10, not malformed frontmatter: the other keys are kept. | Indexed, flagged, never fatal (design). |
+| Promoted fields | `type`, `status`, `priority`, `project` (slug), `due`, `created`; how `type`, tags and dates are read is fixed in section 2.10. An unparseable date leaves the column null; the raw value stays in `frontmatter`, and the Index Status page lists such notes as "invalid dates" (computed, no extra column). | Only fields the UI filters on are promoted (design F). |
+| Tags | Frontmatter `tags` plus inline tags, per section 2.10. | Matches Obsidian's tag pane. |
+| Ignore rules | Any path segment starting with `.` (covers `.obsidian`, `.git`, `.trash`, temp files), `08-System/Templates/`, non-`.md` files, plus patterns in `<vault>/.sbignore` (one vault-relative glob per line, `#` comments, trailing `/` means a directory). `.sbignore` dialect: UTF-8 with an optional BOM, LF or CRLF; each line is trimmed; blank lines and lines starting with `#` are skipped; a pattern is matched against the whole vault-relative path with `/` separators, anchored at the vault root, case-insensitively, where `*`, `?` and `[seq]` are shell wildcards and `*` also matches `/`; a pattern ending in `/` ignores everything under any directory it matches, and a pattern without a trailing `/` never ignores a directory's contents; there is no `**`, no `!` negation and no escaping. A note is a regular file whose name ends in `.md` in any letter case; a symlink is never a note and a symlinked directory is never entered, so nothing outside the vault is read. Folder names and template file names are compared case-insensitively, because the vault's drive is case-insensitive. One shared implementation serves the checker, the indexer and the writer. | Design "Ignored paths"; dot-prefixed so Obsidian hides it. |
 | Template source at runtime | The vault's `08-System/Templates/`, for the writer **and** the commands (review S-13). The copy shipped in the skill is only the seed used by the vault init script. | A template edited in Obsidian changes all three creators equally. |
 | Writer temp file | `.<stem>.sbw-tmp-<8 random hex>` in the target directory. | Dot-prefixed and not ending in `.md`, per the design. |
 | Vault path for commands | `$SECOND_BRAIN_VAULT` if set, else `/mnt/d/Second Brain`. | Lets every command test run against a temporary vault. |
@@ -387,6 +453,258 @@ duplicate names, and flagging ambiguity is more honest than guessing.
 | `reindex` scope | Truncates `Note`, `Link`, `Tag` and the note-tag join table only, by explicit table names, never with `CASCADE`. User and session tables are untouched. | The user account survives an index rebuild. |
 | List ordering | Every ordering ends with `path` as the final tiebreaker. | Deterministic output for the rebuild invariant (review S-7). |
 | Index status | A dedicated Index Status page (C24); the Dashboard shows a small summary linking to it. | User's decision. |
+
+### 2.10 Parsing details: types, tags and dates
+
+These rules live in `backend/vault/parser.py` (P1-07) and are restated in the
+skill's `reference/conventions.md` for the commands.
+
+**`type`**
+
+| Frontmatter | Indexed `type` |
+|---|---|
+| No frontmatter, malformed frontmatter, no `type` key, or `type` null, empty, or not a string | `note` |
+| A string | The string trimmed and lower-cased (`Task ` → `task`). Known types get their vocabulary (section 2.3); any other value is kept as written, never mapped to `note`. |
+
+Reason: keeping an unknown type visible lets the user find and fix it on the
+Index Status counts by type; folding it into `note` would hide it.
+
+**Tags**
+
+- **Inline tags** are found in the body only, outside frontmatter, fenced code
+  blocks, inline code spans and **the whole text of every wikilink and embed**
+  (`[[...]]`, `![[...]]`). So `[[A#Heading]]`, `[[A#^block]]` and `[[#H]]`
+  never produce tags.
+- An inline tag is `#` that is at the start of a line or directly preceded by
+  whitespace, followed by one or more **tag characters**: Unicode letters
+  (categories L*), combining marks (M*, so that scripts such as Devanagari keep
+  whole words), decimal digits (Nd), `_`, `-` and `/`. It ends at the first other character. So
+  `# Heading` (space after `#`), `a#b` and `http://x/#frag` are not tags.
+- A token is a tag only if it contains **at least one character that is not a
+  digit and not `/`**. `#1984` and `#2026/10` are not tags; `#y1984` and
+  `#v2` are. Reason: Obsidian requires a non-numerical character.
+- **Nested tags**: `/` is kept as part of the tag (`#eng/backend` is stored as
+  `eng/backend`); parents are not added as separate tags. Every trailing `/` is
+  stripped (`#eng/` and `#eng//` → `eng`).
+- **Frontmatter `tags`**: a YAML list (each item converted to a string) or a
+  single string split on commas. Each item is trimmed, one leading `#` is
+  removed, and the result must be a valid tag token as above (so an item with
+  internal whitespace or a numeric-only item such as `2024` is dropped). Only
+  the `tags` key is read.
+- **Case and normalisation**: every tag is NFC-normalised and lower-cased;
+  `#Eng` and `#eng` are one tag. Each note's tag set is de-duplicated.
+
+Reason: these are Obsidian's own tag rules in the form that a regex and a
+prose description both implement identically.
+
+**Code regions** (used for links, tags and the writer's heading search alike,
+through one shared function): a fenced code block opens on a line whose first
+non-blank characters are three or more backticks or tildes, at any
+indentation of spaces or tabs (so a fence inside a list item counts) and after
+any blockquote markers (`>`, each optionally followed by a space, so a fence
+inside a quote or an Obsidian callout counts), and,
+for a backtick fence, has no further backtick on that line (so a line that
+merely starts with an inline span such as ```` ```code``` and more ```` is
+not a fence); it
+closes on a later line that starts, after any indentation and blockquote
+markers, with at least as
+many of the same character and nothing else but whitespace; an unclosed fence
+runs to the end of the file. Inline code spans are backtick runs matched by a
+run of equal length and do not cross a blank line. Indented code blocks
+without a fence are not code regions.
+
+**Values the index must be able to store.** `frontmatter` is stored as JSON,
+so the parser returns it JSON-safe: dates and timestamps as their text as
+written, non-finite numbers (`.nan`, `.inf`) as their YAML text, and every
+string an exact `str`. A NUL character or an unpaired surrogate (U+D800 to
+U+DFFF) anywhere in the file, or in any decoded frontmatter key or value (a
+YAML escape such as `"\0"` or `"\ud800"` can produce one from clean bytes),
+makes the note malformed, like invalid UTF-8, with the character replaced,
+because PostgreSQL cannot store either. A scalar the YAML library cannot load
+as its implied type for any other reason (for example an integer of several
+thousand digits) is kept as its text and the other keys are kept, like an
+impossible date. A scalar explicitly tagged `!!str` is a string for every
+rule (so `due: !!str 2026-10-09` is a valid date). An empty `id` is treated as no
+id.
+
+
+**Dates** (`due`, `created`, `decided`)
+
+- Valid: a YAML date (`2026-10-09`); a YAML timestamp, whose calendar date as
+  written is used with no timezone conversion; or a string that is exactly
+  `YYYY-MM-DD` and a real calendar date.
+- Anything else (for example `next week`, `2026-13-01`, `10/09/2026`, a
+  number) is **invalid**: the promoted column is null, the raw value stays in
+  `frontmatter`, and the note is listed under "invalid dates".
+- An invalid `due` behaves exactly like no due date everywhere: excluded from
+  `overdue`, from "due today", from `due_before`/`due_after` filters, sorted
+  with "no due" (last), and not carried forward (section 2.2).
+
+Dates given to a command or the API (`/task ... due:<date>`, the create
+endpoint): the value written is always `YYYY-MM-DD`. A command accepts that
+form as given. A relative expression (`tomorrow`, `friday`, `next week`) is
+resolved by the command against today's date from section 2.12, written as
+`YYYY-MM-DD`, and reported back in the command's output; `friday` means the
+next Friday strictly after today. An expression with more than one reasonable
+reading is not guessed: the command asks. The API accepts only `YYYY-MM-DD`
+and returns `400` for anything else.
+
+Reason: a date the system cannot read must never create or hide a deadline;
+flagging it is the safe outcome.
+
+### 2.11 Conformance checker rules
+
+The checker (P1-08) reports **failures** (exit code 1) and **warnings** (printed,
+exit code 0). Ignored paths (section 2.9) are not checked. Notes without
+frontmatter, with empty frontmatter, with no usable string `type`, or with a
+type outside the six known ones, are checked for failures F1 and F5 only; of
+the warnings, only W4 can apply to them, and only when `type` is a string
+outside the six known values (a non-string `type` such as `42` is indexed as
+`note` and gets no W4).
+
+Details the codes rely on. F2: a required key that is absent or null; an
+empty string is present (so `status: ''` is F3, not F2, and `created: ''` is
+F7). F3: `status` is compared exactly, with no trimming or case folding. F4:
+"under" a folder includes its subfolders but not a sibling whose name merely
+starts the same (`02-Work/TasksArchive/` is not under `02-Work/Tasks/`); a
+daily note must be exactly `01-Daily/YYYY/YYYY-MM-DD.md`, a real calendar
+date whose year equals the folder. F5: the file name only, against the
+sanitising character sets and reserved device names; folder names, trailing
+dots or spaces and the length limits are the writer's rules and are not
+checked. F6: one line per missing template, at the template's own path. F8:
+`priority` that is present, not null and either not a scalar or not one of
+the three values. W2: ids are counted across every non-ignored note, and the
+warning is reported on each note that is eligible for warnings.
+
+Running: a note that disappears between listing and reading is skipped. A file
+that cannot be read for another reason (permissions), or a `.sbignore` that
+cannot be read, stops the run with exit code 2 and a message. Paths and
+messages are printed on one line each, with control characters and bytes that
+are not valid text escaped.
+
+Unusable values: a `status` that is present and not null but is not a scalar
+(a list or mapping) is F3. A `project` that is present and not null but
+yields no slug (a list, a mapping, or text that slugifies to nothing) is W5.
+The parser reports both states so the checker does not re-derive them.
+
+Output: one line per note and code, `<code> <vault-relative path>: <message>`,
+sorted by path then code. Several problems with the same code in one note
+(for example two dropped tag items) are one line whose message lists them.
+
+Required keys per type (present and not null):
+
+| Type | Required keys |
+|---|---|
+| `task`, `project`, `decision`, `lesson`, `capture` | `type`, `status`, `created` |
+| `daily` | `type`, `created` |
+
+| Code | Failure | Code | Warning |
+|---|---|---|---|
+| F1 | Malformed frontmatter (any `parse_error` case of section 2.9) | W1 | Missing `id` |
+| F2 | A known type missing a required key | W2 | Duplicate `id` |
+| F3 | `status` outside the type's vocabulary (section 2.3) | W3 | A `project` or `triaged_to` wikilink (a string value or a list item) that resolves as ambiguous under section 2.8, that is to more than one note. A bare link to a duplicated stem is the usual case; a folder-qualified link that matches exactly one note is never W3, and a partly qualified one that still matches several is |
+| F4 | A known type outside its folder: `task` must be under `02-Work/Tasks/`, `project` under `02-Work/Projects/`, `decision` under `05-Knowledge/Decisions/`, `lesson` under `05-Knowledge/Lessons/`, `capture` under `00-Inbox/`, and a `daily` note at `01-Daily/YYYY/YYYY-MM-DD.md` with matching year | W4 | Unknown `type` value: a string other than the six known types and other than `note` (an explicit `type: note` is the generic type, not unknown) |
+| F5 | A file name containing a character from the sanitising sets, or a reserved device name (section 2.5) | W5 | `project` value that resolves to no project note, or to a duplicated project slug |
+| F6 | One of the six templates missing from `08-System/Templates/` | W6 | A frontmatter `tags` item dropped as invalid (section 2.10) |
+| F7 | An invalid date in `created`, `due` or `decided` (section 2.10) | | |
+| F8 | `priority` present, not null, and not `low`, `medium` or `high` | | |
+
+Reason: failures are things the system's own writers must never produce and a
+user should fix; warnings are states the design explicitly tolerates (missing
+and duplicate ids, unresolved links) or that can arise later without anyone
+writing a bad note.
+
+### 2.12 Test clock
+
+One override pins "today" for tests; it is honoured identically by the
+commands, the backend and the e2e stack.
+
+- **Variables:** `SECOND_BRAIN_TODAY=YYYY-MM-DD` takes effect **only** when
+  `SECOND_BRAIN_TEST_MODE=1` is also set. Either one alone is ignored (the
+  backend logs a warning if only one is set).
+- **Guards:** in test mode the commands refuse to run unless
+  `SECOND_BRAIN_VAULT` is set and does not resolve to `/mnt/d/Second Brain`.
+  Code compares resolved paths. A command session runs
+  `[ "$SECOND_BRAIN_VAULT" -ef "/mnt/d/Second Brain" ]` and stops if it is
+  true: `-ef` compares the directories themselves, so a different letter
+  case, a dot segment, a doubled slash or a symlink anywhere in the path cannot
+  pass. A `SECOND_BRAIN_TODAY` that is not a valid `YYYY-MM-DD` date also stops
+  the command.
+  The backend logs a warning at startup and reports `test_mode: true` and the
+  pinned date in `/api/index/status/`. `scripts/check_compose.sh` fails if
+  `.env` or `.env.example` sets either variable; only `.env.e2e` and the test
+  harness set them.
+- **Who uses it:** the command harness (P1-10) sets both, with the fixture's
+  reference date `2026-10-09`; the backend `test` service and the `sbw-e2e`
+  project set both; the real stack never does.
+- **Time of day:** only the date is pinned. Outside test mode, an operation
+  that needs a time of day (for an `id` or a capture name) reads
+  `TZ=Asia/Manila date +%Y%m%d%H%M%S` once and takes both the date and the time
+  from that single value, so the two cannot straddle midnight; the
+  `date +%F` form in the skill wording below is for operations that need only
+  the date. In test mode the date part is always `SECOND_BRAIN_TODAY` and only
+  the time of day comes from the real clock (`TZ=Asia/Manila date +%H%M%S`,
+  read once; the backend uses the current time in `TIME_ZONE`). The one-second
+  advance per extra note (C20) changes the time part only and wraps within the
+  day, so an `id` written in test mode always starts with the pinned date.
+  Tests match it with a pattern (`^YYYYMMDD[0-9]{6}$` for the pinned date),
+  never an exact value.
+- **Backend:** one function, `vault.clock.today()`, returns the pinned date in
+  test mode and otherwise the current date in `TIME_ZONE`. Every "today",
+  "overdue" and daily-note computation calls it; pytest tests may also inject a
+  date directly.
+- **Checker:** it has no check that depends on today, so it reads neither
+  variable.
+- **Skill wording** (P1-03, `SKILL.md` and `reference/carry-forward.md`):
+  "To get today's date, run `printenv SECOND_BRAIN_TEST_MODE SECOND_BRAIN_TODAY`.
+  If `SECOND_BRAIN_TEST_MODE` is exactly `1` and `SECOND_BRAIN_TODAY` is set,
+  today is `SECOND_BRAIN_TODAY`; in that case stop unless `SECOND_BRAIN_VAULT`
+  is set and is not `/mnt/d/Second Brain`. Otherwise run
+  `TZ=Asia/Manila date +%F`."
+
+Reason: requiring two explicitly named variables, refusing the real vault in
+test mode and keeping them out of `.env` makes an accidental pinned date in real
+use practically impossible, while one mechanism serves code and prose alike.
+
+### 2.13 Triage rules
+
+Confirmed by the user on 2026-10-05. `/triage` and `POST /api/captures/triage/`
+follow them.
+
+Each inbox capture gets one `classification`, written as a lower-case
+frontmatter value: one of the brief's nine kinds (section 23), or `project`
+for a capture that describes a new body of work. That is ten allowed values:
+
+| `classification` | Phase 1 result |
+|---|---|
+| `task`, `problem` | a `task` note |
+| `decision` | a `decision` note |
+| `learning-topic`, `note` | a `lesson` note |
+| `project` (a new body of work) | a `project` note |
+| `ticket`, `architecture-idea`, `question`, `thought` | no target note in Phase 1: the capture stays in `00-Inbox/` with `status: inbox` and its `classification`, until the phase that owns that kind exists |
+
+Confidence:
+
+- **High confidence** means the capture states its own kind (for example it
+  starts with `task:`, `todo:`, `decision:` or "decided to ...") or it is a
+  plain imperative with one obvious reading ("Renew the domain"). Only then is
+  `classification` written without asking.
+- **Anything else** is low confidence: nothing is written; the command shows
+  its suggested classification for the user to accept or change.
+
+Flow: turn 1 writes `classification` on high-confidence captures only and
+shows one batch listing, per capture, the classification and the note it would
+create (or "stays in inbox"), with low-confidence suggestions marked. After the
+user's approval, with any changes they made, it creates the target notes
+(target first, section 4), then sets `status: triaged` and `triaged_to` on each
+converted capture. A capture the user dismisses gets `status: dismissed`.
+Captures are never moved or deleted. A capture whose classification has no
+Phase 1 target is not converted and is not offered again as a conversion in
+later runs, only listed.
+
+Reason: the mapping uses only the four note types Phase 1 has; kinds owned by
+later phases are kept, labelled, where the user will find them, and nothing is
+filed on a guess.
 
 ---
 
@@ -541,8 +859,8 @@ tags: []
 
 The captured text is the body. Triage adds `classification:` (one of
 `thought`, `task`, `ticket`, `architecture-idea`, `learning-topic`,
-`decision`, `question`, `note`, `problem`, the brief's section 23 list) and,
-when converted, `triaged_to: "[[Target note]]"`.
+`decision`, `question`, `note`, `problem`, the brief's section 23 list, or
+`project`; see section 2.13) and, when converted, `triaged_to: "[[Target note]]"`.
 
 Keys set by tools only when needed: `project` (as a wikilink, section 2.1),
 `blocked_by` (task), `decided` (decision, set when status becomes `accepted`),
@@ -586,13 +904,90 @@ P1-15 confirms each name resolves to this project's command.
 | `/knowledge` | `<title> [project:<slug or title>]` | a new `lesson` note in `05-Knowledge/Lessons/` | nothing |
 | `/daily` | none | today's daily note with carry-forward if it does not exist or is untouched | nothing |
 | `/standup` | optional free text | ensures today's note (as `/daily`), fills sections from the user's input, prints the standup text ready to paste | any status change it infers |
-| `/eod` | optional free text | appends to today's `## Done`; offers status changes for `in-progress` tasks; then commits the vault | each status change; stops if the secret scan finds a match |
+| `/eod` | optional free text | appends to today's `## Done`; offers status changes for `in-progress` tasks; then commits the vault through `vault_git.py` (section 4.2) | each status change; stops if `vault_git.py` refuses, including when its secret scan matches |
 
-`/eod` commit rule: stage all, run a simple secret scan on the staged diff
-(patterns for private keys, `password:`/`token:`/`secret:` keys with values,
-common token prefixes), then commit with message `eod: YYYY-MM-DD`. If `HEAD`
-is already today's `eod` commit, amend it, so there is one commit per day. It
-never pushes and refuses to run if the vault has a remote.
+### 4.1 Command details
+
+Settled on 2026-10-05 after the command-test and security reviews.
+
+- **Git is written only by the init script and `/eod`** (section 2.6). No other
+  command stages, commits or changes git configuration; the command tests
+  assert `HEAD` and the index are unchanged after every other command.
+- **Created notes:** keys the user did not give keep the template's values;
+  `project:` stays empty unless a project was given.
+- **`/task`:** a resolved relative due date is reported back in the reply
+  (section 2.10). Marking a task `done` asks for evidence first.
+- **`/project <argument>`:** if the argument is exactly the slug of an existing
+  project note (`harbor-lights`), the command shows that project's summary and
+  writes nothing. Otherwise, if the argument's slug equals an existing
+  project's slug (`Harbor Lights!`), it refuses and names the existing note.
+  Otherwise it creates the project note.
+- **`/triage`:** a capture that is a question (its first sentence ends with `?`) states its
+  own kind and is high confidence, classified `question`. A converted
+  capture's target title is the capture's text, sanitised (section 2.5),
+  unless the user gives another. Answering "no" changes nothing beyond the
+  classifications turn 1 already wrote.
+- **`/standup`:** input labelled `Done:`, `Today:`, `Blockers:`, `Decisions:`
+  or `Follow-ups:` goes under that heading; unlabelled input is placed by its
+  meaning, and the command asks when that is unclear. The standup text is
+  printed in the same turn, before any question. `/standup` never ticks or
+  removes a carried-forward item and never changes a task without asking.
+- **`/eod`, in order:** (1) refuse, before writing anything, if the vault has a
+  git remote; (2) ensure today's daily note exists, as `/daily` does; (3)
+  append the user's text to `## Done`, leaving every other section unchanged;
+  (4) list the `in-progress` tasks by title and offer a status change for
+  each, asking before any change; (5) apply the answers; (6) run
+  `vault_git.py commit-eod <today>`, which stages, scans and commits. Step 1
+  uses the `remote` verb; the script's own refusal of a vault with a remote
+  is the backstop if the session misreads it. `status`, `stage`,
+  `staged-diff` and `head-subject` are there for a session to show the user
+  what will be committed; `/eod` does not need them.
+
+### 4.2 `vault_git.py`: the only way a command runs git
+
+A session never runs `git` directly. The skill ships
+`skills/second-brain/scripts/vault_git.py` (Python standard library only),
+and `/eod` calls `python3 -I <skill directory>/scripts/vault_git.py <verb>`
+(`-I` is Python's isolated mode: it ignores `PYTHONPATH` and the other
+`PYTHON*` variables and the user site directory, which would otherwise act
+before the script's first line).
+Reason: a permission rule that allows `git` allows any repository, any
+configuration and any program git can launch (demonstrated in the security
+review of the command tests), so the allowed surface is a fixed script with
+fixed verbs, and the same protection applies to the real vault.
+
+| Verb | Does |
+|---|---|
+| `remote` | prints the configured remotes, one per line (nothing means none) |
+| `status` | prints `git status --porcelain` |
+| `stage` | `git add -A` |
+| `staged-diff` | prints the names of staged files and the staged diff |
+| `head-subject` | prints the subject of `HEAD`, or nothing when there is no commit |
+| `commit-eod YYYY-MM-DD` | stages every change (as `stage` does), scans the staged diff, then commits with the message `eod: YYYY-MM-DD`; if `HEAD`'s subject is already exactly that, amends it instead, so there is one commit per day. With nothing to commit it says so and changes nothing |
+
+Rules the script enforces itself, whatever the caller says:
+
+- The vault is `SECOND_BRAIN_VAULT` if set, else `/mnt/d/Second Brain`. It
+  must be a directory that is the root of a git work tree; nothing else is
+  ever passed to git, and no verb takes a path.
+- The test-clock guard of section 2.12: with `SECOND_BRAIN_TEST_MODE=1` it
+  refuses unless `SECOND_BRAIN_VAULT` is set and is not the real vault.
+- Every git call uses the vault as its directory, drops every `GIT_*`
+  variable from the environment, sets `GIT_CONFIG_NOSYSTEM=1`,
+  `GIT_CONFIG_GLOBAL=/dev/null` and an empty `GIT_ALLOW_PROTOCOL` (no
+  transport works), and pins `core.hooksPath=/dev/null`,
+  `core.fsmonitor=false`, `core.pager=cat`, `core.sshCommand=false` and
+  `credential.helper=` on the command line. It never pushes, fetches, adds a
+  remote or writes git configuration.
+- `commit-eod` refuses when a remote is configured, when the date is not a
+  real `YYYY-MM-DD` date, and when the secret scan matches. The scan covers
+  added lines of the staged diff: private key headers, `password`, `token`,
+  `secret` or `api key` followed by `:` or `=` and a non-empty value, and
+  common token prefixes (`ghp_`, `github_pat_`, `glpat-`, `sk-`, `xox`,
+  `AKIA`). On a match it prints the file name and the kind of match, never
+  the matched text, and exits non-zero without committing.
+- Exit code 0 on success, 1 on a refusal with a one-line reason, 2 on a usage
+  error.
 
 ---
 
@@ -624,7 +1019,7 @@ contract.
 | POST | `/api/standups/today/append/` | `section` (one of the six headings), `text`, `expected_hash`. Appends to today's note | session |
 | GET | `/api/dashboard/` | Aggregates: today's tasks, in progress, blocked, overdue, today's standup, recent activity, active projects, inbox count, and a small index status summary (last pass time, problem count) | session |
 | GET | `/api/search/?q=` | Full-text search (`simple` configuration) plus trigram title match; each result has `path`, `type`, `title`, `snippet`, `source: "vault"`; ties ordered by `path` | session |
-| GET | `/api/index/status/` | For the Index Status page: last pass time and duration, note counts by type, parse errors, missing ids, duplicate ids, ambiguous links, unknown and duplicate project slugs, unknown statuses, invalid dates | session |
+| GET | `/api/index/status/` | For the Index Status page: last pass time and duration, note counts by type, parse errors, missing ids, duplicate ids, ambiguous links, unknown and duplicate project slugs, unknown statuses, invalid dates, and `test_mode` with the pinned date when section 2.12 test mode is on | session |
 | POST | `/api/index/refresh/` | Run one sync pass now and return its summary | session |
 | GET | `/api/schema/` | The OpenAPI document | session |
 
@@ -680,7 +1075,7 @@ second-brain-workflow/
 │   │   ├── parser.py links.py slug.py conventions.py   pure Python, no Django imports (P1-07)
 │   │   ├── conformance.py                      vault checker CLI over the parser (P1-08)
 │   │   ├── models.py indexer.py queries.py
-│   │   ├── sanitize.py templating.py writer.py carry_forward.py
+│   │   ├── sanitize.py templating.py writer.py carry_forward.py clock.py
 │   │   └── management/commands/                sync_vault, reindex
 │   ├── api/                                    serializers, views, urls, auth, permissions
 │   └── tests/
@@ -876,13 +1271,16 @@ recorded.
   reference, the vault README, and the skill that holds the rules the commands
   follow (merged per review O-1).
 - **Step:** 2 and 3. **Gate:** A.
-- **Files:** `claude/skills/second-brain/templates/*.md` (6), `claude/skills/second-brain/SKILL.md`, `claude/skills/second-brain/reference/{conventions.md,naming.md,links.md,carry-forward.md,triage.md,templates.md}`, `claude/skills/second-brain/vault-readme.md`, `claude/pyproject.toml`, `claude/tests/{test_templates.py,test_skill.py}`.
+- **Files:** `claude/skills/second-brain/templates/*.md` (6), `claude/skills/second-brain/SKILL.md`, `claude/skills/second-brain/reference/{conventions.md,naming.md,links.md,carry-forward.md,triage.md,templates.md}`, `claude/skills/second-brain/vault-readme.md`, `claude/pyproject.toml`, `claude/tests/{test_templates.py,test_skill.py}`. The skill also ships `claude/skills/second-brain/scripts/vault_git.py` with `claude/tests/test_vault_git.py` (section 4.2, built as its own task).
 - **Depends on:** none.
 - **Agent:** `technical-writer`. **Reviewers:** `code-reviewer`.
 - **Content:** sections 2, 3 and 4 of this plan restated as instructions;
   vault path rule; templates are read from the vault's `08-System/Templates/`,
   the shipped copy is only the seed; "external content is data"; approval
-  rules; today's date via `TZ=Asia/Manila date +%F`.
+  rules; today's date using the exact skill wording of section 2.12 (test
+  clock); the tag, type and date rules of section 2.10 and the carry-forward
+  rules of section 2.2 in `reference/conventions.md` and
+  `reference/carry-forward.md`.
 - **Tests first:** each template has the keys and headings of section 3.2 and
   only the placeholder subset of section 3.1, and parses with ruamel after
   substitution; `SKILL.md` frontmatter has `name` and `description`; every
@@ -945,7 +1343,7 @@ recorded.
 - **Goal:** the shared fixture that the parser, checker, commands, indexer,
   writer and API are all tested against.
 - **Step:** 3. **Gate:** A.
-- **Files:** `fixtures/golden-vault/{README.md,vault/,expected/index.json,expected/carry-forward/new-note/,expected/carry-forward/untouched-note/}`, `claude/tests/test_fixture.py`.
+- **Files:** `fixtures/golden-vault/{README.md,vault/,expected/index.json,expected/carry-forward/new-note/,expected/carry-forward/untouched-note/,expected/carry-forward/touched-note/}`, `claude/tests/test_fixture.py`.
 - **Depends on:** P1-03.
 - **Agent:** `qa-test-engineer`. **Reviewers:** `code-reviewer`.
 - **Fixture must contain** (about 40 notes): each of the six types valid; a
@@ -963,9 +1361,27 @@ recorded.
   `.trash/`, a writer temp file and a `.sbignore`-listed file (all ignored).
   `expected/index.json` gives, per indexed path: type, title, status, priority,
   project slug, due, created, note_id, tags, link targets, parse_error
-  presence. Two carry-forward scenarios (section 2.2): `new-note` (no note for
-  the scenario date) and `untouched-note` (an untouched note as Obsidian
-  creates it), each with input date and expected output.
+  presence. Three carry-forward scenarios (section 2.2): `new-note` (no note
+  for the scenario date), `untouched-note` (an untouched note as Obsidian
+  creates it) and `touched-note` (a note the user has typed in; expected
+  unchanged), each with input date and expected output. The reference date for
+  every date-relative expectation is `2026-10-09` (section 2.12).
+- **Section 2.10 to 2.12 cases:** inline tags next to `[[A#Heading]]`,
+  `[[#H]]` and `![[A#^b]]` (none are tags); `#1984` (not a tag), `#y1984`,
+  `#eng/backend`, `#eng/`, `#Eng` and `#eng` in one note, `a#b`; frontmatter
+  `tags` as a comma string with spaces, with a `#`-prefixed item, a numeric
+  item and an item with internal whitespace; an unknown `type` (`Meeting`) and
+  a non-string `type`; a note linking the same target several times with
+  different spellings and an embed; a note without a trailing newline and one
+  with several trailing blank lines (for the writer's end-of-file rule);
+  invalid `due` values (`next week`, `2026-13-01`) on a `planned` task and a
+  YAML timestamp `due`; in the previous daily note: an unchecked Follow-up
+  linking a task, an unchecked Today item linking a task, an unresolved link in
+  a Today item, duplicate free-text items within one section and the same text
+  in both Today and Follow-ups, `- [x]`, `- [X]` and `- [/]` items, and
+  `*`-bulleted and indented checkboxes; two blocked tasks with different due
+  dates. `README.md` lists, per note, the checker codes (section 2.11) it must
+  produce, so the checker's expected failures and warnings are fixed.
 - **Obsidian-created samples:** this task writes **synthetic** versions of the
   two Obsidian-shaped files (the property-formatted note and the untouched
   daily note), marked as such in `README.md`. There is no hard dependency on
@@ -991,8 +1407,9 @@ recorded.
 - **Agent:** `backend-engineer-python`. **Reviewers:** `code-reviewer`.
 - **Tests first:** parametrised over `fixtures/golden-vault/expected/index.json`:
   every fixture note parses to its expected fields; malformed cases set
-  `parse_error` and never raise; BOM and CRLF handled; links per section 2.8;
-  tags per section 2.9; project values per section 2.1 (wikilink,
+  `parse_error` and never raise; BOM and CRLF handled; links and the
+  one-row-per-target link set per section 2.8; types, tags and dates per
+  section 2.10; project values per section 2.1 (wikilink,
   folder-qualified, alias, plain slug); `conventions.py` holds types, folders,
   status vocabularies and the sanitising character sets; importing
   `vault.parser` does not import Django.
@@ -1007,23 +1424,23 @@ recorded.
 - **Files:** `backend/vault/conformance.py`, `backend/tests/test_conformance.py`.
 - **Depends on:** P1-07, P1-04.
 - **Agent:** `qa-test-engineer`. **Reviewers:** `code-reviewer`.
-- **Checks:** every note parses; required keys per type; status within the
-  vocabulary; note in its type's folder; file name contains no character from
-  the sanitising sets; daily notes named and placed correctly; templates
-  present. A `project` or `triaged_to` link whose stem is not unique on disk is
-  reported as an **"ambiguous" warning**, not a failure, because the stem may
-  have become duplicated after the link was written. The folder-qualified rule
-  is enforced only by the writer and command tests on freshly written notes.
-  Exit code 0 when there are no failures (warnings are printed), 1 with one
-  line per failure.
-- **Tests first:** the checker passes on a fresh `init_vault.py` vault and
-  reports each deliberately broken fixture note with the right reason; a bare
-  `project` link to a duplicated stem yields a warning and exit code 0; a static
+- **Checks:** exactly the failures F1 to F8 and warnings W1 to W6 of section
+  2.11, with required keys per type as listed there. A `project` or
+  `triaged_to` link whose stem is not unique on disk is warning W3
+  ("ambiguous"), not a failure, because the stem may have become duplicated
+  after the link was written; the folder-qualified rule is enforced only by the
+  writer and command tests on freshly written notes. Output: one line per
+  problem with its code and path. Exit code 0 when there are no failures
+  (warnings are printed), 1 otherwise.
+- **Tests first:** the checker passes on a fresh `init_vault.py` vault; on the
+  golden vault it reports exactly the codes per note listed in the fixture's
+  `README.md`; a bare `project` link to a duplicated stem yields W3 and exit
+  code 0; a static
   test asserts `conformance.py` defines no YAML parsing or link regex of its own
   (imports only).
 - **Run:** `cd backend && uv run pytest tests/test_conformance.py && uv run python -m vault.conformance ../fixtures/golden-vault/vault`.
-- **Acceptance:** tests pass; the CLI output on the golden vault lists exactly
-  the deliberately broken notes.
+- **Acceptance:** tests pass; the CLI output on the golden vault matches the
+  README's expected codes exactly.
 
 #### P1-09 Install script
 
@@ -1053,8 +1470,10 @@ recorded.
   and `git init` it; install the skill and commands with
   `install.sh --target <tmpcwd>/.claude` (project scope, so `~/.claude` is not
   touched); run `claude -p "<command> <args>" --output-format json` from
-  `<tmpcwd>` with `SECOND_BRAIN_VAULT=<tmp vault>`, `--add-dir <tmp vault>` and
-  the fixed tool allowlist; then assert on the file system and run
+  `<tmpcwd>` with `SECOND_BRAIN_VAULT=<tmp vault>`,
+  `SECOND_BRAIN_TEST_MODE=1`, `SECOND_BRAIN_TODAY=2026-10-09` (section 2.12),
+  `--add-dir <tmp vault>` and the fixed tool allowlist; then assert on the file
+  system and run
   `python -m vault.conformance` on the result. Marked
   `@pytest.mark.commands`, excluded from the default run, run at task
   acceptance and at the final phase check.
@@ -1069,12 +1488,28 @@ recorded.
 - **Assertions:** files created in the right folder with the right name;
   frontmatter keys and values, including `project` written as a wikilink and
   folder-qualified links where stems are duplicated; section headings intact;
-  no other file changed (snapshot diff); conformance passes. `/daily`: both
-  carry-forward scenarios match the expected notes (as sets of items per
-  section), and a touched note is left unchanged. `/eod`: one commit
+  no other file changed (snapshot diff); conformance reports no failures.
+  `/daily`: both carry-forward scenarios match the expected notes (the ordered
+  item list of each section, compared after trimming whitespace), and a touched
+  note is left unchanged. A guard scenario: with test mode set and
+  `SECOND_BRAIN_VAULT` unset, the command refuses and writes nothing. `/eod`: one commit
   `eod: <date>`, second run amends, no remote; a planted secret stops the
   commit. A template edited in the temp vault changes the created note's shape
   (commands read the vault's templates).
+- **Amendments after review (2026-10-05):** the harness reads
+  `--output-format stream-json`, whose first event is the only reliable
+  "command not found" signal. Daily notes are compared byte for byte, as the
+  fixture's `scenario.json` files say. The checker assertion is "no new
+  findings", warnings included. A session gets **no `git` permission**: the
+  only git surface is `python3 -I <skill>/scripts/vault_git.py <verb>` (section
+  4.2), allowed by exact rules, and every scenario except `/eod` asserts that
+  `HEAD` and the index are unchanged. The session's environment is built from
+  an allowlist, `printenv` is allowed only in the exact forms the skill uses,
+  and the harness verifies the test vault's `.git/config` and hooks are
+  unchanged before it runs git itself. The missing-folder error case cannot be
+  reached through a command's arguments and is covered by the writer tests
+  (P1-22). The live scenarios are not run until the harness has passed a
+  security re-review.
 - **Run:** `uv run --project claude pytest -m commands claude/tests/commands`.
 - **Acceptance:** harness runs; every scenario fails for the expected reason
   (command not found).
@@ -1101,10 +1536,13 @@ recorded.
 - **Files:** `claude/commands/triage.md`.
 - **Depends on:** P1-11.
 - **Agent:** `technical-writer`. **Reviewers:** `code-reviewer`.
-- **Tests first:** two-turn scenario with three fixture captures:
-  high-confidence classification written in turn 1, nothing else; "no" in turn
-  2 creates nothing; "yes" creates targets first, then sets `triaged` and
-  `triaged_to`; capture files never moved or deleted.
+- **Tests first:** two-turn scenario with three fixture captures, per section
+  2.13: high-confidence classification written in turn 1, nothing else; a
+  low-confidence capture gets no `classification` written and appears as a
+  suggestion; a capture whose kind has no Phase 1 target (for example a
+  question) keeps `status: inbox`, gets its `classification` and no target
+  note; "no" in turn 2 creates nothing; "yes" creates targets first, then sets
+  `triaged` and `triaged_to`; capture files never moved or deleted.
 - **Run:** `uv run --project claude pytest -m commands claude/tests/commands -k triage`.
 - **Acceptance:** scenarios pass on two consecutive runs.
 
@@ -1116,9 +1554,12 @@ recorded.
 - **Files:** `claude/commands/{daily,standup}.md`.
 - **Depends on:** P1-03, P1-10.
 - **Agent:** `technical-writer`. **Reviewers:** `code-reviewer`.
-- **Tests first:** both golden carry-forward scenarios; running `/daily` twice
-  leaves the note unchanged; a touched note is never modified; `/standup` with
-  input fills the right sections and prints all six headings.
+- **Tests first:** both golden carry-forward scenarios at the pinned date
+  `2026-10-09`, which exercise every section 2.2 rule (Follow-up linking a task
+  kept, Today item linking a task dropped, ordering, within-section
+  de-duplication, invalid `due` not carried, checkbox markers); running
+  `/daily` twice leaves the note unchanged; a touched note is never modified;
+  `/standup` with input fills the right sections and prints all six headings.
 - **Run:** `uv run --project claude pytest -m commands claude/tests/commands -k "daily or standup"`.
 - **Acceptance:** scenarios pass on two consecutive runs.
 
@@ -1174,8 +1615,9 @@ skeleton tasks add their own Dockerfile and services.
   published port binds `127.0.0.1`; any `indexer` vault mount is `:ro`; no
   `test` service mounts the vault; `db` publishes no port; `.env` is
   gitignored; `.env.example` has every variable referenced in
-  `docker-compose.yml`. The script checks whichever services exist, so later
-  tasks re-run it.
+  `docker-compose.yml`; neither `.env.example` nor `.env` (when present) sets
+  `SECOND_BRAIN_TEST_MODE` or `SECOND_BRAIN_TODAY` (section 2.12). The script
+  checks whichever services exist, so later tasks re-run it.
 - **Run:** `scripts/check_compose.sh && docker compose up -d db && docker compose ps`.
 - **Acceptance:** check passes; `db` healthy; `git grep` finds no real secret.
 
@@ -1184,12 +1626,15 @@ skeleton tasks add their own Dockerfile and services.
 - **Goal:** Django project with settings from the environment, apps `vault` and
   `api`, health endpoint, the backend Dockerfile and its three services.
 - **Step:** 4. **Gate:** B.
-- **Files:** `backend/{Dockerfile,.dockerignore,pyproject.toml,uv.lock,manage.py,config/,api/,tests/conftest.py,tests/test_settings.py,tests/test_health.py,tests/test_isolation.py}`, `docker-compose.yml` (adds `backend`, `indexer`, `test`).
+- **Files:** `backend/{Dockerfile,.dockerignore,pyproject.toml,uv.lock,manage.py,config/,api/,vault/clock.py,tests/conftest.py,tests/test_settings.py,tests/test_clock.py,tests/test_health.py,tests/test_isolation.py}`, `docker-compose.yml` (adds `backend`, `indexer`, `test`; the `test` service sets the section 2.12 variables).
 - **Depends on:** P1-16, P1-07.
 - **Agent:** `backend-engineer-python`. **Reviewers:** `code-reviewer`, `security-engineer` (settings, secrets, mounts).
 - **Tests first:** settings refuse to load when `DJANGO_SECRET_KEY` is missing
   or equals the `.env.example` placeholder; `DEBUG` false by default;
-  `TIME_ZONE` from `TZ`; `GET /api/health/` returns 200 with
+  `TIME_ZONE` from `TZ`; `vault.clock.today()` returns the pinned date only
+  when both section 2.12 variables are set, ignores either alone (with a
+  warning), and otherwise returns the current date in `TIME_ZONE`;
+  `GET /api/health/` returns 200 with
   `{"status": "ok"}` and 503 when the database is down; DRF default renderer
   JSON only, default permission `IsAuthenticated`; Django admin not installed;
   test isolation per section 6 (autouse fixture fails if `/vault` exists or is
@@ -1226,7 +1671,10 @@ skeleton tasks add their own Dockerfile and services.
 - **Agent:** `devops-cloud-engineer`. **Reviewers:** `code-reviewer`, `security-engineer` (credential handling, vault guard).
 - **Tests first:** guard test: the script exits non-zero when the project name
   is not `sbw-e2e` or `VAULT_PATH` resolves to `/mnt/d/Second Brain`; `up`
-  copies the golden vault fresh; `up --vault-copy-of <dir>` (exercised with a
+  copies the golden vault fresh; `.env.e2e.example` sets the section 2.12
+  variables (`SECOND_BRAIN_TODAY=2026-10-09`) for the golden-vault mode and
+  `up --vault-copy-of` unsets them so the real-vault copy is checked at the
+  real date; `up --vault-copy-of <dir>` (exercised with a
   stand-in source directory, including one whose path is passed as the real
   vault path through a test override) copies the source, and the generated
   Compose configuration (`docker compose -p sbw-e2e config`) mounts only the
@@ -1330,7 +1778,9 @@ The parser part of step 5 is P1-07 (Gate A).
   fixture note; CRLF and BOM preserved; `expected_hash` mismatch against the
   file re-read immediately before the rename raises a conflict and leaves the
   file unchanged (simulate an Obsidian edit in between); malformed frontmatter
-  refused; append-to-section follows every rule of section 2.4; the
+  refused; append-to-section follows every rule of section 2.4, including the
+  end-of-file rule 8 on the fixture notes without a trailing newline and with
+  several trailing blank lines; the
   "untouched" predicate of section 2.2 is true for the fixture's untouched note
   and false after any one-character edit to a section; with an **edited daily
   template** in the temp vault (an extra section and a renamed heading), a note
@@ -1389,6 +1839,8 @@ The parser part of step 5 is P1-07 (Gate A).
   409 with candidates); the `links` map gives path and state for resolved,
   ambiguous and unresolved targets; backlinks; project slug resolution per
   section 2.1; dashboard sections per design E with the index summary;
+  invalid `due` values excluded from `overdue`, due-today and date filters and
+  sorted with "no due" (section 2.10);
   `today` and `overdue` frozen at 15:59 and 16:01 UTC (either side of Manila
   midnight, review O-8); bounded query count (no N+1).
 - **Run:** `docker compose --profile test run --rm test pytest tests/test_api_notes.py tests/test_api_projects.py tests/test_api_dashboard.py`
@@ -1405,8 +1857,9 @@ The parser part of step 5 is P1-07 (Gate A).
   stemming); title typo found by trigram; every result has `source`; status
   reports each problem category present in the fixture (parse errors, missing
   ids, duplicate ids, ambiguous links, unknown and duplicate project slugs,
-  unknown statuses, invalid dates); refresh picks up a file changed on disk and
-  returns the pass summary.
+  unknown statuses, invalid dates); `test_mode` and the pinned date appear only
+  when both section 2.12 variables are set; refresh picks up a file changed on
+  disk and returns the pass summary.
 - **Run:** `docker compose --profile test run --rm test pytest tests/test_api_search.py tests/test_api_index.py`
 - **Acceptance:** tests pass.
 

@@ -1,0 +1,23 @@
+[project]
+name = "second-brain-claude"
+version = "0.1.0"
+description = "Test tooling for the second-brain Claude Code skill and commands"
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "pytest>=9,<10",
+    "ruamel.yaml>=0.18,<0.19",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Live command scenarios call `claude -p` and spend tokens: opt in with `-m commands`.
+addopts = ["-m", "not commands"]
+markers = [
+    "commands: live headless Claude Code scenarios (spend tokens; run with -m commands)",
+]

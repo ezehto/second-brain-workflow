@@ -1,0 +1,642 @@
+"""The second-brain skill: format, links, contents lists and agreement with conventions.md."""
+
+import re
+from pathlib import Path
+
+import pytest
+from ruamel.yaml import YAML
+
+SKILL = Path(__file__).resolve().parents[1] / "skills" / "second-brain"
+SKILL_MD = SKILL / "SKILL.md"
+REFERENCE = ["conventions", "naming", "links", "carry-forward", "triage", "templates"]
+DOCS = [SKILL_MD, SKILL / "vault-readme.md"] + [SKILL / "reference" / f"{n}.md" for n in REFERENCE]
+
+# Plan section 2.3.
+VOCAB = {
+    "task": ["inbox", "planned", "in-progress", "blocked", "review", "done", "cancelled"],
+    "project": ["active", "paused", "done", "archived"],
+    "decision": ["proposed", "accepted", "superseded", "rejected"],
+    "lesson": ["active", "archived"],
+    "capture": ["inbox", "triaged", "dismissed"],
+}
+# Design section D folder structure, Phase 1 only.
+FOLDERS = {
+    "00-Inbox",
+    "01-Daily",
+    "02-Work/Projects",
+    "02-Work/Tasks",
+    "05-Knowledge/Decisions",
+    "05-Knowledge/Lessons",
+    "08-System/Templates",
+}
+DASHES = re.compile("[‐-―−]")
+
+
+def read(p: Path) -> str:
+    return p.read_text(encoding="utf-8")
+
+
+def frontmatter(text: str) -> dict:
+    assert text.startswith("---\n"), "frontmatter must open on line 1"
+    end = text.index("\n---\n", 3)
+    return YAML(typ="safe").load(text[4:end])
+
+
+def gh_slug(heading: str) -> str:
+    s = heading.strip().lower()
+    s = re.sub(r"[^\w\- ]", "", s)
+    return s.replace(" ", "-")
+
+
+def headings(text: str) -> list[tuple[int, str]]:
+    out, fenced = [], False
+    for ln in text.splitlines():
+        if ln.startswith("```"):
+            fenced = not fenced
+        elif not fenced and (m := re.match(r"(#{1,6}) (.+?)\s*$", ln)):
+            out.append((len(m.group(1)), m.group(2)))
+    return out
+
+
+def body(p: Path) -> str:
+    t = read(p)
+    return t[t.index("\n---\n", 3) + 5 :] if t.startswith("---\n") else t
+
+
+def conventions_tables() -> tuple[dict[str, list[str]], set[str]]:
+    text = read(SKILL / "reference" / "conventions.md")
+    vocab, folders = {}, set()
+    for ln in text.splitlines():
+        cells = [c.strip() for c in ln.strip().strip("|").split("|")]
+        if not ln.startswith("|") or len(cells) < 2:
+            continue
+        first = re.fullmatch(r"`([^`]+)`", cells[0])
+        if not first:
+            continue
+        if re.fullmatch(r"(`[a-z-]+`(, )?)+", cells[1]) and first.group(1) in VOCAB:
+            vocab[first.group(1)] = re.findall(r"`([^`]+)`", cells[1])
+        elif re.fullmatch(r"\d\d-[\w/-]+", first.group(1)):
+            folders.add(first.group(1))
+    return vocab, folders
+
+
+# ---- SKILL.md format ------------------------------------------------------
+
+def test_skill_frontmatter():
+    fm = frontmatter(read(SKILL_MD))
+    assert fm["name"] == "second-brain"
+    assert isinstance(fm["description"], str) and fm["description"].strip()
+
+
+def test_skill_under_300_lines():
+    assert len(read(SKILL_MD).splitlines()) < 300
+
+
+@pytest.mark.parametrize("name", REFERENCE)
+def test_reference_file_exists_and_is_linked(name):
+    assert (SKILL / "reference" / f"{name}.md").is_file()
+    assert f"](reference/{name}.md" in read(SKILL_MD)
+
+
+def test_every_relative_link_resolves():
+    for doc in DOCS:
+        for target in re.findall(r"\]\(([^)#]+\.md)(?:#[^)]*)?\)", read(doc)):
+            if "://" in target:
+                continue
+            assert (doc.parent / target).resolve().is_file(), (doc.name, target)
+
+
+def test_vault_readme_exists():
+    assert (SKILL / "vault-readme.md").is_file()
+
+
+# ---- contents lists -------------------------------------------------------
+
+@pytest.mark.parametrize("doc", DOCS, ids=lambda p: p.name)
+def test_contents_list(doc):
+    text = body(doc)
+    hs = headings(text)
+    names = [h for _, h in hs]
+    assert "Contents" in names, "missing Contents heading"
+    toc_start = text.index("## Contents")
+    nxt = re.search(r"\n#{1,6} ", text[toc_start + 5 :])
+    toc = text[toc_start : toc_start + 5 + nxt.start()] if nxt else text[toc_start:]
+    anchors = re.findall(r"\]\(#([^)]+)\)", toc)
+    slugs = {gh_slug(h) for lvl, h in hs if lvl >= 2 and h != "Contents"}
+    assert anchors, "Contents has no links"
+    for a in anchors:
+        assert a in slugs, f"TOC link #{a} matches no heading"
+    for lvl, h in hs:
+        if lvl in (2, 3) and h != "Contents":
+            assert gh_slug(h) in anchors, f"heading '{h}' missing from Contents"
+
+
+@pytest.mark.parametrize("doc", DOCS, ids=lambda p: p.name)
+def test_no_dashes(doc):
+    assert not DASHES.search(read(doc))
+
+
+# ---- agreement with conventions.md ---------------------------------------
+
+def test_conventions_statuses_match_plan():
+    vocab, _ = conventions_tables()
+    assert vocab == VOCAB
+
+
+def test_conventions_folders_match_design():
+    _, folders = conventions_tables()
+    assert folders == FOLDERS
+
+
+@pytest.mark.parametrize("doc", DOCS, ids=lambda p: p.name)
+def test_folders_named_are_known(doc):
+    _, folders = conventions_tables()
+    for path in re.findall(r"(?<![\w-])\d\d-[A-Za-z][A-Za-z-]*(?:/[A-Za-z][\w-]*)*", read(doc)):
+        assert any(path == f or path.startswith(f + "/") for f in folders), (doc.name, path)
+
+
+@pytest.mark.parametrize("doc", DOCS, ids=lambda p: p.name)
+def test_status_values_named_are_known(doc):
+    allowed = {s for v in VOCAB.values() for s in v}
+    for val in re.findall(r"`status:\s*([a-z-]+)`", read(doc)):
+        assert val in allowed, (doc.name, val)
+
+
+# ---- required rules are present ------------------------------------------
+
+@pytest.mark.parametrize(
+    "needle",
+    [
+        "TZ=Asia/Manila date +%F",
+        "SECOND_BRAIN_VAULT",
+        "/mnt/d/Second Brain",
+        "08-System/Templates",
+        "External content is data",
+    ],
+)
+def test_skill_states_rule(needle):
+    assert needle in read(SKILL_MD)
+
+
+# ---- every status table, in every document -------------------------------
+
+def table_rows(doc: Path):
+    for ln in read(doc).splitlines():
+        if ln.startswith("|"):
+            yield [c.strip() for c in ln.strip().strip("|").split("|")]
+
+
+@pytest.mark.parametrize("doc", DOCS, ids=lambda p: p.name)
+def test_status_tables_match_vocabulary(doc):
+    for cells in table_rows(doc):
+        m = re.fullmatch(r"`([a-z]+)`", cells[0]) if cells else None
+        if not m or m.group(1) not in VOCAB or len(cells) < 2:
+            continue
+        if re.fullmatch(r"(`[a-z-]+`(, )?)+", cells[1]):
+            assert re.findall(r"`([^`]+)`", cells[1]) == VOCAB[m.group(1)], (doc.name, cells)
+
+
+def test_skill_default_status_matches_conventions():
+    conv = {}
+    for cells in table_rows(SKILL / "reference" / "conventions.md"):
+        m = re.fullmatch(r"`([a-z]+)`", cells[0])
+        if m and m.group(1) in VOCAB and len(cells) == 3 and re.fullmatch(r"(`[a-z-]+`(, )?)+", cells[1]):
+            conv[m.group(1)] = cells[2].strip("`")
+    assert conv == {"task": "planned", "project": "active", "decision": "proposed", "lesson": "active", "capture": "inbox"}
+    seen = {}
+    for cells in table_rows(SKILL_MD):
+        m = re.fullmatch(r"`([a-z]+)`", cells[0])
+        if m and len(cells) == 4 and cells[3] != "Default status":
+            seen[m.group(1)] = cells[3].strip("`")
+    assert seen == {**conv, "daily": "none"}
+
+
+# ---- load-bearing rule text, so a changed rule fails ----------------------
+
+def skill_text(*parts: str) -> str:
+    return read(SKILL.joinpath(*parts))
+
+
+@pytest.mark.parametrize(
+    "file,needle",
+    [
+        (("reference", "carry-forward.md"), "status `blocked`"),
+        (("reference", "carry-forward.md"), "`in-progress`, then `review`, then `planned`"),
+        (("reference", "carry-forward.md"), "TZ=Asia/Manila date +%F"),
+        (("reference", "carry-forward.md"), "byte-identical"),
+        (("reference", "links.md"), "Unicode NFKD"),
+        (("reference", "links.md"), "## Resolving a link or project value"),
+        (("reference", "links.md"), "neither resolves"),
+        (("reference", "links.md"), "lexicographic"),
+        (("reference", "links.md"), "slugify(arg) == slugify(stem)"),
+        (("reference", "naming.md"), "100 characters"),
+        (("reference", "naming.md"), "200 characters"),
+        (("reference", "triage.md"), "Set `triaged_to` only after its target note exists"),
+        (("reference", "conventions.md"), "`#` comments"),
+        (("reference", "templates.md"), "`id`: text"),
+        (("SKILL.md",), "TZ=Asia/Manila date +%Y%m%d%H%M%S"),
+        (("SKILL.md",), "all six standup headings"),
+    ],
+)
+def test_rule_text_present(file, needle):
+    assert needle in skill_text(*file)
+
+
+def test_references_to_renamed_section_resolve():
+    assert "#how-the-app-reads-links" not in "".join(read(d) for d in DOCS)
+    assert "How the app reads links" not in "".join(read(d) for d in DOCS)
+    assert "The commands do not do this" not in read(SKILL / "reference" / "links.md")
+
+
+# ---- plan 2.12 test clock, 2.2 carry-forward, 2.10 parsing, 2.4 appending ---
+
+def norm(s: str) -> str:
+    return " ".join(s.split())
+
+
+def has(text: str, needle: str) -> bool:
+    """Needle match that ignores bold markers, case and line wrapping."""
+    f = lambda s: norm(s.replace("**", "")).lower()
+    return f(needle) in f(text)
+
+
+DATE_WORDING = norm(
+    "To get today's date, run `printenv SECOND_BRAIN_TEST_MODE SECOND_BRAIN_TODAY`. "
+    "If `SECOND_BRAIN_TEST_MODE` is exactly `1` and `SECOND_BRAIN_TODAY` is set, "
+    "today is `SECOND_BRAIN_TODAY`; in that case stop unless `SECOND_BRAIN_VAULT` "
+    "is set and is not `/mnt/d/Second Brain`. Otherwise run "
+    "`TZ=Asia/Manila date +%F`."
+)
+
+
+@pytest.mark.parametrize("rel", [("SKILL.md",), ("reference", "carry-forward.md")])
+def test_exact_test_clock_wording(rel):
+    text = norm(re.sub(r"^\s*> ?", "", skill_text(*rel), flags=re.M))
+    assert DATE_WORDING in text
+
+
+@pytest.mark.parametrize("doc", DOCS, ids=lambda p: p.name)
+def test_no_bare_date_instruction(doc):
+    text = read(doc)
+    if "date +%F" in text:
+        assert "printenv SECOND_BRAIN_TEST_MODE SECOND_BRAIN_TODAY" in text
+
+
+def test_time_of_day_rule():
+    text = norm(skill_text("SKILL.md"))
+    assert "TZ=Asia/Manila date +%H%M%S" in text
+    assert "test mode" in text
+
+
+CF = ("reference", "carry-forward.md")
+
+
+@pytest.mark.parametrize(
+    "needle",
+    [
+        "applies to `## Today` only",
+        "`type: task`",
+        "including ambiguous",
+        "An unresolved link does not count",
+        "Follow-ups are always copied",
+        "including items that link a task",
+        "removed within a section only",
+        "keeping the first",
+        "case-sensitive",
+        "`* [ ] `",
+        "`- [X]`",
+        "`- [/]`",
+        "counts as checked",
+        "no valid due last",
+        "then title, then path",
+        "in the order they appear in `P`",
+        "Projects of free-text items are not considered",
+        "unknown or duplicate project slugs are skipped",
+        "is **not** carried",
+        "[conventions.md](conventions.md#dates)",
+        "## Related Tasks / Projects",
+    ],
+)
+def test_carry_forward_rule_text(needle):
+    assert has(skill_text(*CF), needle)
+
+
+def test_carry_forward_drop_rule_is_today_only():
+    text = norm(skill_text(*CF))
+    assert "An unchecked item in `P` that links a task is dropped" not in text
+    assert "Nothing is de-duplicated across sections" in text
+
+
+@pytest.mark.parametrize(
+    "needle",
+    [
+        "8. **End of file.**",
+        "exactly one line ending",
+        "first line break",
+        "no line break uses LF",
+        "Trailing blank lines at the end of the file are removed",
+    ],
+)
+def test_append_rules(needle):
+    assert has(skill_text(*CF), needle)
+
+
+CONV = ("reference", "conventions.md")
+
+
+@pytest.mark.parametrize(
+    "needle",
+    [
+        "trimmed and lower-cased",
+        "never mapped to `note`",
+        "no usable string `type`",
+        "whole text of every wikilink",
+        "at least one character that is not a digit and not `/`",
+        "`#1984`",
+        "`eng/backend`",
+        "Only the `tags` key is read",
+        "Inline tags are found in the body only",
+    ],
+)
+def test_conventions_parsing_rules(needle):
+    assert has(skill_text(*CONV), needle)
+
+
+def test_conventions_no_longer_maps_unknown_type_to_note():
+    assert "or an unknown type, is `note`" not in norm(skill_text(*CONV))
+
+
+def test_links_count_once():
+    assert "count once" in norm(skill_text("reference", "links.md"))
+
+
+# ---- review round 3 -----------------------------------------------------------
+
+SK = ("SKILL.md",)
+SINGLE_READ = "When the operation also needs a time of day, take the date from that single read instead."
+
+
+@pytest.mark.parametrize(
+    "rel,needle",
+    [
+        (SK, '[ "$SECOND_BRAIN_VAULT" -ef "/mnt/d/Second Brain" ]'),
+        (SK, "not a valid `YYYY-MM-DD` date"),
+        (SK, SINGLE_READ),
+        (CF, SINGLE_READ),
+        (SK, "wraps within the day"),
+        (SK, "always starts with the pinned date"),
+        (SK, "changes the time part only"),
+        (SK, "Any other missing folder is an error"),
+        (SK, "the value written is always `YYYY-MM-DD`"),
+        (SK, "accepted as given"),
+        (SK, "resolved against today's date"),
+        (SK, "reported back in the output"),
+        (SK, "`friday` means the next Friday strictly after today"),
+        (SK, "more than one reasonable reading"),
+        (SK, "`/task` due value follows the dates rule"),
+        (CF, "A `planned` task whose `due` is invalid is **not** carried"),
+        (CF, "sorted by project title, then path"),
+        (("reference", "links.md"), "Repeated links to the same normalised target count once"),
+        (CONV, "never mapped to `note`"),
+        (CONV, "`#1984` and `#2026/10` are not tags"),
+        (CONV, "the known values are"),
+        (CONV, "2.10"),
+        (CONV, "is exactly `YYYY-MM-DD` and a real calendar date"),
+        (CONV, "YAML timestamp"),
+    ],
+)
+def test_round3_needles(rel, needle):
+    assert has(skill_text(*rel), needle)
+
+
+def test_old_guard_instructions_gone():
+    text = skill_text(*SK)
+    assert "test -L" not in text
+    assert "trailing slash" not in text
+    assert "(plan 2.12)" not in text
+
+
+def test_dates_rule_stated_once_in_conventions():
+    assert "exactly `YYYY-MM-DD`" not in skill_text(*CF)
+    assert "valid" in skill_text(*CONV)
+
+
+# ---- triage rules, plan 2.13 ----------------------------------------------------
+
+TRIAGE = ("reference", "triage.md")
+TRIAGE_MAP = {
+    "task": "task", "problem": "task", "decision": "decision",
+    "learning-topic": "lesson", "note": "lesson", "project": "project",
+    "ticket": None, "architecture-idea": None, "question": None, "thought": None,
+}
+
+
+def parse_triage_mapping() -> dict:
+    out = {}
+    for cells in table_rows(SKILL / "reference" / "triage.md"):
+        keys = re.findall(r"`([a-z-]+)`", cells[0]) if cells else []
+        if not keys or len(cells) != 2 or not all(k in TRIAGE_MAP for k in keys):
+            continue
+        m = re.match(r"a `([a-z]+)` note", cells[1])
+        for k in keys:
+            out[k] = m.group(1) if m else (None if cells[1].startswith("no target note in Phase 1") else "?")
+    return out
+
+
+def test_triage_mapping_table():
+    assert parse_triage_mapping() == TRIAGE_MAP
+
+
+def test_conventions_classification_values_match_mapping():
+    row = next(r for r in table_rows(SKILL / "reference" / "conventions.md") if r and r[0] == "`classification`")
+    assert set(re.findall(r"`([a-z-]+)`", row[2])) - {"classification"} == set(TRIAGE_MAP)
+
+
+@pytest.mark.parametrize(
+    "needle",
+    [
+        "stays in `00-Inbox` with `status: inbox` and its `classification`",
+        "High confidence means the capture states its own kind",
+        "starts with `task:`, `todo:`, `decision:` or \"decided to ...\"",
+        "plain imperative with one obvious reading",
+        "Only then is `classification` written without asking",
+        "Anything else is low confidence",
+        "nothing is written",
+        "suggested classification",
+        "turn 1 writes `classification` on high-confidence captures only",
+        "one batch",
+        "`status: dismissed`",
+        "never moved or deleted",
+        "not offered again as a conversion",
+        "target notes first",
+        "Set `triaged_to` only after its target note exists",
+    ],
+)
+def test_triage_rule_text(needle):
+    assert has(skill_text(*TRIAGE), needle)
+
+
+def test_triage_gap_section_gone():
+    text = skill_text(*TRIAGE)
+    assert "Not fixed by the plan" not in text
+    assert "not-fixed-by-the-plan" not in text
+    assert "Do not invent them" not in text
+    assert "plan does not define" not in text.lower()
+
+
+# ---- parser sync: tags, attachments, code regions, ten classifications ----------
+
+LINKS = ("reference", "links.md")
+ATTACH = "png jpg jpeg gif bmp svg webp avif pdf mp3 wav m4a ogg flac 3gp mp4 webm mov mkv ogv canvas base".split()
+
+
+def test_attachment_extension_list():
+    text = skill_text(*LINKS)
+    for ext in ATTACH:
+        assert f"`{ext}`" in text, ext
+    assert has(text, "matched case-insensitively on the final path segment")
+    assert has(text, "Any other dotted name is a note title")
+    assert "[[Notes on Node.js]]" in text
+
+
+@pytest.mark.parametrize(
+    "rel,needle",
+    [
+        (LINKS, "## Code regions"),
+        (LINKS, "at any indentation of spaces or tabs"),
+        (LINKS, "a fence inside a list item counts"),
+        (LINKS, "an unclosed fence runs to the end of the file"),
+        (LINKS, "do not cross a blank line"),
+        (LINKS, "Indented code blocks without a fence are not code regions"),
+        (CONV, "[links.md](links.md#code-regions)"),
+        (CF, "[links.md](links.md#code-regions)"),
+        (CONV, "Unicode letters, combining marks, decimal digits, `_`, `-` and `/`"),
+        (CONV, "Every trailing `/` is stripped"),
+        (CONV, "`#eng//`"),
+        (CONV, "An explicit `type: note` is the generic type, not an unknown type"),
+        (CONV, "one of ten values"),
+        (TRIAGE, "ten allowed"),
+        (TRIAGE, "the brief's nine kinds plus `project`"),
+    ],
+)
+def test_parser_sync_needles(rel, needle):
+    assert has(skill_text(*rel), needle)
+
+
+def test_old_code_rule_and_attachment_wording_gone():
+    assert "Ignore wikilinks inside inline code spans and fenced code" not in norm(skill_text(*LINKS))
+    assert "attachments such as `[[image.png]]` are not notes" not in norm(skill_text(*LINKS))
+    assert "A trailing `/` is stripped" not in skill_text(*CONV)
+    assert "three backticks or `~~~`" not in norm(skill_text(*CF))
+
+
+# ---- git only through vault_git.py (plan 4.1, 4.2) ---------------------------------
+
+VERBS = ["remote", "status", "stage", "staged-diff", "head-subject", "commit-eod YYYY-MM-DD"]
+
+
+def section(text: str, heading: str) -> str:
+    start = text.index(heading)
+    nxt = re.search(r"\n## ", text[start + len(heading) :])
+    return text[start : start + len(heading) + nxt.start()] if nxt else text[start:]
+
+
+def test_git_section_lists_the_six_verbs_exactly():
+    sec = section(read(SKILL_MD), "## Git and `/eod`")
+    rows = [c[0] for c in (r for r in table_rows(SKILL_MD) if r) if re.fullmatch(r"`[a-z -]+( YYYY-MM-DD)?`", c[0])]
+    verbs = [r.strip("`") for r in rows if r.strip("`") in VERBS or r.startswith("`commit")]
+    assert verbs == VERBS
+    for v in VERBS:
+        assert f"`{v}`" in sec
+
+
+@pytest.mark.parametrize(
+    "needle",
+    [
+        "${CLAUDE_SKILL_DIR}/scripts/vault_git.py",
+        "python3 -I ${CLAUDE_SKILL_DIR}/scripts/vault_git.py <verb>",
+        "Never run `git` in any other way, in any command",
+        "Only `/eod` uses the script",
+        "refuses a vault that has a remote",
+        "runs the secret scan",
+        "commits or amends",
+        "does not scan, write a commit message or choose between commit and amend",
+        "reports its one-line reason and stops",
+        "never repeats a secret's text",
+        "Base directory for this skill",
+    ],
+)
+def test_git_rules_text(needle):
+    assert has(read(SKILL_MD), needle)
+
+
+def test_eod_steps_in_plan_order():
+    sec = section(read(SKILL_MD), "## Git and `/eod`")
+    steps = re.findall(r"^(\d)\. (.+?)(?=\n\d\. |\n\n|\Z)", sec, re.S | re.M)
+    nums = [int(n) for n, _ in steps]
+    assert nums == [1, 2, 3, 4, 5, 6]
+    texts = [norm(s).lower() for _, s in steps]
+    keys = ["remote", "daily note", "## done", "in-progress", "answers", "commit-eod"]
+    for text, key in zip(texts, keys):
+        assert key in text, (key, text)
+    assert "before writing anything" in texts[0]
+    assert "asking before any change" in texts[3]
+    assert "leaving every other section unchanged" in texts[2]
+
+
+GIT_SUBCOMMAND = re.compile(r"\bgit\s+(add|commit|push|pull|fetch|status|init|config|diff|log|reset|checkout|branch|rm|mv|clean|stash)\b")
+
+
+@pytest.mark.parametrize("doc", DOCS, ids=lambda p: p.name)
+def test_no_raw_git_instruction(doc):
+    """No document tells a session to run git: no git subcommand text (add, commit,
+    push, status, ...), no code span or line that starts with `git `, and no
+    "Use WSL `git`". The bare word `git` remains allowed in prose, in the phrase
+    "git remote" as a noun, and inside the name vault_git.py."""
+    text = read(doc)
+    assert not GIT_SUBCOMMAND.search(text), GIT_SUBCOMMAND.search(text).group(0)
+    assert not re.search(r"`git\s+\S", text)
+    assert not re.search(r"^\s*(\$ )?git\s", text, re.M)
+    assert "Use WSL `git`" not in text
+
+
+def test_old_git_steps_gone():
+    text = read(SKILL_MD)
+    assert "`git remote`" not in text
+    assert "Stage all changes" not in text
+    assert "Run a secret scan on the staged diff" not in text
+
+
+# ---- command details (plan 4.1) ----------------------------------------------------
+
+@pytest.mark.parametrize(
+    "rel,needle",
+    [
+        (SK, "keys the user did not give keep the template's values"),
+        (SK, "`project:` stays empty unless a project was given"),
+        (SK, "reports a resolved relative due date back in the reply"),
+        (SK, "Marking a task `done` asks for evidence first"),
+        (SK, "exactly the slug of an existing project note"),
+        (SK, "shows that project's summary and writes nothing"),
+        (SK, "refuses and names the existing note"),
+        (SK, "Otherwise it creates the project note"),
+        (SK, "`/task`: reports"),
+        (SK, "Labelled input (`Done:`, `Today:`, `Blockers:`, `Decisions:` or `Follow-ups:`) goes under that heading"),
+        (SK, "unlabelled input is placed by its meaning"),
+        (SK, "asks when that is unclear"),
+        (SK, "printed in the same turn, before any question"),
+        (SK, "never ticks or removes a carried-forward item"),
+        (SK, "never changes a task without asking"),
+        (TRIAGE, "first sentence ends with `?`"),
+        (TRIAGE, "is high confidence, classified `question`"),
+        (TRIAGE, "target title is the capture's text, sanitised"),
+        (TRIAGE, "unless the user gives another"),
+        (TRIAGE, "Answering \"no\" changes nothing beyond the classifications turn 1 already wrote"),
+    ],
+)
+def test_command_detail_needles(rel, needle):
+    assert has(skill_text(*rel), needle)
+
+
+def test_git_written_only_by_init_and_eod():
+    assert has(read(SKILL_MD), "Git is written only by the init script and `/eod`")

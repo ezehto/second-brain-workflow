@@ -1,0 +1,2996 @@
+{
+  "generated": "2026-10-05T16:54:03+0800",
+  "results": {
+    "M0": {
+      "measurement": "M0",
+      "rc": 0,
+      "output": "Docker Compose version v2.39.1-desktop.1\n-- rc=0\n\nHello from Docker!\nThis message shows that your installation appears to be working correctly.\n\nTo generate this message, Docker took the following steps:\n-- rc=0\n"
+    },
+    "M1": {
+      "measurement": "scan",
+      "root": "/vault",
+      "uid": 1000,
+      "gid": 1000,
+      "python": "3.12.14",
+      "t_start": 1791187857.2053587,
+      "files": 5000,
+      "cold_ms": 9712.265,
+      "warm_ms": [
+        4866.728,
+        4548.558,
+        4642.753,
+        4702.841,
+        4651.597
+      ],
+      "warm_median_ms": 4651.597,
+      "note": "cold = first run in this process, not a dropped page cache",
+      "median_ms": 4651.597,
+      "ms_per_file": 0.93032,
+      "projected_1000_s": 0.9303,
+      "projected_5000_s": 4.6516
+    },
+    "M10": {
+      "measurement": "case",
+      "root": "/vault",
+      "uid": 1000,
+      "gid": 1000,
+      "python": "3.12.14",
+      "t_start": 1791187917.8172107,
+      "created_first": "Case.md",
+      "created_second": {
+        "type": "FileExistsError",
+        "errno": 17,
+        "strerror": "File exists"
+      },
+      "listing": [
+        "Case.md"
+      ],
+      "distinct_files": 1,
+      "case_sensitive": false,
+      "content_Case_md": "upper"
+    },
+    "M11": {
+      "measurement": "illegal",
+      "root": "/vault",
+      "uid": 1000,
+      "gid": 1000,
+      "python": "3.12.14",
+      "t_start": 1791190293.6900454,
+      "attempts": [
+        {
+          "name": "a:b.md",
+          "created": true
+        },
+        {
+          "name": "a?b.md",
+          "created": true
+        }
+      ],
+      "listing": [
+        "a:b.md",
+        "a?b.md"
+      ],
+      "kept": true,
+      "windows_view_code_points": [
+        "0061 F03A 0062 002E 006D 0064",
+        "0061 F03F 0062 002E 006D 0064"
+      ],
+      "windows_view_note": "PowerShell Get-ChildItem on D:\\sbw-spike\\Spike Vault\\_m11; U+F03A / U+F03F are private-use substitutes for : and ?"
+    },
+    "M12_poll": {
+      "measurement": "poll",
+      "root": "/vault",
+      "uid": 1000,
+      "gid": 1000,
+      "python": "3.12.14",
+      "t_start": 1791188815.2045507,
+      "interval_s": 10.0,
+      "duration_s": 600.01,
+      "files": 5000,
+      "passes": 60,
+      "mean_pass_ms": 4662.075,
+      "max_pass_ms": 5214.709,
+      "min_pass_ms": 4339.634,
+      "median_pass_ms": 4647.245,
+      "first_pass_ms": 4750.336,
+      "over_interval": 0,
+      "changed_seen": 0,
+      "ms_per_file_mean": 0.93241,
+      "process_cpu_s": 37.852,
+      "process_cpu_pct_of_core": 6.31
+    },
+    "M12_stats": {
+      "measurement": "stats-summary",
+      "samples": 52,
+      "cpu_pct_mean": 6.697,
+      "cpu_pct_peak": 21.29,
+      "cpu_pct_note": "100% = one full core",
+      "block_read_bytes_delta": 0.0,
+      "block_write_bytes_delta": 0.0,
+      "block_io_first": "0B / 0B",
+      "block_io_last": "0B / 0B",
+      "mem_bytes_mean": 17579578,
+      "mem_bytes_peak": 18108907.52
+    },
+    "M1_host_wsl": {
+      "measurement": "scan",
+      "root": "/mnt/d/sbw-spike/Spike Vault",
+      "uid": 1000,
+      "gid": 1000,
+      "python": "3.12.3",
+      "t_start": 1791187887.7961822,
+      "files": 5000,
+      "cold_ms": 4491.222,
+      "warm_ms": [
+        4474.704,
+        4584.226,
+        4626.705,
+        4629.291,
+        4637.905
+      ],
+      "warm_median_ms": 4626.705,
+      "note": "cold = first run in this process, not a dropped page cache",
+      "median_ms": 4626.705,
+      "ms_per_file": 0.92534,
+      "projected_1000_s": 0.9253,
+      "projected_5000_s": 4.6267
+    },
+    "M2": {
+      "measurement": "hash",
+      "root": "/vault",
+      "uid": 1000,
+      "gid": 1000,
+      "python": "3.12.14",
+      "t_start": 1791187915.7085583,
+      "files": 5000,
+      "bytes": 13192336,
+      "runs_ms": [
+        8138.6,
+        8176.206,
+        8269.029
+      ],
+      "first_run_ms": 8138.6,
+      "median_ms": 8176.206,
+      "ms_per_file": 1.63524,
+      "projected_1000_s": 1.6352,
+      "projected_5000_s": 8.1762
+    },
+    "M3_wsl": {
+      "measurement": "latency",
+      "per_edit": [
+        {
+          "file": "_m3/wsl-1.md",
+          "seen": true,
+          "latency_s": 0.366,
+          "lag_vs_mtime_s": 0.871
+        },
+        {
+          "file": "_m3/wsl-2.md",
+          "seen": true,
+          "latency_s": 0.391,
+          "lag_vs_mtime_s": 0.45
+        },
+        {
+          "file": "_m3/wsl-3.md",
+          "seen": true,
+          "latency_s": 0.414,
+          "lag_vs_mtime_s": 0.028
+        },
+        {
+          "file": "_m3/wsl-4.md",
+          "seen": true,
+          "latency_s": 0.437,
+          "lag_vs_mtime_s": -0.394
+        },
+        {
+          "file": "_m3/wsl-5.md",
+          "seen": true,
+          "latency_s": 1.717,
+          "lag_vs_mtime_s": 0.486
+        }
+      ],
+      "seen": 5,
+      "edits": 5,
+      "max_latency_s": 1.717,
+      "all_within_2s": true,
+      "all_within_10s": true,
+      "note": "t_edit is WSL wall clock, t_detect is the watcher's wall clock; offset checked separately"
+    },
+    "M3_wsl_edits": {
+      "measurement": "host-edit",
+      "root": "/mnt/d/sbw-spike/Spike Vault",
+      "uid": 1000,
+      "gid": 1000,
+      "python": "3.12.3",
+      "t_start": 1791187940.6455896,
+      "edits": [
+        {
+          "file": "_m3/wsl-1.md",
+          "t_edit": 1791187924.6217885,
+          "t_after": 1791187924.6257167,
+          "mtime_ns": 1791187924116745200
+        },
+        {
+          "file": "_m3/wsl-2.md",
+          "t_edit": 1791187928.6264424,
+          "t_after": 1791187928.6306634,
+          "mtime_ns": 1791187928567337500
+        },
+        {
+          "file": "_m3/wsl-3.md",
+          "t_edit": 1791187932.6314962,
+          "t_after": 1791187932.6356485,
+          "mtime_ns": 1791187933017072400
+        },
+        {
+          "file": "_m3/wsl-4.md",
+          "t_edit": 1791187936.6363473,
+          "t_after": 1791187936.639957,
+          "mtime_ns": 1791187937467207800
+        },
+        {
+          "file": "_m3/wsl-5.md",
+          "t_edit": 1791187940.6407907,
+          "t_after": 1791187940.6449375,
+          "mtime_ns": 1791187941871814100
+        }
+      ]
+    },
+    "M3_wsl_edits_jitter": {
+      "measurement": "host-edit",
+      "root": "/mnt/d/sbw-spike/Spike Vault",
+      "uid": 1000,
+      "gid": 1000,
+      "python": "3.12.3",
+      "t_start": 1791190278.2000349,
+      "edits": [
+        {
+          "file": "_m3/wsl-1.md",
+          "t_edit": 1791190188.850024,
+          "t_after": 1791190188.8536003,
+          "mtime_ns": 1791190190023168000
+        },
+        {
+          "file": "_m3/wsl-2.md",
+          "t_edit": 1791190196.2722588,
+          "t_after": 1791190196.2758584,
+          "mtime_ns": 1791190194819074000
+        },
+        {
+          "file": "_m3/wsl-3.md",
+          "t_edit": 1791190200.5280924,
+          "t_after": 1791190200.5321252,
+          "mtime_ns": 1791190199482261000
+        },
+        {
+          "file": "_m3/wsl-4.md",
+          "t_edit": 1791190204.562708,
+          "t_after": 1791190204.5666795,
+          "mtime_ns": 1791190203953079300
+        },
+        {
+          "file": "_m3/wsl-5.md",
+          "t_edit": 1791190208.6650538,
+          "t_after": 1791190208.6686726,
+          "mtime_ns": 1791190208502182000
+        },
+        {
+          "file": "_m3/wsl-1.md",
+          "t_edit": 1791190212.6886292,
+          "t_after": 1791190212.692366,
+          "mtime_ns": 1791190212972849500
+        },
+        {
+          "file": "_m3/wsl-2.md",
+          "t_edit": 1791190216.9862912,
+          "t_after": 1791190216.9901233,
+          "mtime_ns": 1791190217724448500
+        },
+        {
+          "file": "_m3/wsl-3.md",
+          "t_edit": 1791190221.2696187,
+          "t_after": 1791190221.2734034,
+          "mtime_ns": 1791190222405879300
+        },
+        {
+          "file": "_m3/wsl-4.md",
+          "t_edit": 1791190228.469576,
+          "t_after": 1791190228.4731865,
+          "mtime_ns": 1791190226923404700
+        },
+        {
+          "file": "_m3/wsl-5.md",
+          "t_edit": 1791190232.7283134,
+          "t_after": 1791190232.7319682,
+          "mtime_ns": 1791190231547316000
+        },
+        {
+          "file": "_m3/wsl-1.md",
+          "t_edit": 1791190236.8399754,
+          "t_after": 1791190236.8437665,
+          "mtime_ns": 1791190236064544900
+        },
+        {
+          "file": "_m3/wsl-2.md",
+          "t_edit": 1791190241.1981504,
+          "t_after": 1791190241.201735,
+          "mtime_ns": 1791190240906589800
+        },
+        {
+          "file": "_m3/wsl-3.md",
+          "t_edit": 1791190245.2078955,
+          "t_after": 1791190245.21163,
+          "mtime_ns": 1791190245361531700
+        },
+        {
+          "file": "_m3/wsl-4.md",
+          "t_edit": 1791190249.6969612,
+          "t_after": 1791190249.7008238,
+          "mtime_ns": 1791190250349972500
+        },
+        {
+          "file": "_m3/wsl-5.md",
+          "t_edit": 1791190253.7735915,
+          "t_after": 1791190253.7770388,
+          "mtime_ns": 1791190254838385400
+        },
+        {
+          "file": "_m3/wsl-1.md",
+          "t_edit": 1791190261.0478475,
+          "t_after": 1791190261.0521462,
+          "mtime_ns": 1791190259484191000
+        },
+        {
+          "file": "_m3/wsl-2.md",
+          "t_edit": 1791190265.2789392,
+          "t_after": 1791190265.2825608,
+          "mtime_ns": 1791190264101660700
+        },
+        {
+          "file": "_m3/wsl-3.md",
+          "t_edit": 1791190269.7551947,
+          "t_after": 1791190269.7589364,
+          "mtime_ns": 1791190268983523000
+        },
+        {
+          "file": "_m3/wsl-4.md",
+          "t_edit": 1791190273.9285774,
+          "t_after": 1791190273.93459,
+          "mtime_ns": 1791190273621008200
+        },
+        {
+          "file": "_m3/wsl-5.md",
+          "t_edit": 1791190278.1956255,
+          "t_after": 1791190278.1993597,
+          "mtime_ns": 1791190278359672500
+        }
+      ],
+      "gaps_s": [
+        4.265,
+        4.385,
+        4.252,
+        4.03,
+        4.097,
+        4.019,
+        4.293,
+        4.279,
+        4.141,
+        4.254,
+        4.107,
+        4.354,
+        4.005,
+        4.485,
+        4.072,
+        4.228,
+        4.226,
+        4.472,
+        4.169,
+        4.26
+      ],
+      "jitter_s": 0.5
+    },
+    "M3_wsl_edits_run2": {
+      "measurement": "host-edit",
+      "root": "/mnt/d/sbw-spike/Spike Vault",
+      "uid": 1000,
+      "gid": 1000,
+      "python": "3.12.3",
+      "t_start": 1791188131.009722,
+      "edits": [
+        {
+          "file": "_m3/wsl-1.md",
+          "t_edit": 1791188114.9849918,
+          "t_after": 1791188114.9895334,
+          "mtime_ns": 1791188113649219100
+        },
+        {
+          "file": "_m3/wsl-2.md",
+          "t_edit": 1791188118.9902806,
+          "t_after": 1791188118.9948108,
+          "mtime_ns": 1791188118050072900
+        },
+        {
+          "file": "_m3/wsl-3.md",
+          "t_edit": 1791188122.9955354,
+          "t_after": 1791188122.9995334,
+          "mtime_ns": 1791188122499702100
+        },
+        {
+          "file": "_m3/wsl-4.md",
+          "t_edit": 1791188127.000323,
+          "t_after": 1791188127.0046785,
+          "mtime_ns": 1791188126949984200
+        },
+        {
+          "file": "_m3/wsl-5.md",
+          "t_edit": 1791188131.0055296,
+          "t_after": 1791188131.0089507,
+          "mtime_ns": 1791188131398629600
+        }
+      ]
+    },
+    "M3_wsl_jitter": {
+      "distribution_s": {
+        "min": 0.016,
+        "median": 0.235,
+        "p95": 0.481,
+        "max": 0.503
+      },
+      "measurement": "latency",
+      "per_edit": [
+        {
+          "file": "_m3/wsl-1.md",
+          "seen": true,
+          "latency_s": 0.109,
+          "lag_vs_mtime_s": -1.064
+        },
+        {
+          "file": "_m3/wsl-2.md",
+          "seen": true,
+          "latency_s": 0.255,
+          "lag_vs_mtime_s": 1.708
+        },
+        {
+          "file": "_m3/wsl-3.md",
+          "seen": true,
+          "latency_s": 0.031,
+          "lag_vs_mtime_s": 1.076
+        },
+        {
+          "file": "_m3/wsl-4.md",
+          "seen": true,
+          "latency_s": 0.027,
+          "lag_vs_mtime_s": 0.636
+        },
+        {
+          "file": "_m3/wsl-5.md",
+          "seen": true,
+          "latency_s": 0.457,
+          "lag_vs_mtime_s": 0.62
+        },
+        {
+          "file": "_m3/wsl-1.md",
+          "seen": true,
+          "latency_s": 0.462,
+          "lag_vs_mtime_s": 0.178
+        },
+        {
+          "file": "_m3/wsl-2.md",
+          "seen": true,
+          "latency_s": 0.194,
+          "lag_vs_mtime_s": -0.544
+        },
+        {
+          "file": "_m3/wsl-3.md",
+          "seen": true,
+          "latency_s": 0.446,
+          "lag_vs_mtime_s": -0.691
+        },
+        {
+          "file": "_m3/wsl-4.md",
+          "seen": true,
+          "latency_s": 0.33,
+          "lag_vs_mtime_s": 1.877
+        },
+        {
+          "file": "_m3/wsl-5.md",
+          "seen": true,
+          "latency_s": 0.101,
+          "lag_vs_mtime_s": 1.282
+        },
+        {
+          "file": "_m3/wsl-1.md",
+          "seen": true,
+          "latency_s": 0.016,
+          "lag_vs_mtime_s": 0.791
+        },
+        {
+          "file": "_m3/wsl-2.md",
+          "seen": true,
+          "latency_s": 0.19,
+          "lag_vs_mtime_s": 0.482
+        },
+        {
+          "file": "_m3/wsl-3.md",
+          "seen": true,
+          "latency_s": 0.212,
+          "lag_vs_mtime_s": 0.058
+        },
+        {
+          "file": "_m3/wsl-4.md",
+          "seen": true,
+          "latency_s": 0.255,
+          "lag_vs_mtime_s": -0.398
+        },
+        {
+          "file": "_m3/wsl-5.md",
+          "seen": true,
+          "latency_s": 0.206,
+          "lag_vs_mtime_s": -0.859
+        },
+        {
+          "file": "_m3/wsl-1.md",
+          "seen": true,
+          "latency_s": 0.503,
+          "lag_vs_mtime_s": 2.066
+        },
+        {
+          "file": "_m3/wsl-2.md",
+          "seen": true,
+          "latency_s": 0.303,
+          "lag_vs_mtime_s": 1.48
+        },
+        {
+          "file": "_m3/wsl-3.md",
+          "seen": true,
+          "latency_s": 0.36,
+          "lag_vs_mtime_s": 1.132
+        },
+        {
+          "file": "_m3/wsl-4.md",
+          "seen": true,
+          "latency_s": 0.216,
+          "lag_vs_mtime_s": 0.523
+        },
+        {
+          "file": "_m3/wsl-5.md",
+          "seen": true,
+          "latency_s": 0.481,
+          "lag_vs_mtime_s": 0.317
+        }
+      ],
+      "seen": 20,
+      "edits": 20,
+      "max_latency_s": 0.503,
+      "all_within_2s": true,
+      "all_within_10s": true,
+      "note": "t_edit is WSL wall clock, t_detect is the watcher's wall clock; offset checked separately"
+    },
+    "M3_wsl_run2": {
+      "measurement": "latency",
+      "per_edit": [
+        {
+          "file": "_m3/wsl-1.md",
+          "seen": true,
+          "latency_s": 0.402,
+          "lag_vs_mtime_s": 1.738
+        },
+        {
+          "file": "_m3/wsl-2.md",
+          "seen": true,
+          "latency_s": 0.436,
+          "lag_vs_mtime_s": 1.376
+        },
+        {
+          "file": "_m3/wsl-3.md",
+          "seen": true,
+          "latency_s": 0.463,
+          "lag_vs_mtime_s": 0.959
+        },
+        {
+          "file": "_m3/wsl-4.md",
+          "seen": true,
+          "latency_s": 0.489,
+          "lag_vs_mtime_s": 0.54
+        },
+        {
+          "file": "_m3/wsl-5.md",
+          "seen": true,
+          "latency_s": 0.012,
+          "lag_vs_mtime_s": -0.381
+        }
+      ],
+      "seen": 5,
+      "edits": 5,
+      "max_latency_s": 0.489,
+      "all_within_2s": true,
+      "all_within_10s": true,
+      "note": "t_edit is WSL wall clock, t_detect is the watcher's wall clock; offset checked separately"
+    },
+    "M3_wsl_watch": {
+      "measurement": "watch",
+      "root": "/vault",
+      "uid": 1000,
+      "gid": 1000,
+      "python": "3.12.14",
+      "t_start": 1791187944.703205,
+      "events": [
+        {
+          "file": "_m3/wsl-1.md",
+          "t_detect": 1791187924.987465,
+          "mtime_ns": 1791187924116745200,
+          "size": 65,
+          "lag_vs_mtime_s": 0.871
+        },
+        {
+          "file": "_m3/wsl-2.md",
+          "t_detect": 1791187929.0169892,
+          "mtime_ns": 1791187928567337500,
+          "size": 65,
+          "lag_vs_mtime_s": 0.45
+        },
+        {
+          "file": "_m3/wsl-3.md",
+          "t_detect": 1791187933.0452807,
+          "mtime_ns": 1791187933017072400,
+          "size": 65,
+          "lag_vs_mtime_s": 0.028
+        },
+        {
+          "file": "_m3/wsl-4.md",
+          "t_detect": 1791187937.073111,
+          "mtime_ns": 1791187937467207800,
+          "size": 65,
+          "lag_vs_mtime_s": -0.394
+        },
+        {
+          "file": "_m3/wsl-5.md",
+          "t_detect": 1791187942.3573973,
+          "mtime_ns": 1791187941871814100,
+          "size": 65,
+          "lag_vs_mtime_s": 0.486
+        }
+      ],
+      "expected": 5,
+      "seen": 5,
+      "timed_out": false,
+      "poll_interval_s": 0.5,
+      "timeout_s": 90.0
+    },
+    "M3_wsl_watch_jitter": {
+      "measurement": "watch",
+      "root": "/vault",
+      "uid": 1000,
+      "gid": 1000,
+      "python": "3.12.14",
+      "t_start": 1791190279.1765385,
+      "events": [
+        {
+          "file": "_m3/wsl-1.md",
+          "t_detect": 1791190188.958797,
+          "mtime_ns": 1791190190023168000,
+          "size": 65,
+          "lag_vs_mtime_s": -1.064
+        },
+        {
+          "file": "_m3/wsl-2.md",
+          "t_detect": 1791190196.5268073,
+          "mtime_ns": 1791190194819074000,
+          "size": 65,
+          "lag_vs_mtime_s": 1.708
+        },
+        {
+          "file": "_m3/wsl-3.md",
+          "t_detect": 1791190200.5587301,
+          "mtime_ns": 1791190199482261000,
+          "size": 65,
+          "lag_vs_mtime_s": 1.076
+        },
+        {
+          "file": "_m3/wsl-4.md",
+          "t_detect": 1791190204.5892124,
+          "mtime_ns": 1791190203953079300,
+          "size": 65,
+          "lag_vs_mtime_s": 0.636
+        },
+        {
+          "file": "_m3/wsl-5.md",
+          "t_detect": 1791190209.1225095,
+          "mtime_ns": 1791190208502182000,
+          "size": 65,
+          "lag_vs_mtime_s": 0.62
+        },
+        {
+          "file": "_m3/wsl-1.md",
+          "t_detect": 1791190213.1507032,
+          "mtime_ns": 1791190212972849500,
+          "size": 94,
+          "lag_vs_mtime_s": 0.178
+        },
+        {
+          "file": "_m3/wsl-2.md",
+          "t_detect": 1791190217.180674,
+          "mtime_ns": 1791190217724448500,
+          "size": 94,
+          "lag_vs_mtime_s": -0.544
+        },
+        {
+          "file": "_m3/wsl-3.md",
+          "t_detect": 1791190221.7153347,
+          "mtime_ns": 1791190222405879300,
+          "size": 94,
+          "lag_vs_mtime_s": -0.691
+        },
+        {
+          "file": "_m3/wsl-4.md",
+          "t_detect": 1791190228.7999642,
+          "mtime_ns": 1791190226923404700,
+          "size": 94,
+          "lag_vs_mtime_s": 1.877
+        },
+        {
+          "file": "_m3/wsl-5.md",
+          "t_detect": 1791190232.828976,
+          "mtime_ns": 1791190231547316000,
+          "size": 95,
+          "lag_vs_mtime_s": 1.282
+        },
+        {
+          "file": "_m3/wsl-1.md",
+          "t_detect": 1791190236.8555026,
+          "mtime_ns": 1791190236064544900,
+          "size": 124,
+          "lag_vs_mtime_s": 0.791
+        },
+        {
+          "file": "_m3/wsl-2.md",
+          "t_detect": 1791190241.3885338,
+          "mtime_ns": 1791190240906589800,
+          "size": 124,
+          "lag_vs_mtime_s": 0.482
+        },
+        {
+          "file": "_m3/wsl-3.md",
+          "t_detect": 1791190245.4196298,
+          "mtime_ns": 1791190245361531700,
+          "size": 124,
+          "lag_vs_mtime_s": 0.058
+        },
+        {
+          "file": "_m3/wsl-4.md",
+          "t_detect": 1791190249.9522622,
+          "mtime_ns": 1791190250349972500,
+          "size": 124,
+          "lag_vs_mtime_s": -0.398
+        },
+        {
+          "file": "_m3/wsl-5.md",
+          "t_detect": 1791190253.9795277,
+          "mtime_ns": 1791190254838385400,
+          "size": 125,
+          "lag_vs_mtime_s": -0.859
+        },
+        {
+          "file": "_m3/wsl-1.md",
+          "t_detect": 1791190261.5505455,
+          "mtime_ns": 1791190259484191000,
+          "size": 154,
+          "lag_vs_mtime_s": 2.066
+        },
+        {
+          "file": "_m3/wsl-2.md",
+          "t_detect": 1791190265.5815785,
+          "mtime_ns": 1791190264101660700,
+          "size": 154,
+          "lag_vs_mtime_s": 1.48
+        },
+        {
+          "file": "_m3/wsl-3.md",
+          "t_detect": 1791190270.115384,
+          "mtime_ns": 1791190268983523000,
+          "size": 154,
+          "lag_vs_mtime_s": 1.132
+        },
+        {
+          "file": "_m3/wsl-4.md",
+          "t_detect": 1791190274.1441424,
+          "mtime_ns": 1791190273621008200,
+          "size": 154,
+          "lag_vs_mtime_s": 0.523
+        },
+        {
+          "file": "_m3/wsl-5.md",
+          "t_detect": 1791190278.6763964,
+          "mtime_ns": 1791190278359672500,
+          "size": 155,
+          "lag_vs_mtime_s": 0.317
+        }
+      ],
+      "expected": 20,
+      "seen": 20,
+      "distinct_files_seen": 5,
+      "distinct_mode": false,
+      "timed_out": false,
+      "poll_interval_s": 0.5,
+      "timeout_s": 130.0
+    },
+    "M3_wsl_watch_run2": {
+      "measurement": "watch",
+      "root": "/vault",
+      "uid": 1000,
+      "gid": 1000,
+      "python": "3.12.14",
+      "t_start": 1791188131.5180457,
+      "events": [
+        {
+          "file": "_m3/wsl-1.md",
+          "t_detect": 1791188115.3873837,
+          "mtime_ns": 1791188113649219100,
+          "size": 65,
+          "lag_vs_mtime_s": 1.738
+        },
+        {
+          "file": "_m3/wsl-2.md",
+          "t_detect": 1791188119.4258456,
+          "mtime_ns": 1791188118050072900,
+          "size": 65,
+          "lag_vs_mtime_s": 1.376
+        },
+        {
+          "file": "_m3/wsl-3.md",
+          "t_detect": 1791188123.458646,
+          "mtime_ns": 1791188122499702100,
+          "size": 65,
+          "lag_vs_mtime_s": 0.959
+        },
+        {
+          "file": "_m3/wsl-4.md",
+          "t_detect": 1791188127.4897487,
+          "mtime_ns": 1791188126949984200,
+          "size": 65,
+          "lag_vs_mtime_s": 0.54
+        },
+        {
+          "file": "_m3/wsl-5.md",
+          "t_detect": 1791188131.017887,
+          "mtime_ns": 1791188131398629600,
+          "size": 65,
+          "lag_vs_mtime_s": -0.381
+        }
+      ],
+      "expected": 5,
+      "seen": 5,
+      "timed_out": false,
+      "poll_interval_s": 0.5,
+      "timeout_s": 90.0
+    },
+    "M4": {
+      "measurement": "mtime",
+      "root": "/vault",
+      "uid": 1000,
+      "gid": 1000,
+      "python": "3.12.14",
+      "t_start": 1791187916.3179312,
+      "write1_ns": 1791187914614599000,
+      "write2_ns": 1791187914672651200,
+      "delta_ns": 58052200,
+      "granularity_ns": 100,
+      "distinct_mtimes_in_40_writes_1ms_apart": 40,
+      "resolution_note": "gcd of 40 mtime_ns values is 100 ns; 50 ms apart writes differ by 58052200 ns"
+    },
+    "M5a": {
+      "measurement": "replace",
+      "root": "/vault",
+      "uid": 1000,
+      "gid": 1000,
+      "python": "3.12.14",
+      "t_start": 1791187916.5977328,
+      "mode": "scratch",
+      "n": 100,
+      "ok": 100,
+      "failures": 0,
+      "failure_detail": [],
+      "leftover_tmp": 0,
+      "per_replace_ms": 6.594,
+      "max_replace_ms": 11.703
+    },
+    "M5c": {
+      "measurement": "M5c",
+      "lock_held": true,
+      "control_append_from_wsl": "./run.sh: line 137: /mnt/d/sbw-spike/Spike Vault/_m5c/target.md: Permission denied",
+      "replace_result": {
+        "measurement": "replace",
+        "root": "/vault",
+        "uid": 1000,
+        "gid": 1000,
+        "python": "3.12.14",
+        "t_start": 1791188057.9912646,
+        "mode": "target",
+        "n": 1,
+        "target": "_m5c/target.md",
+        "t_replace": 1791188058.0050318,
+        "leftover_tmp": 0,
+        "per_replace_ms": null,
+        "ok": 0,
+        "failures": 1,
+        "exception": {
+          "type": "PermissionError",
+          "errno": 13,
+          "strerror": "Permission denied"
+        },
+        "content_correct": false,
+        "content_unchanged": true
+      },
+      "powershell_log": "LOCKED  RELEASED  "
+    },
+    "M7_auto": {
+      "measurement": "M7_auto",
+      "container_create": {
+        "measurement": "create",
+        "root": "/vault",
+        "uid": 1000,
+        "gid": 1000,
+        "python": "3.12.14",
+        "t_start": 1791190424.494427,
+        "path": "_m7/created-in-container.md",
+        "mode": "0o777",
+        "size": 62,
+        "file_uid": 1000,
+        "file_gid": 1000,
+        "dir_mode": "0o777",
+        "dir_uid": 1000,
+        "dir_gid": 1000,
+        "umask": "0o22",
+        "mtime_ns": 1791190422765538800
+      },
+      "wsl_stat_owner_mode_size": "dubu:dubu 777 62",
+      "wsl_printf_append_rc": 0,
+      "git": {
+        "status_filemode_false": " M created-in-container.md|",
+        "status_filemode_true": " M created-in-container.md|"
+      }
+    },
+    "M8": {
+      "measurement": "M8",
+      "forms": [
+        {
+          "form": "unquoted",
+          "config_rc": 0,
+          "resolved_source": "/mnt/d/sbw-spike/Spike Vault",
+          "matches_scratch_folder": true,
+          "probe": {
+            "measurement": "mounts",
+            "root": "/vault",
+            "uid": 1000,
+            "gid": 1000,
+            "python": "3.12.14",
+            "t_start": 1791187813.9983356,
+            "marker_present": true,
+            "md_files": 5000,
+            "top_level": [
+              ".sbw-spike-scratch",
+              "Archive",
+              "Decisions",
+              "Inbox",
+              "Knowledge",
+              "Projects",
+              "Standups"
+            ],
+            "mount": {
+              "device": "D:\\134",
+              "mount_point": "/vault",
+              "fstype": "9p",
+              "options": "rw,noatime,aname=drvfs;path=D:\\;uid=1000;gid=1000;symlinkroot=/mnt/,cache=0x5,access=client,msize=65536,trans=fd,rfd=6,wfd=6"
+            }
+          },
+          "config_error": null
+        },
+        {
+          "form": "double",
+          "config_rc": 0,
+          "resolved_source": "/mnt/d/sbw-spike/Spike Vault",
+          "matches_scratch_folder": true,
+          "probe": {
+            "measurement": "mounts",
+            "root": "/vault",
+            "uid": 1000,
+            "gid": 1000,
+            "python": "3.12.14",
+            "t_start": 1791187815.0439034,
+            "marker_present": true,
+            "md_files": 5000,
+            "top_level": [
+              ".sbw-spike-scratch",
+              "Archive",
+              "Decisions",
+              "Inbox",
+              "Knowledge",
+              "Projects",
+              "Standups"
+            ],
+            "mount": {
+              "device": "D:\\134",
+              "mount_point": "/vault",
+              "fstype": "9p",
+              "options": "rw,noatime,aname=drvfs;path=D:\\;uid=1000;gid=1000;symlinkroot=/mnt/,cache=0x5,access=client,msize=65536,trans=fd,rfd=6,wfd=6"
+            }
+          },
+          "config_error": null
+        },
+        {
+          "form": "single",
+          "config_rc": 0,
+          "resolved_source": "/mnt/d/sbw-spike/Spike Vault",
+          "matches_scratch_folder": true,
+          "probe": {
+            "measurement": "mounts",
+            "root": "/vault",
+            "uid": 1000,
+            "gid": 1000,
+            "python": "3.12.14",
+            "t_start": 1791187816.248585,
+            "marker_present": true,
+            "md_files": 5000,
+            "top_level": [
+              ".sbw-spike-scratch",
+              "Archive",
+              "Decisions",
+              "Inbox",
+              "Knowledge",
+              "Projects",
+              "Standups"
+            ],
+            "mount": {
+              "device": "D:\\134",
+              "mount_point": "/vault",
+              "fstype": "9p",
+              "options": "rw,noatime,aname=drvfs;path=D:\\;uid=1000;gid=1000;symlinkroot=/mnt/,cache=0x5,access=client,msize=65536,trans=fd,rfd=6,wfd=6"
+            }
+          },
+          "config_error": null
+        }
+      ],
+      "working_forms": [
+        "unquoted",
+        "double",
+        "single"
+      ],
+      "pass": true
+    },
+    "M9": {
+      "measurement": "rowrite",
+      "root": "/vault",
+      "uid": 1000,
+      "gid": 1000,
+      "python": "3.12.14",
+      "t_start": 1791187917.5316403,
+      "attempts": [
+        {
+          "op": "create_file",
+          "succeeded": false,
+          "errno": 30,
+          "errno_name": "EROFS"
+        },
+        {
+          "op": "open_existing_for_append",
+          "succeeded": false,
+          "errno": 30,
+          "errno_name": "EROFS"
+        },
+        {
+          "op": "mkdir",
+          "succeeded": false,
+          "errno": 30,
+          "errno_name": "EROFS"
+        }
+      ],
+      "all_erofs": true
+    },
+    "clock": {
+      "measurement": "clock",
+      "container_minus_wsl_s": [
+        0.147,
+        0.107,
+        0.132,
+        0.112,
+        0.133
+      ],
+      "note": "includes half the exec round trip"
+    },
+    "mounts": {
+      "measurement": "mounts",
+      "root": "/vault",
+      "uid": 1000,
+      "gid": 1000,
+      "python": "3.12.14",
+      "t_start": 1791187818.2552896,
+      "marker_present": true,
+      "md_files": 5000,
+      "top_level": [
+        ".sbw-spike-scratch",
+        "Archive",
+        "Decisions",
+        "Inbox",
+        "Knowledge",
+        "Projects",
+        "Standups"
+      ],
+      "mount": {
+        "device": "D:\\134",
+        "mount_point": "/vault",
+        "fstype": "9p",
+        "options": "rw,noatime,aname=drvfs;path=D:\\;uid=1000;gid=1000;symlinkroot=/mnt/,cache=0x5,access=client,msize=65536,trans=fd,rfd=6,wfd=6"
+      }
+    },
+    "skew": {
+      "measurement": "skew",
+      "root": "/mnt/d/sbw-spike/Spike Vault",
+      "uid": 1000,
+      "gid": 1000,
+      "python": "3.12.3",
+      "t_start": 1791190169.351877,
+      "definition": "mtime stamped by Windows minus the WSL clock at the write (positive: Windows ahead)",
+      "samples": 400,
+      "duration_s": 659.7,
+      "interval_s": 1.5,
+      "min_s": -1.7435,
+      "max_s": 1.3213,
+      "mean_s": -0.2943,
+      "drift_s_per_s_overall": -0.0001,
+      "segments": [
+        {
+          "from_s": 0.001,
+          "to_s": 19.501,
+          "samples": 14,
+          "slope_s_per_s": 0.1051,
+          "start_skew_s": -0.8667,
+          "end_skew_s": 1.1597
+        },
+        {
+          "from_s": 24.038,
+          "to_s": 52.54,
+          "samples": 20,
+          "slope_s_per_s": 0.1065,
+          "start_skew_s": -1.7375,
+          "end_skew_s": 1.2168
+        },
+        {
+          "from_s": 57.137,
+          "to_s": 85.638,
+          "samples": 20,
+          "slope_s_per_s": 0.1046,
+          "start_skew_s": -1.7382,
+          "end_skew_s": 1.1567
+        },
+        {
+          "from_s": 90.176,
+          "to_s": 118.678,
+          "samples": 20,
+          "slope_s_per_s": 0.104,
+          "start_skew_s": -1.7318,
+          "end_skew_s": 1.1738
+        },
+        {
+          "from_s": 123.208,
+          "to_s": 151.709,
+          "samples": 20,
+          "slope_s_per_s": 0.1082,
+          "start_skew_s": -1.7221,
+          "end_skew_s": 1.3052
+        },
+        {
+          "from_s": 156.378,
+          "to_s": 184.879,
+          "samples": 20,
+          "slope_s_per_s": 0.1049,
+          "start_skew_s": -1.7435,
+          "end_skew_s": 1.1388
+        },
+        {
+          "from_s": 189.396,
+          "to_s": 217.898,
+          "samples": 20,
+          "slope_s_per_s": 0.1046,
+          "start_skew_s": -1.7336,
+          "end_skew_s": 1.1634
+        },
+        {
+          "from_s": 222.44,
+          "to_s": 250.941,
+          "samples": 20,
+          "slope_s_per_s": 0.1054,
+          "start_skew_s": -1.7294,
+          "end_skew_s": 1.2061
+        },
+        {
+          "from_s": 255.498,
+          "to_s": 284.0,
+          "samples": 20,
+          "slope_s_per_s": 0.1092,
+          "start_skew_s": -1.7239,
+          "end_skew_s": 1.3213
+        },
+        {
+          "from_s": 288.684,
+          "to_s": 317.185,
+          "samples": 20,
+          "slope_s_per_s": 0.1064,
+          "start_skew_s": -1.7402,
+          "end_skew_s": 1.2081
+        },
+        {
+          "from_s": 321.775,
+          "to_s": 350.276,
+          "samples": 20,
+          "slope_s_per_s": 0.1035,
+          "start_skew_s": -1.7359,
+          "end_skew_s": 1.1178
+        },
+        {
+          "from_s": 354.768,
+          "to_s": 383.269,
+          "samples": 20,
+          "slope_s_per_s": 0.1052,
+          "start_skew_s": -1.7281,
+          "end_skew_s": 1.2078
+        },
+        {
+          "from_s": 387.844,
+          "to_s": 416.345,
+          "samples": 20,
+          "slope_s_per_s": 0.1041,
+          "start_skew_s": -1.7347,
+          "end_skew_s": 1.1559
+        },
+        {
+          "from_s": 420.874,
+          "to_s": 449.375,
+          "samples": 20,
+          "slope_s_per_s": 0.105,
+          "start_skew_s": -1.7274,
+          "end_skew_s": 1.2021
+        },
+        {
+          "from_s": 453.93,
+          "to_s": 482.432,
+          "samples": 20,
+          "slope_s_per_s": 0.1047,
+          "start_skew_s": -1.7143,
+          "end_skew_s": 1.1822
+        },
+        {
+          "from_s": 486.983,
+          "to_s": 515.484,
+          "samples": 20,
+          "slope_s_per_s": 0.1055,
+          "start_skew_s": -1.7275,
+          "end_skew_s": 1.2167
+        },
+        {
+          "from_s": 520.063,
+          "to_s": 548.564,
+          "samples": 20,
+          "slope_s_per_s": 0.1037,
+          "start_skew_s": -1.7326,
+          "end_skew_s": 1.1454
+        },
+        {
+          "from_s": 553.079,
+          "to_s": 581.581,
+          "samples": 20,
+          "slope_s_per_s": 0.1044,
+          "start_skew_s": -1.7252,
+          "end_skew_s": 1.1926
+        },
+        {
+          "from_s": 586.124,
+          "to_s": 614.625,
+          "samples": 20,
+          "slope_s_per_s": 0.1049,
+          "start_skew_s": -1.7103,
+          "end_skew_s": 1.1921
+        },
+        {
+          "from_s": 619.182,
+          "to_s": 647.683,
+          "samples": 20,
+          "slope_s_per_s": 0.1049,
+          "start_skew_s": -1.7252,
+          "end_skew_s": 1.2015
+        },
+        {
+          "from_s": 652.228,
+          "to_s": 659.729,
+          "samples": 6,
+          "slope_s_per_s": 0.0934,
+          "start_skew_s": -1.7128,
+          "end_skew_s": -1.0099
+        }
+      ],
+      "steps": [
+        {
+          "at_s": 24.038,
+          "jump_s": -3.055
+        },
+        {
+          "at_s": 57.137,
+          "jump_s": -3.113
+        },
+        {
+          "at_s": 90.176,
+          "jump_s": -3.047
+        },
+        {
+          "at_s": 123.208,
+          "jump_s": -3.054
+        },
+        {
+          "at_s": 156.378,
+          "jump_s": -3.207
+        },
+        {
+          "at_s": 189.396,
+          "jump_s": -3.031
+        },
+        {
+          "at_s": 222.44,
+          "jump_s": -3.051
+        },
+        {
+          "at_s": 255.498,
+          "jump_s": -3.088
+        },
+        {
+          "at_s": 288.684,
+          "jump_s": -3.22
+        },
+        {
+          "at_s": 321.775,
+          "jump_s": -3.102
+        },
+        {
+          "at_s": 354.768,
+          "jump_s": -3.004
+        },
+        {
+          "at_s": 387.844,
+          "jump_s": -3.101
+        },
+        {
+          "at_s": 420.874,
+          "jump_s": -3.042
+        },
+        {
+          "at_s": 453.93,
+          "jump_s": -3.075
+        },
+        {
+          "at_s": 486.983,
+          "jump_s": -3.068
+        },
+        {
+          "at_s": 520.063,
+          "jump_s": -3.107
+        },
+        {
+          "at_s": 553.079,
+          "jump_s": -3.029
+        },
+        {
+          "at_s": 586.124,
+          "jump_s": -3.061
+        },
+        {
+          "at_s": 619.182,
+          "jump_s": -3.075
+        },
+        {
+          "at_s": 652.228,
+          "jump_s": -3.072
+        }
+      ],
+      "series": [
+        [
+          0.001,
+          -0.8667
+        ],
+        [
+          1.501,
+          -0.7178
+        ],
+        [
+          3.001,
+          -0.5657
+        ],
+        [
+          4.501,
+          -0.3987
+        ],
+        [
+          6.001,
+          -0.2326
+        ],
+        [
+          7.501,
+          -0.0662
+        ],
+        [
+          9.001,
+          0.1005
+        ],
+        [
+          10.501,
+          0.2678
+        ],
+        [
+          12.001,
+          0.4206
+        ],
+        [
+          13.501,
+          0.5694
+        ],
+        [
+          15.001,
+          0.7172
+        ],
+        [
+          16.501,
+          0.866
+        ],
+        [
+          18.001,
+          1.0145
+        ],
+        [
+          19.501,
+          1.1597
+        ],
+        [
+          24.038,
+          -1.7375
+        ],
+        [
+          25.539,
+          -1.5985
+        ],
+        [
+          27.039,
+          -1.459
+        ],
+        [
+          28.539,
+          -1.3208
+        ],
+        [
+          30.039,
+          -1.1784
+        ],
+        [
+          31.539,
+          -1.0112
+        ],
+        [
+          33.039,
+          -0.8452
+        ],
+        [
+          34.539,
+          -0.678
+        ],
+        [
+          36.039,
+          -0.512
+        ],
+        [
+          37.539,
+          -0.3446
+        ],
+        [
+          39.039,
+          -0.1782
+        ],
+        [
+          40.539,
+          -0.0116
+        ],
+        [
+          42.039,
+          0.1549
+        ],
+        [
+          43.539,
+          0.3217
+        ],
+        [
+          45.04,
+          0.4888
+        ],
+        [
+          46.539,
+          0.6455
+        ],
+        [
+          48.04,
+          0.7877
+        ],
+        [
+          49.54,
+          0.9317
+        ],
+        [
+          51.04,
+          1.0747
+        ],
+        [
+          52.54,
+          1.2168
+        ],
+        [
+          57.137,
+          -1.7382
+        ],
+        [
+          58.637,
+          -1.6143
+        ],
+        [
+          60.137,
+          -1.4899
+        ],
+        [
+          61.637,
+          -1.3656
+        ],
+        [
+          63.137,
+          -1.2413
+        ],
+        [
+          64.637,
+          -1.1168
+        ],
+        [
+          66.137,
+          -0.9612
+        ],
+        [
+          67.637,
+          -0.7951
+        ],
+        [
+          69.137,
+          -0.6285
+        ],
+        [
+          70.637,
+          -0.4612
+        ],
+        [
+          72.137,
+          -0.2948
+        ],
+        [
+          73.637,
+          -0.128
+        ],
+        [
+          75.138,
+          0.0384
+        ],
+        [
+          76.638,
+          0.2057
+        ],
+        [
+          78.138,
+          0.3721
+        ],
+        [
+          79.639,
+          0.5412
+        ],
+        [
+          81.138,
+          0.7039
+        ],
+        [
+          82.638,
+          0.8553
+        ],
+        [
+          84.138,
+          1.0056
+        ],
+        [
+          85.638,
+          1.1567
+        ],
+        [
+          90.176,
+          -1.7318
+        ],
+        [
+          91.676,
+          -1.5807
+        ],
+        [
+          93.176,
+          -1.4428
+        ],
+        [
+          94.677,
+          -1.3043
+        ],
+        [
+          96.177,
+          -1.1657
+        ],
+        [
+          97.677,
+          -1.0261
+        ],
+        [
+          99.177,
+          -0.8879
+        ],
+        [
+          100.677,
+          -0.7374
+        ],
+        [
+          102.177,
+          -0.5721
+        ],
+        [
+          103.677,
+          -0.4043
+        ],
+        [
+          105.177,
+          -0.2381
+        ],
+        [
+          106.677,
+          -0.0708
+        ],
+        [
+          108.177,
+          0.0952
+        ],
+        [
+          109.677,
+          0.256
+        ],
+        [
+          111.177,
+          0.4161
+        ],
+        [
+          112.677,
+          0.5773
+        ],
+        [
+          114.177,
+          0.7381
+        ],
+        [
+          115.678,
+          0.898
+        ],
+        [
+          117.178,
+          1.0393
+        ],
+        [
+          118.678,
+          1.1738
+        ],
+        [
+          123.208,
+          -1.7221
+        ],
+        [
+          124.708,
+          -1.5889
+        ],
+        [
+          126.208,
+          -1.4551
+        ],
+        [
+          127.708,
+          -1.3108
+        ],
+        [
+          129.208,
+          -1.1487
+        ],
+        [
+          130.708,
+          -0.9875
+        ],
+        [
+          132.208,
+          -0.8252
+        ],
+        [
+          133.708,
+          -0.6652
+        ],
+        [
+          135.208,
+          -0.5021
+        ],
+        [
+          136.708,
+          -0.3353
+        ],
+        [
+          138.208,
+          -0.1685
+        ],
+        [
+          139.708,
+          -0.0023
+        ],
+        [
+          141.208,
+          0.1646
+        ],
+        [
+          142.708,
+          0.3307
+        ],
+        [
+          144.208,
+          0.4961
+        ],
+        [
+          145.709,
+          0.662
+        ],
+        [
+          147.209,
+          0.8263
+        ],
+        [
+          148.709,
+          0.9917
+        ],
+        [
+          150.209,
+          1.156
+        ],
+        [
+          151.709,
+          1.3052
+        ],
+        [
+          156.378,
+          -1.7435
+        ],
+        [
+          157.878,
+          -1.6235
+        ],
+        [
+          159.378,
+          -1.5032
+        ],
+        [
+          160.878,
+          -1.382
+        ],
+        [
+          162.378,
+          -1.2602
+        ],
+        [
+          163.879,
+          -1.093
+        ],
+        [
+          165.379,
+          -0.9266
+        ],
+        [
+          166.879,
+          -0.7601
+        ],
+        [
+          168.379,
+          -0.5936
+        ],
+        [
+          169.879,
+          -0.4268
+        ],
+        [
+          171.379,
+          -0.2601
+        ],
+        [
+          172.879,
+          -0.0933
+        ],
+        [
+          174.379,
+          0.0732
+        ],
+        [
+          175.879,
+          0.2397
+        ],
+        [
+          177.379,
+          0.4064
+        ],
+        [
+          178.879,
+          0.5652
+        ],
+        [
+          180.379,
+          0.7082
+        ],
+        [
+          181.879,
+          0.8527
+        ],
+        [
+          183.379,
+          0.9961
+        ],
+        [
+          184.879,
+          1.1388
+        ],
+        [
+          189.396,
+          -1.7336
+        ],
+        [
+          190.897,
+          -1.6077
+        ],
+        [
+          192.397,
+          -1.4813
+        ],
+        [
+          193.897,
+          -1.3553
+        ],
+        [
+          195.397,
+          -1.2288
+        ],
+        [
+          196.897,
+          -1.1025
+        ],
+        [
+          198.397,
+          -0.949
+        ],
+        [
+          199.897,
+          -0.7818
+        ],
+        [
+          201.397,
+          -0.6149
+        ],
+        [
+          202.897,
+          -0.4482
+        ],
+        [
+          204.397,
+          -0.2815
+        ],
+        [
+          205.897,
+          -0.1156
+        ],
+        [
+          207.397,
+          0.0516
+        ],
+        [
+          208.897,
+          0.2183
+        ],
+        [
+          210.397,
+          0.3841
+        ],
+        [
+          211.898,
+          0.5512
+        ],
+        [
+          213.398,
+          0.7177
+        ],
+        [
+          214.898,
+          0.8666
+        ],
+        [
+          216.398,
+          1.0148
+        ],
+        [
+          217.898,
+          1.1634
+        ],
+        [
+          222.44,
+          -1.7294
+        ],
+        [
+          223.941,
+          -1.5819
+        ],
+        [
+          225.44,
+          -1.4481
+        ],
+        [
+          226.94,
+          -1.3057
+        ],
+        [
+          228.44,
+          -1.1629
+        ],
+        [
+          229.94,
+          -1.0212
+        ],
+        [
+          231.441,
+          -0.8784
+        ],
+        [
+          232.941,
+          -0.7282
+        ],
+        [
+          234.441,
+          -0.5611
+        ],
+        [
+          235.941,
+          -0.3949
+        ],
+        [
+          237.441,
+          -0.2276
+        ],
+        [
+          238.941,
+          -0.0616
+        ],
+        [
+          240.441,
+          0.1053
+        ],
+        [
+          241.941,
+          0.2724
+        ],
+        [
+          243.441,
+          0.4393
+        ],
+        [
+          244.941,
+          0.6052
+        ],
+        [
+          246.441,
+          0.7717
+        ],
+        [
+          247.941,
+          0.9391
+        ],
+        [
+          249.441,
+          1.0793
+        ],
+        [
+          250.941,
+          1.2061
+        ],
+        [
+          255.498,
+          -1.7239
+        ],
+        [
+          256.999,
+          -1.5969
+        ],
+        [
+          258.499,
+          -1.4709
+        ],
+        [
+          259.999,
+          -1.3307
+        ],
+        [
+          261.499,
+          -1.1639
+        ],
+        [
+          262.999,
+          -0.9976
+        ],
+        [
+          264.499,
+          -0.8309
+        ],
+        [
+          265.999,
+          -0.6646
+        ],
+        [
+          267.499,
+          -0.4975
+        ],
+        [
+          268.999,
+          -0.3309
+        ],
+        [
+          270.499,
+          -0.1646
+        ],
+        [
+          271.999,
+          0.0025
+        ],
+        [
+          273.499,
+          0.1691
+        ],
+        [
+          274.999,
+          0.3356
+        ],
+        [
+          276.499,
+          0.5026
+        ],
+        [
+          277.999,
+          0.6692
+        ],
+        [
+          279.499,
+          0.8358
+        ],
+        [
+          280.999,
+          1.0018
+        ],
+        [
+          282.5,
+          1.1687
+        ],
+        [
+          284.0,
+          1.3213
+        ],
+        [
+          288.684,
+          -1.7402
+        ],
+        [
+          290.184,
+          -1.6185
+        ],
+        [
+          291.684,
+          -1.4978
+        ],
+        [
+          293.184,
+          -1.3759
+        ],
+        [
+          294.684,
+          -1.2543
+        ],
+        [
+          296.184,
+          -1.0889
+        ],
+        [
+          297.684,
+          -0.922
+        ],
+        [
+          299.184,
+          -0.7551
+        ],
+        [
+          300.684,
+          -0.589
+        ],
+        [
+          302.184,
+          -0.4222
+        ],
+        [
+          303.684,
+          -0.2557
+        ],
+        [
+          305.184,
+          -0.0893
+        ],
+        [
+          306.684,
+          0.0777
+        ],
+        [
+          308.185,
+          0.2447
+        ],
+        [
+          309.685,
+          0.4113
+        ],
+        [
+          311.185,
+          0.5757
+        ],
+        [
+          312.685,
+          0.7337
+        ],
+        [
+          314.185,
+          0.8915
+        ],
+        [
+          315.685,
+          1.05
+        ],
+        [
+          317.185,
+          1.2081
+        ],
+        [
+          321.775,
+          -1.7359
+        ],
+        [
+          323.275,
+          -1.6164
+        ],
+        [
+          324.775,
+          -1.4973
+        ],
+        [
+          326.275,
+          -1.3766
+        ],
+        [
+          327.775,
+          -1.2576
+        ],
+        [
+          329.275,
+          -1.1383
+        ],
+        [
+          330.775,
+          -0.9891
+        ],
+        [
+          332.275,
+          -0.8221
+        ],
+        [
+          333.776,
+          -0.656
+        ],
+        [
+          335.275,
+          -0.4894
+        ],
+        [
+          336.776,
+          -0.3226
+        ],
+        [
+          338.276,
+          -0.1558
+        ],
+        [
+          339.776,
+          0.0112
+        ],
+        [
+          341.276,
+          0.1774
+        ],
+        [
+          342.776,
+          0.3443
+        ],
+        [
+          344.276,
+          0.5107
+        ],
+        [
+          345.776,
+          0.677
+        ],
+        [
+          347.276,
+          0.8251
+        ],
+        [
+          348.776,
+          0.9712
+        ],
+        [
+          350.276,
+          1.1178
+        ],
+        [
+          354.768,
+          -1.7281
+        ],
+        [
+          356.268,
+          -1.5818
+        ],
+        [
+          357.768,
+          -1.4446
+        ],
+        [
+          359.268,
+          -1.2972
+        ],
+        [
+          360.768,
+          -1.1483
+        ],
+        [
+          362.268,
+          -1.0004
+        ],
+        [
+          363.768,
+          -0.8526
+        ],
+        [
+          365.268,
+          -0.7001
+        ],
+        [
+          366.769,
+          -0.5328
+        ],
+        [
+          368.269,
+          -0.3661
+        ],
+        [
+          369.769,
+          -0.1998
+        ],
+        [
+          371.269,
+          -0.0327
+        ],
+        [
+          372.769,
+          0.1331
+        ],
+        [
+          374.269,
+          0.2934
+        ],
+        [
+          375.769,
+          0.4541
+        ],
+        [
+          377.269,
+          0.614
+        ],
+        [
+          378.769,
+          0.7732
+        ],
+        [
+          380.269,
+          0.9332
+        ],
+        [
+          381.769,
+          1.0766
+        ],
+        [
+          383.269,
+          1.2078
+        ],
+        [
+          387.844,
+          -1.7347
+        ],
+        [
+          389.344,
+          -1.6023
+        ],
+        [
+          390.844,
+          -1.4699
+        ],
+        [
+          392.344,
+          -1.3312
+        ],
+        [
+          393.844,
+          -1.173
+        ],
+        [
+          395.344,
+          -1.0141
+        ],
+        [
+          396.844,
+          -0.8552
+        ],
+        [
+          398.344,
+          -0.6962
+        ],
+        [
+          399.844,
+          -0.5379
+        ],
+        [
+          401.344,
+          -0.3716
+        ],
+        [
+          402.844,
+          -0.2057
+        ],
+        [
+          404.344,
+          -0.0386
+        ],
+        [
+          405.845,
+          0.1273
+        ],
+        [
+          407.345,
+          0.2938
+        ],
+        [
+          408.845,
+          0.4464
+        ],
+        [
+          410.345,
+          0.5878
+        ],
+        [
+          411.845,
+          0.7293
+        ],
+        [
+          413.345,
+          0.8713
+        ],
+        [
+          414.845,
+          1.0135
+        ],
+        [
+          416.345,
+          1.1559
+        ],
+        [
+          420.874,
+          -1.7274
+        ],
+        [
+          422.374,
+          -1.5809
+        ],
+        [
+          423.874,
+          -1.4351
+        ],
+        [
+          425.374,
+          -1.2898
+        ],
+        [
+          426.874,
+          -1.1437
+        ],
+        [
+          428.374,
+          -0.9862
+        ],
+        [
+          429.874,
+          -0.826
+        ],
+        [
+          431.374,
+          -0.6665
+        ],
+        [
+          432.874,
+          -0.5068
+        ],
+        [
+          434.374,
+          -0.3479
+        ],
+        [
+          435.874,
+          -0.1835
+        ],
+        [
+          437.375,
+          -0.0169
+        ],
+        [
+          438.875,
+          0.1494
+        ],
+        [
+          440.375,
+          0.3165
+        ],
+        [
+          441.875,
+          0.483
+        ],
+        [
+          443.375,
+          0.6432
+        ],
+        [
+          444.875,
+          0.7823
+        ],
+        [
+          446.375,
+          0.9226
+        ],
+        [
+          447.875,
+          1.0622
+        ],
+        [
+          449.375,
+          1.2021
+        ],
+        [
+          453.93,
+          -1.7143
+        ],
+        [
+          455.43,
+          -1.583
+        ],
+        [
+          456.931,
+          -1.4534
+        ],
+        [
+          458.431,
+          -1.3236
+        ],
+        [
+          459.931,
+          -1.1937
+        ],
+        [
+          461.431,
+          -1.0641
+        ],
+        [
+          462.931,
+          -0.9135
+        ],
+        [
+          464.431,
+          -0.7476
+        ],
+        [
+          465.931,
+          -0.5808
+        ],
+        [
+          467.431,
+          -0.4141
+        ],
+        [
+          468.931,
+          -0.2477
+        ],
+        [
+          470.431,
+          -0.0804
+        ],
+        [
+          471.931,
+          0.0864
+        ],
+        [
+          473.431,
+          0.253
+        ],
+        [
+          474.931,
+          0.4198
+        ],
+        [
+          476.431,
+          0.5859
+        ],
+        [
+          477.931,
+          0.7525
+        ],
+        [
+          479.432,
+          0.8981
+        ],
+        [
+          480.932,
+          1.0402
+        ],
+        [
+          482.432,
+          1.1822
+        ],
+        [
+          486.983,
+          -1.7275
+        ],
+        [
+          488.483,
+          -1.5851
+        ],
+        [
+          489.983,
+          -1.4432
+        ],
+        [
+          491.483,
+          -1.3007
+        ],
+        [
+          492.983,
+          -1.1578
+        ],
+        [
+          494.483,
+          -1.0152
+        ],
+        [
+          495.983,
+          -0.8725
+        ],
+        [
+          497.483,
+          -0.725
+        ],
+        [
+          498.983,
+          -0.558
+        ],
+        [
+          500.483,
+          -0.3921
+        ],
+        [
+          501.983,
+          -0.2249
+        ],
+        [
+          503.484,
+          -0.0586
+        ],
+        [
+          504.984,
+          0.1086
+        ],
+        [
+          506.484,
+          0.2746
+        ],
+        [
+          507.984,
+          0.4414
+        ],
+        [
+          509.484,
+          0.6084
+        ],
+        [
+          510.984,
+          0.7752
+        ],
+        [
+          512.484,
+          0.9411
+        ],
+        [
+          513.984,
+          1.0883
+        ],
+        [
+          515.484,
+          1.2167
+        ],
+        [
+          520.063,
+          -1.7326
+        ],
+        [
+          521.563,
+          -1.6045
+        ],
+        [
+          523.063,
+          -1.4756
+        ],
+        [
+          524.563,
+          -1.3407
+        ],
+        [
+          526.063,
+          -1.183
+        ],
+        [
+          527.563,
+          -1.026
+        ],
+        [
+          529.063,
+          -0.8671
+        ],
+        [
+          530.563,
+          -0.7095
+        ],
+        [
+          532.063,
+          -0.5514
+        ],
+        [
+          533.563,
+          -0.3871
+        ],
+        [
+          535.063,
+          -0.2211
+        ],
+        [
+          536.563,
+          -0.055
+        ],
+        [
+          538.063,
+          0.1112
+        ],
+        [
+          539.563,
+          0.2766
+        ],
+        [
+          541.064,
+          0.431
+        ],
+        [
+          542.564,
+          0.5734
+        ],
+        [
+          544.064,
+          0.7167
+        ],
+        [
+          545.564,
+          0.8592
+        ],
+        [
+          547.064,
+          1.0025
+        ],
+        [
+          548.564,
+          1.1454
+        ],
+        [
+          553.079,
+          -1.7252
+        ],
+        [
+          554.579,
+          -1.5792
+        ],
+        [
+          556.079,
+          -1.4327
+        ],
+        [
+          557.579,
+          -1.288
+        ],
+        [
+          559.08,
+          -1.1423
+        ],
+        [
+          560.58,
+          -0.9869
+        ],
+        [
+          562.08,
+          -0.8305
+        ],
+        [
+          563.58,
+          -0.6738
+        ],
+        [
+          565.08,
+          -0.5179
+        ],
+        [
+          566.58,
+          -0.3608
+        ],
+        [
+          568.08,
+          -0.1987
+        ],
+        [
+          569.58,
+          -0.0327
+        ],
+        [
+          571.08,
+          0.1337
+        ],
+        [
+          572.58,
+          0.3014
+        ],
+        [
+          574.08,
+          0.4672
+        ],
+        [
+          575.58,
+          0.6297
+        ],
+        [
+          577.08,
+          0.7701
+        ],
+        [
+          578.58,
+          0.9104
+        ],
+        [
+          580.08,
+          1.0517
+        ],
+        [
+          581.581,
+          1.1926
+        ],
+        [
+          586.124,
+          -1.7103
+        ],
+        [
+          587.624,
+          -1.5758
+        ],
+        [
+          589.124,
+          -1.4439
+        ],
+        [
+          590.624,
+          -1.311
+        ],
+        [
+          592.124,
+          -1.1791
+        ],
+        [
+          593.624,
+          -1.046
+        ],
+        [
+          595.124,
+          -0.8962
+        ],
+        [
+          596.624,
+          -0.7304
+        ],
+        [
+          598.124,
+          -0.5628
+        ],
+        [
+          599.624,
+          -0.397
+        ],
+        [
+          601.124,
+          -0.2299
+        ],
+        [
+          602.624,
+          -0.0637
+        ],
+        [
+          604.125,
+          0.1031
+        ],
+        [
+          605.625,
+          0.2704
+        ],
+        [
+          607.125,
+          0.4371
+        ],
+        [
+          608.625,
+          0.6034
+        ],
+        [
+          610.125,
+          0.7703
+        ],
+        [
+          611.625,
+          0.9142
+        ],
+        [
+          613.125,
+          1.0534
+        ],
+        [
+          614.625,
+          1.1921
+        ],
+        [
+          619.182,
+          -1.7252
+        ],
+        [
+          620.682,
+          -1.5857
+        ],
+        [
+          622.182,
+          -1.4462
+        ],
+        [
+          623.683,
+          -1.3062
+        ],
+        [
+          625.182,
+          -1.1674
+        ],
+        [
+          626.682,
+          -1.0272
+        ],
+        [
+          628.182,
+          -0.8876
+        ],
+        [
+          629.683,
+          -0.743
+        ],
+        [
+          631.183,
+          -0.5767
+        ],
+        [
+          632.683,
+          -0.4099
+        ],
+        [
+          634.183,
+          -0.2433
+        ],
+        [
+          635.683,
+          -0.077
+        ],
+        [
+          637.183,
+          0.0901
+        ],
+        [
+          638.683,
+          0.2569
+        ],
+        [
+          640.183,
+          0.4235
+        ],
+        [
+          641.683,
+          0.5899
+        ],
+        [
+          643.183,
+          0.7566
+        ],
+        [
+          644.683,
+          0.9229
+        ],
+        [
+          646.183,
+          1.0727
+        ],
+        [
+          647.683,
+          1.2015
+        ],
+        [
+          652.228,
+          -1.7128
+        ],
+        [
+          653.728,
+          -1.5828
+        ],
+        [
+          655.228,
+          -1.452
+        ],
+        [
+          656.729,
+          -1.3187
+        ],
+        [
+          658.229,
+          -1.1642
+        ],
+        [
+          659.729,
+          -1.0099
+        ]
+      ]
+    }
+  }
+}

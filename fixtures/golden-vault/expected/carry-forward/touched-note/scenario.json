@@ -1,0 +1,17 @@
+{
+  "scenario": "touched-note",
+  "setup": "Copy vault/, then copy input.md to note_path. Run carry-forward with the test clock set.",
+  "date": "2026-10-09",
+  "timezone": "Asia/Manila",
+  "test_clock": {
+    "SECOND_BRAIN_TEST_MODE": "1",
+    "SECOND_BRAIN_TODAY": "2026-10-09",
+    "pins": "the date only (2.12); the time of day comes from the real clock"
+  },
+  "note_path": "01-Daily/2026/2026-10-09.md",
+  "previous_daily_note": "01-Daily/2026/2026-10-07.md",
+  "files": {
+    "input": "input.md"
+  },
+  "comparison": "Byte equality with input.md: a touched note is returned unchanged (2.2). Its body differs from the rendered template by one typed item under Today."
+}

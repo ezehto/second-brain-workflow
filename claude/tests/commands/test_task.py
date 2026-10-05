@@ -1,0 +1,88 @@
+"""/task scenarios (P1-10, P1-11; plan sections 2.1, 2.3, 2.5, 4; SKILL.md dates rule).
+
+Live: one `claude -p` call per test, two for the two-turn `done` tests.
+"""
+
+import re
+from datetime import date
+
+import pytest
+
+pytestmark = pytest.mark.commands
+
+NEW_TASK = "02-Work/Tasks/Replace the harbor lamp lenses.md"
+PAINT = "02-Work/Tasks/Paint the gate.md"  # planned, due 2026-10-20
+WIRE = "02-Work/Tasks/Wire the dock lights.md"  # in-progress
+EVIDENCE = "all six dock lights were tested after dark and work"
+EVIDENCE_FRAGMENT = "tested after dark"  # matched case-insensitively
+RESOLVED_DUE = re.compile(r"2026-10-16|16 October|October 16")
+
+
+def test_task_creates_a_planned_task_with_project_link_and_resolved_due(sb):
+    """`friday` is the next Friday strictly after today; 2026-10-09 is a Friday."""
+    before, baseline = sb.snapshot(), sb.findings()
+
+    session = sb.run("/task", "Replace the harbor lamp lenses project:harbor-lights due:friday priority:high")
+
+    sb.changes(before, session, added=(NEW_TASK,))
+    sb.check_new_note(NEW_TASK, "task", session, status="planned", priority="high",
+                      project="[[Harbor Lights]]", due=date(2026, 10, 16), tags=[])
+    sb.expect(RESOLVED_DUE.search(session.all_text) is not None,
+              "the reply does not report the resolved due date 2026-10-16 (4.1)", session)
+    sb.assert_no_new_findings(baseline, session)
+
+
+def test_task_with_an_unknown_project_writes_nothing_and_lists_known_projects(sb):
+    before = sb.snapshot()
+
+    session = sb.run("/task", "Polish the brass bell project:lighthouse-tour")
+
+    sb.unchanged(before, session)
+    known = ("Harbor Lights", "Quiet Garden", "Lantern Festival")
+    sb.expect(any(name in session.all_text for name in known),
+              f"the reply lists none of the known projects {known}", session)
+
+
+def test_task_status_change_rewrites_only_the_status_line(sb):
+    before = sb.snapshot()
+    original = sb.read(PAINT)
+
+    session = sb.run("/task", "Paint the gate status:in-progress")
+
+    sb.changes(before, session, changed=(PAINT,))
+    expected = original.replace(b"\nstatus: planned\n", b"\nstatus: in-progress\n", 1)
+    sb.expect(sb.read(PAINT) == expected,
+              f"{PAINT} changed beyond its status line:\n{sb.read(PAINT).decode()}", session)
+
+
+def test_task_done_asks_for_evidence_then_records_it_on_yes(sb):
+    before, baseline = sb.snapshot(), sb.findings()
+    original = sb.note(WIRE)
+
+    turn1 = sb.run("/task", "Wire the dock lights status:done")
+    sb.unchanged(before, turn1)  # nothing is written before the answer
+    sb.expect("evidence" in turn1.all_text.lower(), "turn 1 does not ask for evidence (4.1)", turn1)
+
+    turn2 = sb.reply(turn1, f"Yes, mark it done. Evidence: {EVIDENCE}.")
+
+    sb.changes(before, turn2, changed=(WIRE,))
+    note = sb.note(WIRE)
+    sb.expect(note.status == "done", f"status is {note.status!r}, expected 'done'", turn2)
+    sb.expect({k: v for k, v in note.frontmatter.items() if k != "status"}
+              == {k: v for k, v in original.frontmatter.items() if k != "status"},
+              "frontmatter keys other than status changed", turn2)
+    sections = sb.sections(WIRE)
+    sb.expect(any(EVIDENCE_FRAGMENT in line.lower() for line in sections.get("Notes", [])),
+              f"the evidence is not under ## Notes: {sections}", turn2)
+    sb.expect(sections.get("Description") == ["Wire the dock lights."], "## Description changed", turn2)
+    sb.assert_no_new_findings(baseline, turn2)
+
+
+def test_task_done_changes_nothing_on_no(sb):
+    before = sb.snapshot()
+
+    turn1 = sb.run("/task", "Wire the dock lights status:done")
+    sb.unchanged(before, turn1)
+    turn2 = sb.reply(turn1, "No, do not mark it done.")
+
+    sb.unchanged(before, turn2)

@@ -1,0 +1,921 @@
+{
+  "reference_date": "2026-10-09",
+  "timezone": "Asia/Manila",
+  "description": "Expected parse result per indexed vault-relative path, derived by hand from plan sections 2.1, 2.3, 2.8, 2.9 and 2.10; see README.md. links is the 2.8 link set (one entry per distinct target); tags is the 2.10 tag set; both sorted. null means absent or invalid.",
+  "notes": {
+    "00-Inbox/2026-10-06 1402 Plan the lantern rollout before the festival.md": {
+      "type": "capture",
+      "title": "2026-10-06 1402 Plan the lantern rollout before the festival",
+      "status": "triaged",
+      "priority": null,
+      "project": null,
+      "due": null,
+      "created": "2026-10-06",
+      "note_id": "20261006140200",
+      "tags": [],
+      "links": [
+        "plan lantern rollout"
+      ],
+      "parse_error": false
+    },
+    "00-Inbox/2026-10-07 1730 Tides seem higher this week.md": {
+      "type": "capture",
+      "title": "2026-10-07 1730 Tides seem higher this week",
+      "status": "dismissed",
+      "priority": null,
+      "project": null,
+      "due": null,
+      "created": "2026-10-07",
+      "note_id": "20261007173000",
+      "tags": [],
+      "links": [],
+      "parse_error": false
+    },
+    "00-Inbox/2026-10-08 0915 Buy a spare hinge for the gate.md": {
+      "type": "capture",
+      "title": "2026-10-08 0915 Buy a spare hinge for the gate",
+      "status": "inbox",
+      "priority": null,
+      "project": null,
+      "due": null,
+      "created": "2026-10-08",
+      "note_id": "20261008091500",
+      "tags": [],
+      "links": [],
+      "parse_error": false
+    },
+    "00-Inbox/2026-10-08 1240 Maybe the lanterns could change colour at dusk.md": {
+      "type": "capture",
+      "title": "2026-10-08 1240 Maybe the lanterns could change colour at dusk",
+      "status": "inbox",
+      "priority": null,
+      "project": null,
+      "due": null,
+      "created": "2026-10-08",
+      "note_id": "20261008124000",
+      "tags": [],
+      "links": [],
+      "parse_error": false
+    },
+    "00-Inbox/2026-10-08 1605 Why do the garden lights flicker after rain.md": {
+      "type": "capture",
+      "title": "2026-10-08 1605 Why do the garden lights flicker after rain",
+      "status": "inbox",
+      "priority": null,
+      "project": null,
+      "due": null,
+      "created": "2026-10-08",
+      "note_id": "20261008160500",
+      "tags": [],
+      "links": [],
+      "parse_error": false
+    },
+    "00-Inbox/Empty frontmatter block.md": {
+      "type": "note",
+      "title": "Empty frontmatter block",
+      "status": null,
+      "priority": null,
+      "project": null,
+      "due": null,
+      "created": null,
+      "note_id": null,
+      "tags": [],
+      "links": [],
+      "parse_error": false
+    },
+    "00-Inbox/Empty note.md": {
+      "type": "note",
+      "title": "Empty note",
+      "status": null,
+      "priority": null,
+      "project": null,
+      "due": null,
+      "created": null,
+      "note_id": null,
+      "tags": [],
+      "links": [],
+      "parse_error": false
+    },
+    "00-Inbox/Frontmatter that is a list.md": {
+      "type": "note",
+      "title": "Frontmatter that is a list",
+      "status": null,
+      "priority": null,
+      "project": null,
+      "due": null,
+      "created": null,
+      "note_id": null,
+      "tags": [],
+      "links": [],
+      "parse_error": true
+    },
+    "00-Inbox/Frontmatter without type.md": {
+      "type": "note",
+      "title": "Frontmatter without type",
+      "status": null,
+      "priority": null,
+      "project": null,
+      "due": null,
+      "created": "2026-10-03",
+      "note_id": null,
+      "tags": [
+        "garden",
+        "outdoor"
+      ],
+      "links": [],
+      "parse_error": false
+    },
+    "00-Inbox/Loose thoughts without frontmatter.md": {
+      "type": "note",
+      "title": "Loose thoughts without frontmatter",
+      "status": null,
+      "priority": null,
+      "project": null,
+      "due": null,
+      "created": null,
+      "note_id": null,
+      "tags": [
+        "garden/lighting",
+        "idea"
+      ],
+      "links": [
+        "quiet garden"
+      ],
+      "parse_error": false
+    },
+    "00-Inbox/Meeting with unknown type.md": {
+      "type": "meeting",
+      "title": "Meeting with unknown type",
+      "status": "scheduled",
+      "priority": null,
+      "project": null,
+      "due": null,
+      "created": "2026-10-06",
+      "note_id": "20261006100000",
+      "tags": [],
+      "links": [],
+      "parse_error": false
+    },
+    "00-Inbox/Task in the wrong folder.md": {
+      "type": "task",
+      "title": "Task in the wrong folder",
+      "status": "done",
+      "priority": "low",
+      "project": null,
+      "due": null,
+      "created": "2026-10-05",
+      "note_id": "20261005140000",
+      "tags": [],
+      "links": [],
+      "parse_error": false
+    },
+    "00-Inbox/Type that is not a string.md": {
+      "type": "note",
+      "title": "Type that is not a string",
+      "status": null,
+      "priority": null,
+      "project": null,
+      "due": null,
+      "created": "2026-10-06",
+      "note_id": null,
+      "tags": [],
+      "links": [],
+      "parse_error": false
+    },
+    "01-Daily/2026/2026-10-05.md": {
+      "type": "daily",
+      "title": "2026-10-05",
+      "status": null,
+      "priority": null,
+      "project": null,
+      "due": null,
+      "created": "2026-10-05",
+      "note_id": "20261005083000",
+      "tags": [],
+      "links": [
+        "harbor lights",
+        "wire the dock lights"
+      ],
+      "parse_error": false
+    },
+    "01-Daily/2026/2026-10-07.md": {
+      "type": "daily",
+      "title": "2026-10-07",
+      "status": null,
+      "priority": null,
+      "project": null,
+      "due": null,
+      "created": "2026-10-07",
+      "note_id": "20261007084500",
+      "tags": [
+        "hardware",
+        "standup"
+      ],
+      "links": [
+        "fix gate latch",
+        "harbor lights",
+        "moonlight budget",
+        "quiet garden",
+        "release checklist",
+        "test solar panel",
+        "use warm white bulbs",
+        "wire the dock lights"
+      ],
+      "parse_error": false
+    },
+    "02-Work/Projects/Harbor Lights.md": {
+      "type": "project",
+      "title": "Harbor Lights",
+      "status": "active",
+      "priority": null,
+      "project": null,
+      "due": null,
+      "created": "2026-09-15",
+      "note_id": "20260915090000",
+      "tags": [
+        "lighting"
+      ],
+      "links": [],
+      "parse_error": false
+    },
+    "02-Work/Projects/Lantern Festival.md": {
+      "type": "project",
+      "title": "Lantern Festival",
+      "status": "active",
+      "priority": null,
+      "project": null,
+      "due": null,
+      "created": "2026-09-25",
+      "note_id": "20260925090000",
+      "tags": [],
+      "links": [],
+      "parse_error": false
+    },
+    "02-Work/Projects/Night Owl.md": {
+      "type": "project",
+      "title": "Night Owl",
+      "status": "active",
+      "priority": null,
+      "project": null,
+      "due": null,
+      "created": "2026-09-20",
+      "note_id": "20260920100000",
+      "tags": [],
+      "links": [],
+      "parse_error": false
+    },
+    "02-Work/Projects/Night-Owl.md": {
+      "type": "project",
+      "title": "Night-Owl",
+      "status": "archived",
+      "priority": null,
+      "project": null,
+      "due": null,
+      "created": "2026-09-21",
+      "note_id": "20260921100000",
+      "tags": [],
+      "links": [],
+      "parse_error": false
+    },
+    "02-Work/Projects/Quiet Garden.md": {
+      "type": "project",
+      "title": "Quiet Garden",
+      "status": "paused",
+      "priority": null,
+      "project": null,
+      "due": null,
+      "created": "2026-09-16",
+      "note_id": "20260916093000",
+      "tags": [
+        "garden"
+      ],
+      "links": [],
+      "parse_error": false
+    },
+    "02-Work/Tasks/Broken yaml task.md": {
+      "type": "note",
+      "title": "Broken yaml task",
+      "status": null,
+      "priority": null,
+      "project": null,
+      "due": null,
+      "created": null,
+      "note_id": null,
+      "tags": [],
+      "links": [
+        "harbor lights"
+      ],
+      "parse_error": true
+    },
+    "02-Work/Tasks/Calibrate light sensor.md": {
+      "type": "task",
+      "title": "Calibrate light sensor",
+      "status": "in-progress",
+      "priority": "medium",
+      "project": "lighthouse-tour",
+      "due": null,
+      "created": "2026-10-02",
+      "note_id": "20261002093000",
+      "tags": [],
+      "links": [],
+      "parse_error": false
+    },
+    "02-Work/Tasks/Check the ladder rungs.md": {
+      "type": "task",
+      "title": "Check the ladder rungs",
+      "status": "planned",
+      "priority": "medium",
+      "project": null,
+      "due": null,
+      "created": "2026-10-05",
+      "note_id": "20261005081500",
+      "tags": [],
+      "links": [],
+      "parse_error": false
+    },
+    "02-Work/Tasks/Draft onboarding guide.md": {
+      "type": "task",
+      "title": "Draft onboarding guide",
+      "status": "inbox",
+      "priority": "low",
+      "project": "harbor-lights",
+      "due": "2026-10-02",
+      "created": "2026-09-28",
+      "note_id": "20260928090000",
+      "tags": [],
+      "links": [
+        "harbor lights"
+      ],
+      "parse_error": false
+    },
+    "02-Work/Tasks/Duplicate keys task.md": {
+      "type": "note",
+      "title": "Duplicate keys task",
+      "status": null,
+      "priority": null,
+      "project": null,
+      "due": null,
+      "created": null,
+      "note_id": null,
+      "tags": [],
+      "links": [],
+      "parse_error": true
+    },
+    "02-Work/Tasks/Fix gate latch.md": {
+      "type": "task",
+      "title": "Fix gate latch",
+      "status": "blocked",
+      "priority": "high",
+      "project": "quiet-garden",
+      "due": "2026-10-08",
+      "created": "2026-10-03",
+      "note_id": "20261003093000",
+      "tags": [],
+      "links": [
+        "quiet garden"
+      ],
+      "parse_error": false
+    },
+    "02-Work/Tasks/Inspect the pier lamps.md": {
+      "type": "task",
+      "title": "Inspect the pier lamps",
+      "status": "planned",
+      "priority": "medium",
+      "project": null,
+      "due": "2026-10-09",
+      "created": "2026-10-05",
+      "note_id": "20261005084500",
+      "tags": [],
+      "links": [],
+      "parse_error": false
+    },
+    "02-Work/Tasks/Label the storage boxes.md": {
+      "type": "task",
+      "title": "Label the storage boxes",
+      "status": "planned",
+      "priority": "low",
+      "project": null,
+      "due": null,
+      "created": "2026-10-05",
+      "note_id": "20261005080000",
+      "tags": [],
+      "links": [],
+      "parse_error": false
+    },
+    "02-Work/Tasks/Obsidian formatted properties.md": {
+      "type": "task",
+      "title": "Obsidian formatted properties",
+      "status": "planned",
+      "priority": "high",
+      "project": "quiet-garden",
+      "due": "2026-10-25",
+      "created": "2026-10-04",
+      "note_id": "20261004111500",
+      "tags": [
+        "garden",
+        "outdoor"
+      ],
+      "links": [
+        "quiet garden"
+      ],
+      "parse_error": false
+    },
+    "02-Work/Tasks/Order replacement bulbs.md": {
+      "type": "task",
+      "title": "Order replacement bulbs",
+      "status": "planned",
+      "priority": "medium",
+      "project": "night-owl",
+      "due": "2026-10-09",
+      "created": "2026-09-30",
+      "note_id": "20260930090000",
+      "tags": [],
+      "links": [],
+      "parse_error": false
+    },
+    "02-Work/Tasks/Paint the gate.md": {
+      "type": "task",
+      "title": "Paint the gate",
+      "status": "planned",
+      "priority": "low",
+      "project": "quiet-garden",
+      "due": "2026-10-20",
+      "created": "2026-10-01",
+      "note_id": "20261001090000",
+      "tags": [],
+      "links": [
+        "quiet garden"
+      ],
+      "parse_error": false
+    },
+    "02-Work/Tasks/Plan lantern rollout.md": {
+      "type": "task",
+      "title": "Plan lantern rollout",
+      "status": "planned",
+      "priority": "high",
+      "project": "harbor-lights",
+      "due": "2026-10-06",
+      "created": "2026-09-29",
+      "note_id": "20260929090000",
+      "tags": [
+        "lanterns"
+      ],
+      "links": [],
+      "parse_error": false
+    },
+    "02-Work/Tasks/Release checklist.md": {
+      "type": "task",
+      "title": "Release checklist",
+      "status": "in-progress",
+      "priority": "high",
+      "project": "harbor-lights",
+      "due": "2026-10-07",
+      "created": "2026-10-01",
+      "note_id": "20261001094500",
+      "tags": [],
+      "links": [
+        "harbor lights"
+      ],
+      "parse_error": false
+    },
+    "02-Work/Tasks/Replace fence post.md": {
+      "type": "task",
+      "title": "Replace fence post",
+      "status": "blocked",
+      "priority": "medium",
+      "project": null,
+      "due": "2026-10-15",
+      "created": "2026-10-03",
+      "note_id": "20261003094500",
+      "tags": [],
+      "links": [],
+      "parse_error": false
+    },
+    "02-Work/Tasks/Review path layout.md": {
+      "type": "task",
+      "title": "Review path layout",
+      "status": "review",
+      "priority": "medium",
+      "project": "harbor-lights",
+      "due": "2026-10-09",
+      "created": "2026-10-03",
+      "note_id": "20261003090000",
+      "tags": [],
+      "links": [
+        "02-work/projects/harbor lights"
+      ],
+      "parse_error": false
+    },
+    "02-Work/Tasks/Sort the seed packets.md": {
+      "type": "task",
+      "title": "Sort the seed packets",
+      "status": "planned",
+      "priority": "low",
+      "project": "quiet-garden",
+      "due": null,
+      "created": "2026-10-01",
+      "note_id": "20261001093000",
+      "tags": [],
+      "links": [
+        "quiet garden"
+      ],
+      "parse_error": false
+    },
+    "02-Work/Tasks/Survey the old shed.md": {
+      "type": "task",
+      "title": "Survey the old shed",
+      "status": "cancelled",
+      "priority": "low",
+      "project": "quiet-garden",
+      "due": "2026-10-30",
+      "created": "2026-10-04",
+      "note_id": "20261004083000",
+      "tags": [],
+      "links": [
+        "quiet garden"
+      ],
+      "parse_error": false
+    },
+    "02-Work/Tasks/Task with invalid priority.md": {
+      "type": "task",
+      "title": "Task with invalid priority",
+      "status": "done",
+      "priority": "urgent",
+      "project": null,
+      "due": null,
+      "created": "2026-10-05",
+      "note_id": "20261005091500",
+      "tags": [],
+      "links": [],
+      "parse_error": false
+    },
+    "02-Work/Tasks/Task with unknown keys and comments.md": {
+      "type": "task",
+      "title": "Task with unknown keys and comments",
+      "status": "planned",
+      "priority": "low",
+      "project": "quiet-garden",
+      "due": null,
+      "created": "2026-10-03",
+      "note_id": "20261003100000",
+      "tags": [
+        "maintenance"
+      ],
+      "links": [
+        "quiet garden"
+      ],
+      "parse_error": false
+    },
+    "02-Work/Tasks/Task without status.md": {
+      "type": "task",
+      "title": "Task without status",
+      "status": null,
+      "priority": "low",
+      "project": null,
+      "due": null,
+      "created": "2026-10-05",
+      "note_id": "20261005090000",
+      "tags": [],
+      "links": [],
+      "parse_error": false
+    },
+    "02-Work/Tasks/Test solar panel.md": {
+      "type": "task",
+      "title": "Test solar panel",
+      "status": "done",
+      "priority": "medium",
+      "project": "harbor-lights",
+      "due": "2026-10-09",
+      "created": "2026-10-04",
+      "note_id": "20261004080000",
+      "tags": [],
+      "links": [
+        "harbor lights"
+      ],
+      "parse_error": false
+    },
+    "02-Work/Tasks/Tidy the toolshed.md": {
+      "type": "task",
+      "title": "Tidy the toolshed",
+      "status": "someday",
+      "priority": "low",
+      "project": null,
+      "due": "2026-10-03",
+      "created": "2026-10-04",
+      "note_id": "20261004084500",
+      "tags": [],
+      "links": [],
+      "parse_error": false
+    },
+    "02-Work/Tasks/Unterminated frontmatter task.md": {
+      "type": "note",
+      "title": "Unterminated frontmatter task",
+      "status": null,
+      "priority": null,
+      "project": null,
+      "due": null,
+      "created": null,
+      "note_id": null,
+      "tags": [],
+      "links": [],
+      "parse_error": true
+    },
+    "02-Work/Tasks/Wire the dock lights.md": {
+      "type": "task",
+      "title": "Wire the dock lights",
+      "status": "in-progress",
+      "priority": "high",
+      "project": "harbor-lights",
+      "due": "2026-10-12",
+      "created": "2026-10-02",
+      "note_id": "20261002090000",
+      "tags": [
+        "electrical"
+      ],
+      "links": [
+        "harbor lights"
+      ],
+      "parse_error": false
+    },
+    "05-Knowledge/Decisions/Byte order mark decision.md": {
+      "type": "decision",
+      "title": "Byte order mark decision",
+      "status": "proposed",
+      "priority": null,
+      "project": "quiet-garden",
+      "due": null,
+      "created": "2026-10-04",
+      "note_id": "20261004100000",
+      "tags": [],
+      "links": [],
+      "parse_error": false
+    },
+    "05-Knowledge/Decisions/Frontmatter closed with dots.md": {
+      "type": "decision",
+      "title": "Frontmatter closed with dots",
+      "status": "proposed",
+      "priority": null,
+      "project": null,
+      "due": null,
+      "created": "2026-10-05",
+      "note_id": "20261005130000",
+      "tags": [],
+      "links": [],
+      "parse_error": false
+    },
+    "05-Knowledge/Decisions/Lantern Festival.md": {
+      "type": "decision",
+      "title": "Lantern Festival",
+      "status": "proposed",
+      "priority": null,
+      "project": "lantern-festival",
+      "due": null,
+      "created": "2026-09-26",
+      "note_id": "20260926090000",
+      "tags": [],
+      "links": [
+        "02-work/projects/lantern festival"
+      ],
+      "parse_error": false
+    },
+    "05-Knowledge/Decisions/Use warm white bulbs 1.md": {
+      "type": "decision",
+      "title": "Use warm white bulbs 1",
+      "status": "accepted",
+      "priority": null,
+      "project": "harbor-lights",
+      "due": null,
+      "created": "2026-10-03",
+      "note_id": "20261003150000",
+      "tags": [
+        "lighting"
+      ],
+      "links": [
+        "harbor lights"
+      ],
+      "parse_error": false
+    },
+    "05-Knowledge/Decisions/Use warm white bulbs.md": {
+      "type": "decision",
+      "title": "Use warm white bulbs",
+      "status": "accepted",
+      "priority": null,
+      "project": "harbor-lights",
+      "due": null,
+      "created": "2026-10-03",
+      "note_id": "20261003150000",
+      "tags": [
+        "lighting"
+      ],
+      "links": [
+        "harbor lights"
+      ],
+      "parse_error": false
+    },
+    "05-Knowledge/Lessons/Café lights need weatherproof plugs.md": {
+      "type": "lesson",
+      "title": "Café lights need weatherproof plugs",
+      "status": "archived",
+      "priority": null,
+      "project": null,
+      "due": null,
+      "created": "2026-10-05",
+      "note_id": "20261005110000",
+      "tags": [
+        "outdoor"
+      ],
+      "links": [],
+      "parse_error": false
+    },
+    "05-Knowledge/Lessons/Every link form.md": {
+      "type": "lesson",
+      "title": "Every link form",
+      "status": "active",
+      "priority": null,
+      "project": "harbor-lights",
+      "due": null,
+      "created": "2026-10-02",
+      "note_id": "20261002120000",
+      "tags": [
+        "links",
+        "reference"
+      ],
+      "links": [
+        "05-knowledge/lessons/release checklist",
+        "café lights need weatherproof plugs",
+        "calibrate light sensor",
+        "fix gate latch",
+        "garden lamp task",
+        "harbor lights",
+        "moonlight budget",
+        "order replacement bulbs",
+        "paint the gate",
+        "plan lantern rollout",
+        "release checklist",
+        "review path layout",
+        "unresolved from frontmatter",
+        "use warm white bulbs",
+        "wire the dock lights"
+      ],
+      "parse_error": false
+    },
+    "05-Knowledge/Lessons/Fake links and tags in code.md": {
+      "type": "lesson",
+      "title": "Fake links and tags in code",
+      "status": "active",
+      "priority": null,
+      "project": null,
+      "due": null,
+      "created": "2026-10-02",
+      "note_id": "20261002130000",
+      "tags": [
+        "realtag"
+      ],
+      "links": [
+        "harbor lights"
+      ],
+      "parse_error": false
+    },
+    "05-Knowledge/Lessons/Festival lighting lesson.md": {
+      "type": "lesson",
+      "title": "Festival lighting lesson",
+      "status": "active",
+      "priority": null,
+      "project": "lantern-festival",
+      "due": null,
+      "created": "2026-09-27",
+      "note_id": "20260927090000",
+      "tags": [],
+      "links": [
+        "lantern festival"
+      ],
+      "parse_error": false
+    },
+    "05-Knowledge/Lessons/Lamp sizes #2.md": {
+      "type": "lesson",
+      "title": "Lamp sizes #2",
+      "status": "active",
+      "priority": null,
+      "project": null,
+      "due": null,
+      "created": "2026-10-05",
+      "note_id": "20261005180000",
+      "tags": [],
+      "links": [],
+      "parse_error": false
+    },
+    "05-Knowledge/Lessons/Missing id lesson.md": {
+      "type": "lesson",
+      "title": "Missing id lesson",
+      "status": "active",
+      "priority": null,
+      "project": "harbor-lights",
+      "due": null,
+      "created": "2026-10-05",
+      "note_id": null,
+      "tags": [],
+      "links": [
+        "harbor lights"
+      ],
+      "parse_error": false
+    },
+    "05-Knowledge/Lessons/No trailing newline lesson.md": {
+      "type": "lesson",
+      "title": "No trailing newline lesson",
+      "status": "active",
+      "priority": null,
+      "project": null,
+      "due": null,
+      "created": "2026-10-05",
+      "note_id": "20261005160000",
+      "tags": [],
+      "links": [],
+      "parse_error": false
+    },
+    "05-Knowledge/Lessons/Release checklist.md": {
+      "type": "lesson",
+      "title": "Release checklist",
+      "status": "active",
+      "priority": null,
+      "project": "harbor-lights",
+      "due": null,
+      "created": "2026-10-01",
+      "note_id": "20261001100000",
+      "tags": [
+        "release"
+      ],
+      "links": [
+        "harbor lights"
+      ],
+      "parse_error": false
+    },
+    "05-Knowledge/Lessons/Repeated links to one target.md": {
+      "type": "lesson",
+      "title": "Repeated links to one target",
+      "status": "active",
+      "priority": null,
+      "project": null,
+      "due": null,
+      "created": "2026-10-05",
+      "note_id": "20261005150000",
+      "tags": [],
+      "links": [
+        "harbor lights"
+      ],
+      "parse_error": false
+    },
+    "05-Knowledge/Lessons/Tag rules.md": {
+      "type": "lesson",
+      "title": "Tag rules",
+      "status": "active",
+      "priority": null,
+      "project": null,
+      "due": null,
+      "created": "2026-10-05",
+      "note_id": "20261005120000",
+      "tags": [
+        "alpha",
+        "beta",
+        "eng",
+        "eng/backend",
+        "v2",
+        "y1984"
+      ],
+      "links": [
+        "order replacement bulbs",
+        "plan lantern rollout"
+      ],
+      "parse_error": false
+    },
+    "05-Knowledge/Lessons/Trailing blank lines lesson.md": {
+      "type": "lesson",
+      "title": "Trailing blank lines lesson",
+      "status": "active",
+      "priority": null,
+      "project": null,
+      "due": null,
+      "created": "2026-10-05",
+      "note_id": "20261005170000",
+      "tags": [],
+      "links": [],
+      "parse_error": false
+    },
+    "05-Knowledge/Lessons/Windows line endings lesson.md": {
+      "type": "lesson",
+      "title": "Windows line endings lesson",
+      "status": "active",
+      "priority": null,
+      "project": "quiet-garden",
+      "due": null,
+      "created": "2026-10-04",
+      "note_id": "20261004120000",
+      "tags": [
+        "windows"
+      ],
+      "links": [
+        "quiet garden"
+      ],
+      "parse_error": false
+    }
+  }
+}

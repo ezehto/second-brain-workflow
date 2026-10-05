@@ -1,0 +1,70 @@
+{
+  "scenario": "new-note",
+  "setup": "Copy vault/ unchanged. No note exists for the date. Run carry-forward with the test clock set.",
+  "date": "2026-10-09",
+  "timezone": "Asia/Manila",
+  "test_clock": {
+    "SECOND_BRAIN_TEST_MODE": "1",
+    "SECOND_BRAIN_TODAY": "2026-10-09",
+    "pins": "the date only (2.12); the time of day comes from the real clock"
+  },
+  "note_path": "01-Daily/2026/2026-10-09.md",
+  "previous_daily_note": "01-Daily/2026/2026-10-07.md",
+  "expected_sections": {
+    "Done": [],
+    "Today": [
+      "- [ ] [[02-Work/Tasks/Release checklist]]",
+      "- [ ] [[Wire the dock lights]]",
+      "- [ ] [[Calibrate light sensor]]",
+      "- [ ] [[Review path layout]]",
+      "- [ ] [[Plan lantern rollout]]",
+      "- [ ] [[Inspect the pier lamps]]",
+      "- [ ] [[Order replacement bulbs]]",
+      "- [ ] Buy more zip ties",
+      "    - [ ] Get the black ones",
+      "- [ ] Check the [[Harbor Lights]] budget",
+      "- [ ] Ask about [[Moonlight budget]]",
+      "* [ ] Oil the hinges",
+      "- [ ] Charge the drill"
+    ],
+    "Blockers": [
+      "- [[Fix gate latch]] (blocked by: Waiting for hinge delivery)",
+      "- [[Replace fence post]]"
+    ],
+    "Decisions / Updates": [],
+    "Follow-ups": [
+      "- [ ] Email the supplier about lamp sizes",
+      "- [ ] Follow up on [[Fix gate latch]] with the supplier",
+      "- [ ] Charge the drill",
+      "- [ ] Confirm the delivery window for #hardware"
+    ],
+    "Related Tasks / Projects": [
+      "- [[Harbor Lights]]",
+      "- [[Quiet Garden]]"
+    ]
+  },
+  "section_order": {
+    "Done": "Fixed: empty (2.2).",
+    "Today": "Fixed (2.2): task items first (in-progress, review, planned with a valid due on or before today; within each status due ascending, no valid due last, then title, then path), then free-text items in their order in the previous note, de-duplicated within the section keeping the first.",
+    "Blockers": "Fixed (2.2): due ascending, no valid due last, then title, then path.",
+    "Decisions / Updates": "Fixed: empty (2.2).",
+    "Follow-ups": "Fixed (2.2): unchecked items in their order in the previous note, including items that link a task, de-duplicated within the section keeping the first.",
+    "Related Tasks / Projects": "Fixed (2.2): by project title, then path."
+  },
+  "expected_frontmatter": {
+    "type": "daily",
+    "created": "2026-10-09",
+    "tags": [],
+    "id_pattern": "^20261009[0-9]{6}$",
+    "key_order": [
+      "type",
+      "id",
+      "created",
+      "tags"
+    ]
+  },
+  "files": {
+    "expected_body": "expected-body.md"
+  },
+  "comparison": "Byte equality with the id as the only variable: the file equals '---\\ntype: daily\\nid: ' + id + '\\ncreated: 2026-10-09\\ntags: []\\n---\\n' + expected-body.md, where id matches id_pattern (2.12: pinned date, real time of day). The template has no blank line after its frontmatter."
+}
