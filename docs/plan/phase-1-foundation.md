@@ -101,6 +101,9 @@ A work and the spike can run at the same time.
   (section 6): `docker compose --profile test run --rm test ...`. Frontend
   commands: `docker compose run --rm frontend ...`. Gate A commands run in WSL
   with `uv`.
+- Paths are relative to the repository root. `docker compose` runs from
+  `web-app/`, where `docker-compose.yml` lives, so a **Run** line that uses it
+  starts with `cd web-app`.
 - No test ever touches `/mnt/d/Second Brain`, and nothing in this plan reads or
   touches `/mnt/c/Users/User/Documents/Obsidian Vault`.
 
@@ -243,7 +246,7 @@ commands (P1-13) and the API (P1-29) are tested against all three.
   for the note's type.
 - Nothing is deleted: `cancelled`, `archived` and `dismissed` replace deletion.
 
-The vocabulary lives in one place, `backend/vault/conventions.py` (built with
+The vocabulary lives in one place, `web-app/backend/vault/conventions.py` (built with
 the parser in P1-07); the checker, writer, indexer and API import it, and the
 skill's reference restates it for the commands.
 
@@ -304,7 +307,7 @@ name from a title. Daily notes are exempt (always `YYYY-MM-DD.md`).
 9. Captures are named `YYYY-MM-DD HHmm <first 8 words of the text>`.
 
 The character sets in rules 2, 3 and 6 are constants in
-`backend/vault/conventions.py`.
+`web-app/backend/vault/conventions.py`.
 
 Collisions (C22):
 
@@ -456,7 +459,7 @@ duplicate names, and flagging ambiguity is more honest than guessing.
 
 ### 2.10 Parsing details: types, tags and dates
 
-These rules live in `backend/vault/parser.py` (P1-07) and are restated in the
+These rules live in `web-app/backend/vault/parser.py` (P1-07) and are restated in the
 skill's `reference/conventions.md` for the commands.
 
 **`type`**
@@ -631,7 +634,7 @@ commands, the backend and the e2e stack.
   pass. A `SECOND_BRAIN_TODAY` that is not a valid `YYYY-MM-DD` date also stops
   the command.
   The backend logs a warning at startup and reports `test_mode: true` and the
-  pinned date in `/api/index/status/`. `scripts/check_compose.sh` fails if
+  pinned date in `/api/index/status/`. `web-app/scripts/check_compose.sh` fails if
   `.env` or `.env.example` sets either variable; only `.env.e2e` and the test
   harness set them.
 - **Who uses it:** the command harness (P1-10) sets both, with the fixture's
@@ -726,7 +729,7 @@ non-letter characters. Any other token is a template error.
 ### 3.2 Template content
 
 Stored in the vault at `08-System/Templates/<name>.md`, seeded from
-`claude/skills/second-brain/templates/`. Each file is shown exactly. A key with
+`second-brain/templates/`. Each file is shown exactly. A key with
 no value is YAML null; `tags: []` is an empty list.
 
 **`task.md`**
@@ -946,7 +949,7 @@ Settled on 2026-10-05 after the command-test and security reviews.
 ### 4.2 `vault_git.py`: the only way a command runs git
 
 A session never runs `git` directly. The skill ships
-`skills/second-brain/scripts/vault_git.py` (Python standard library only),
+`claude-workflow/skills/second-brain/scripts/vault_git.py` (Python standard library only),
 and `/eod` calls `python3 -I <skill directory>/scripts/vault_git.py <verb>`
 (`-I` is Python's isolated mode: it ignores `PYTHONPATH` and the other
 `PYTHON*` variables and the user site directory, which would otherwise act
@@ -1038,7 +1041,7 @@ Rules the script enforces itself, whatever the caller says:
 All paths are under `/api/`, reached from the browser only through the Vite
 proxy at `http://localhost:5173`. Session authentication with CSRF enforced on
 every unsafe method. "Session" means an authenticated session is required. The
-OpenAPI schema (`backend/openapi.yaml`) is produced in P1-24 and is the
+OpenAPI schema (`web-app/backend/openapi.yaml`) is produced in P1-24 and is the
 contract.
 
 | Method | Path | Purpose | Auth |
@@ -1080,71 +1083,79 @@ separate list endpoint.
 ```text
 second-brain-workflow/
 ├── AGENTS.md  CLAUDE.md  README.md             README written in P1-40
-├── .env.example  .env.e2e.example  .gitignore
-├── docker-compose.yml                          db, backend, indexer, frontend; profiles "test", "e2e"
+├── .gitignore  .gitattributes
 ├── docs/
 │   ├── plan/  specs/
 │   └── spikes/                                 P1-02 and P1-05 results
-├── scripts/
-│   ├── spike/                                  mount spike (P1-02)
-│   ├── check_compose.sh                        P1-16
-│   ├── e2e.sh                                  e2e stack up/down/user (P1-19)
-│   ├── check_csrf_proxy.sh                     P1-31
-│   └── check_readme.sh                         P1-40
-├── fixtures/
-│   └── golden-vault/
-│       ├── README.md                           what each sample note exercises
-│       ├── vault/                              the sample vault (incl. .obsidian/, 08-System/Templates/)
-│       └── expected/
-│           ├── index.json                      expected parse result per note
-│           └── carry-forward/{new-note,untouched-note}/
-├── claude/
-│   ├── pyproject.toml  uv.lock                 test deps for claude/ tooling (pytest, ruamel.yaml)
+├── second-brain/                               vault source: what init installs into a vault
+│   ├── pyproject.toml  uv.lock                 test deps for this component (pytest, ruamel.yaml)
+│   ├── templates/                              the six seed templates (section 3.2)
+│   ├── vault-readme.md                         copied to the vault as README.md
+│   ├── scripts/init_vault.py                   vault init (P1-04)
+│   ├── fixtures/
+│   │   └── golden-vault/
+│   │       ├── README.md                       what each sample note exercises
+│   │       ├── vault/                          the sample vault (incl. .obsidian/, 08-System/Templates/)
+│   │       └── expected/
+│   │           ├── index.json                  expected parse result per note
+│   │           └── carry-forward/{new-note,untouched-note}/
+│   └── tests/                                  templates, init, fixture
+├── claude-workflow/                            installed into ~/.claude; reads nothing from the vault source at run time
+│   ├── pyproject.toml  uv.lock                 test deps for this component (pytest, ruamel.yaml)
 │   ├── install.sh                              install / --uninstall / --target DIR / --dry-run
 │   ├── skills/second-brain/
 │   │   ├── SKILL.md
 │   │   ├── reference/                          conventions, naming, links, carry-forward, triage, templates
-│   │   ├── templates/                          the six seed templates (section 3.2)
-│   │   └── vault-readme.md                     copied to the vault as README.md
+│   │   └── scripts/vault_git.py                the only git surface for commands (section 4.2)
 │   ├── commands/                               capture triage task project daily standup eod decision knowledge (.md)
-│   ├── scripts/init_vault.py                   vault init (P1-04)
-│   └── tests/                                  templates, skill, init, install; commands/ (headless scenarios)
-├── backend/
-│   ├── Dockerfile  pyproject.toml  uv.lock  manage.py
-│   ├── openapi.yaml                            committed contract (P1-24)
-│   ├── config/                                 settings (from env), urls, wsgi
-│   ├── vault/
-│   │   ├── parser.py links.py slug.py conventions.py   pure Python, no Django imports (P1-07)
-│   │   ├── conformance.py                      vault checker CLI over the parser (P1-08)
-│   │   ├── models.py indexer.py queries.py
-│   │   ├── sanitize.py templating.py writer.py carry_forward.py clock.py
-│   │   └── management/commands/                sync_vault, reindex
-│   ├── api/                                    serializers, views, urls, auth, permissions
-│   └── tests/
-└── frontend/
-    ├── Dockerfile  package.json  package-lock.json
-    ├── vite.config.ts  vitest.config.ts  eslint.config.js  tsconfig*.json  components.json
-    ├── src/
-    │   ├── api/                                client, types generated from openapi.yaml
-    │   ├── components/ui/                      shadcn/ui components
-    │   ├── components/                         shared (NoteReader, StatusBadge, QuickActions)
-    │   ├── features/<page>/                    dashboard tasks inbox standups projects knowledge search index-status
-    │   └── routes.tsx  main.tsx
-    ├── e2e/                                    Playwright specs and config
-    └── tests/                                  shared test setup
+│   └── tests/                                  skill, install, vault_git; commands/ (headless scenarios)
+└── web-app/
+    ├── .env.example  .env.e2e.example          .env and .env.e2e (untracked) sit beside them
+    ├── docker-compose.yml                      db, backend, indexer, frontend; profiles "test", "e2e"
+    ├── scripts/
+    │   ├── spike/                              mount spike (P1-02)
+    │   ├── check_compose.sh                    P1-16
+    │   ├── e2e.sh                              e2e stack up/down/user (P1-19)
+    │   ├── tests/test_e2e_guard.sh             P1-19
+    │   ├── check_csrf_proxy.sh                 P1-31
+    │   └── check_readme.sh                     P1-40
+    ├── backend/
+    │   ├── Dockerfile  pyproject.toml  uv.lock  manage.py
+    │   ├── openapi.yaml                        committed contract (P1-24)
+    │   ├── config/                             settings (from env), urls, wsgi
+    │   ├── vault/
+    │   │   ├── parser.py links.py slug.py conventions.py   pure Python, no Django imports (P1-07)
+    │   │   ├── conformance.py                  vault checker CLI over the parser (P1-08)
+    │   │   ├── models.py indexer.py queries.py
+    │   │   ├── sanitize.py templating.py writer.py carry_forward.py clock.py
+    │   │   └── management/commands/            sync_vault, reindex
+    │   ├── api/                                serializers, views, urls, auth, permissions
+    │   └── tests/
+    └── dashboard/                              the frontend (Compose service `frontend`)
+        ├── Dockerfile  package.json  package-lock.json
+        ├── vite.config.ts  vitest.config.ts  eslint.config.js  tsconfig*.json  components.json
+        ├── src/
+        │   ├── api/                            client, types generated from openapi.yaml
+        │   ├── components/ui/                  shadcn/ui components
+        │   ├── components/                     shared (NoteReader, StatusBadge, QuickActions)
+        │   ├── features/<page>/                dashboard tasks inbox standups projects knowledge search index-status
+        │   └── routes.tsx  main.tsx
+        ├── e2e/                                Playwright specs and config
+        └── tests/                              shared test setup
 ```
 
 Compose services. Published ports use `${BACKEND_PORT:-8000}` and
 `${FRONTEND_PORT:-5173}` so the e2e project can run beside the real stack.
+Mount paths are relative to `web-app/docker-compose.yml`.
 
 | Service | Image | Mounts | Ports |
 |---|---|---|---|
 | `db` | `postgres:18` | named volume `pgdata` at `/var/lib/postgresql` (the 18+ layout) | none |
-| `backend` | built from `backend/Dockerfile` (`python:3.12-slim` + uv) | `${VAULT_PATH}:/vault` rw, `./backend:/app` | `127.0.0.1:${BACKEND_PORT}:8000` |
+| `backend` | built from `web-app/backend/Dockerfile` (`python:3.12-slim` + uv) | `${VAULT_PATH}:/vault` rw, `./backend:/app` | `127.0.0.1:${BACKEND_PORT}:8000` |
 | `indexer` | same image, `manage.py sync_vault --watch` | `${VAULT_PATH}:/vault:ro` | none |
-| `frontend` | built from `frontend/Dockerfile` (`node:22-slim`); Vite listens on `0.0.0.0` inside the container | `./frontend:/app`, named volume `node_modules` | `127.0.0.1:${FRONTEND_PORT}:5173` |
-| `test` (profile `test`) | backend image | `./backend:/app`, `./fixtures:/fixtures:ro`; **no vault mount** | none |
-| `e2e` (profile `e2e`) | `mcr.microsoft.com/playwright:v1.63.0-noble` (same version as `@playwright/test`) | `./frontend:/app` | none; `network_mode: "service:frontend"` |
+| `frontend` | built from `web-app/dashboard/Dockerfile` (`node:22-slim`); Vite listens on `0.0.0.0` inside the container | `./dashboard:/app`, named volume `node_modules` | `127.0.0.1:${FRONTEND_PORT}:5173` |
+| `test` (profile `test`) | backend image | `./backend:/app`, `../second-brain/fixtures:/fixtures:ro`; **no vault mount** | none |
+| `e2e` (profile `e2e`) | `mcr.microsoft.com/playwright:v1.63.0-noble` (same version as `@playwright/test`) | `./dashboard:/app` | none; `network_mode: "service:frontend"` |
 
 Per C23, the only host **data** path mounted is the vault; repository source and
 read-only fixtures are mounted for development and tests.
@@ -1161,7 +1172,7 @@ read-only fixtures are mounted for development and tests.
 - Tests create their own Django user with pytest-django fixtures. No test reads
   user credentials from the environment.
 - The real-vault rebuild comparison in P1-41 runs against a copy of the vault
-  made by `scripts/e2e.sh up --vault-copy-of`, in the e2e project, never
+  made by `web-app/scripts/e2e.sh up --vault-copy-of`, in the e2e project, never
   through a writable test container and never against the real project's
   database.
 
@@ -1169,17 +1180,18 @@ read-only fixtures are mounted for development and tests.
 
 (Review S-11.)
 
-- A separate Compose project, `docker compose -p sbw-e2e --env-file .env.e2e`,
+- A separate Compose project, `docker compose -p sbw-e2e --env-file .env.e2e`
+  (run from `web-app/`),
   with its own named volumes, its own database, `FRONTEND_PORT=5174`,
   `BACKEND_PORT=8001`, and `VAULT_PATH` pointing at a fresh copy of the golden
   vault under `/mnt/d/sbw-e2e/`.
-- `scripts/e2e.sh up|user|down` creates the copy, starts the project, and
+- `web-app/scripts/e2e.sh up|user|down` creates the copy, starts the project, and
   creates the e2e user non-interactively with
   `createsuperuser --noinput` and `DJANGO_SUPERUSER_PASSWORD` supplied on that
   one command line. The script refuses to run unless the project name is
   `sbw-e2e`, and refuses if `VAULT_PATH` resolves to `/mnt/d/Second Brain`.
   This non-interactive step never applies to the real stack.
-- `scripts/e2e.sh up --vault-copy-of <path>` is the mode for the final rebuild
+- `web-app/scripts/e2e.sh up --vault-copy-of <path>` is the mode for the final rebuild
   check: it copies `<path>` (which may be the real vault) to a fresh directory
   under `/mnt/d/sbw-e2e/`, excluding `.git/`, and mounts only that copy. The
   source path is read, never mounted; the same `VAULT_PATH` guard applies to
@@ -1226,15 +1238,15 @@ Owner: P1-02. Runs only after P1-01. Uses a scratch folder, never the vault.
 **Setup**
 
 1. Scratch root: `/mnt/d/sbw-spike/Spike Vault` (the space is deliberate).
-2. `scripts/spike/gen_corpus.py` creates 5,000 Markdown files of 1 to 4 KB,
+2. `web-app/scripts/spike/gen_corpus.py` creates 5,000 Markdown files of 1 to 4 KB,
    spread over 20 folders up to 3 levels deep, with frontmatter, including
    names with spaces and non-ASCII characters. Deterministic seed.
-3. `scripts/spike/compose.spike.yml` defines two services from
+3. `web-app/scripts/spike/compose.spike.yml` defines two services from
    `python:3.12-slim`: `probe` (`${SPIKE_PATH}:/vault` read-write, user
    `1000:1000`) and `probe_ro` (`${SPIKE_PATH}:/vault:ro`). `SPIKE_PATH` comes
-   from `scripts/spike/.env`.
-4. `scripts/spike/measure.py` runs inside the container; subcommands below.
-   `scripts/spike/run.sh` runs the automated measurements and writes a JSON
+   from `web-app/scripts/spike/.env`.
+4. `web-app/scripts/spike/measure.py` runs inside the container; subcommands below.
+   `web-app/scripts/spike/run.sh` runs the automated measurements and writes a JSON
    result file. Manual steps are a checklist in the results document.
 
 **Measurements and thresholds**
@@ -1296,11 +1308,11 @@ recorded.
 
 - **Goal:** measure the Windows bind mount against section 8 and record pass or fail.
 - **Step:** 1. **Gate:** between A and B.
-- **Files:** `scripts/spike/{gen_corpus.py,measure.py,run.sh,compose.spike.yml,.env.example}`, `docs/spikes/phase-1-mount-spike.md`.
+- **Files:** `web-app/scripts/spike/{gen_corpus.py,measure.py,run.sh,compose.spike.yml,.env.example}`, `docs/spikes/phase-1-mount-spike.md`.
 - **Depends on:** P1-01.
 - **Agent:** `devops-cloud-engineer` (user performs the Obsidian steps M3, M5b, M6, M7). **Reviewers:** `code-reviewer`.
 - **Tests first:** `measure.py selftest` against a local temp dir (no Docker): each subcommand emits the JSON fields, including ms/file and both projections.
-- **Run:** `python3 scripts/spike/measure.py selftest`; then `scripts/spike/run.sh`.
+- **Run:** `python3 web-app/scripts/spike/measure.py selftest`; then `web-app/scripts/spike/run.sh`.
 - **Acceptance:** results document contains M0 to M12 with values and a verdict
   per row; JSON committed alongside; the orchestrator has marked Gate B open or
   recorded a return to planning.
@@ -1313,12 +1325,12 @@ recorded.
   reference, the vault README, and the skill that holds the rules the commands
   follow (merged per review O-1).
 - **Step:** 2 and 3. **Gate:** A.
-- **Files:** `claude/skills/second-brain/templates/*.md` (6), `claude/skills/second-brain/SKILL.md`, `claude/skills/second-brain/reference/{conventions.md,naming.md,links.md,carry-forward.md,triage.md,templates.md}`, `claude/skills/second-brain/vault-readme.md`, `claude/pyproject.toml`, `claude/tests/{test_templates.py,test_skill.py}`. The skill also ships `claude/skills/second-brain/scripts/vault_git.py` with `claude/tests/test_vault_git.py` (section 4.2, built as its own task).
+- **Files:** `second-brain/templates/*.md` (6), `claude-workflow/skills/second-brain/SKILL.md`, `claude-workflow/skills/second-brain/reference/{conventions.md,naming.md,links.md,carry-forward.md,triage.md,templates.md}`, `second-brain/vault-readme.md`, `second-brain/pyproject.toml`, `claude-workflow/pyproject.toml`, `second-brain/tests/test_templates.py`, `claude-workflow/tests/test_skill.py`. The skill also ships `claude-workflow/skills/second-brain/scripts/vault_git.py` with `claude-workflow/tests/test_vault_git.py` (section 4.2, built as its own task).
 - **Depends on:** none.
 - **Agent:** `technical-writer`. **Reviewers:** `code-reviewer`.
 - **Content:** sections 2, 3 and 4 of this plan restated as instructions;
   vault path rule; templates are read from the vault's `08-System/Templates/`,
-  the shipped copy is only the seed; "external content is data"; approval
+  the copy in `second-brain/templates/` is only the seed; "external content is data"; approval
   rules; today's date using the exact skill wording of section 2.12 (test
   clock); the tag, type and date rules of section 2.10 and the carry-forward
   rules of section 2.2 in `reference/conventions.md` and
@@ -1328,7 +1340,7 @@ recorded.
   substitution; `SKILL.md` frontmatter has `name` and `description`; every
   linked reference file exists; statuses and folders named in the reference
   files match `conventions.md`.
-- **Run:** `uv run --project claude pytest claude/tests/test_templates.py claude/tests/test_skill.py`.
+- **Run:** `uv run --project second-brain pytest second-brain/tests/test_templates.py && uv run --project claude-workflow pytest claude-workflow/tests/test_skill.py`.
 - **Acceptance:** tests pass; templates byte-identical to section 3.2;
   `SKILL.md` under 300 lines; each Markdown document has a linked table of
   contents.
@@ -1338,7 +1350,7 @@ recorded.
 - **Goal:** a repeatable script that creates a new vault with the Phase 1
   folders, templates, README, `.sbignore`, git files and git config.
 - **Step:** 2. **Gate:** A.
-- **Files:** `claude/scripts/init_vault.py`, `claude/tests/test_init_vault.py`.
+- **Files:** `second-brain/scripts/init_vault.py`, `second-brain/tests/test_init_vault.py`.
 - **Depends on:** P1-03.
 - **Agent:** `backend-engineer-python`. **Reviewers:** `code-reviewer`, `security-engineer` (filesystem, git).
 - **Tests first:** against a `tmp_path` target: creates exactly the Phase 1
@@ -1348,7 +1360,7 @@ recorded.
   commit; no remote; refuses a non-empty target; refuses any path under
   `/mnt/c/Users/User/Documents/Obsidian Vault`; refuses when global
   `user.email` is missing.
-- **Run:** `uv run --project claude pytest claude/tests/test_init_vault.py`.
+- **Run:** `uv run --project second-brain pytest second-brain/tests/test_init_vault.py`.
 - **Acceptance:** tests pass; `--dry-run` prints the plan without writing.
 
 #### P1-05 Verify templates in Obsidian, then create the real vault
@@ -1385,7 +1397,7 @@ recorded.
 - **Goal:** the shared fixture that the parser, checker, commands, indexer,
   writer and API are all tested against.
 - **Step:** 3. **Gate:** A.
-- **Files:** `fixtures/golden-vault/{README.md,vault/,expected/index.json,expected/carry-forward/new-note/,expected/carry-forward/untouched-note/,expected/carry-forward/touched-note/}`, `claude/tests/test_fixture.py`.
+- **Files:** `second-brain/fixtures/golden-vault/{README.md,vault/,expected/index.json,expected/carry-forward/new-note/,expected/carry-forward/untouched-note/,expected/carry-forward/touched-note/}`, `second-brain/tests/test_fixture.py`.
 - **Depends on:** P1-03.
 - **Agent:** `qa-test-engineer`. **Reviewers:** `code-reviewer`.
 - **Fixture must contain** (about 40 notes): each of the six types valid; a
@@ -1434,7 +1446,7 @@ recorded.
 - **Tests first:** `test_fixture.py` asserts the fixture's templates are
   byte-identical to the seeds and that every bullet above is present (by a
   manifest in `README.md`).
-- **Run:** `uv run --project claude pytest claude/tests/test_fixture.py`.
+- **Run:** `uv run --project second-brain pytest second-brain/tests/test_fixture.py`.
 - **Acceptance:** tests pass; `README.md` maps every fixture note to the rule it
   exercises.
 
@@ -1444,10 +1456,10 @@ recorded.
   into the fields of `Note`, its links and tags; built and tested in WSL with
   `uv` before the spike (C15).
 - **Step:** 5 (allowed ahead of the spike). **Gate:** A.
-- **Files:** `backend/pyproject.toml` and `backend/uv.lock` (minimal: ruamel.yaml, pytest, ruff; P1-17 extends them), `backend/vault/{__init__.py,parser.py,links.py,slug.py,conventions.py}`, `backend/tests/{test_parser.py,test_links.py,test_slug.py}`.
+- **Files:** `web-app/backend/pyproject.toml` and `web-app/backend/uv.lock` (minimal: ruamel.yaml, pytest, ruff; P1-17 extends them), `web-app/backend/vault/{__init__.py,parser.py,links.py,slug.py,conventions.py}`, `web-app/backend/tests/{test_parser.py,test_links.py,test_slug.py}`.
 - **Depends on:** P1-06.
 - **Agent:** `backend-engineer-python`. **Reviewers:** `code-reviewer`.
-- **Tests first:** parametrised over `fixtures/golden-vault/expected/index.json`:
+- **Tests first:** parametrised over `second-brain/fixtures/golden-vault/expected/index.json`:
   every fixture note parses to its expected fields; malformed cases set
   `parse_error` and never raise; BOM and CRLF handled; links and the
   one-row-per-target link set per section 2.8; types, tags and dates per
@@ -1455,7 +1467,7 @@ recorded.
   folder-qualified, alias, plain slug); `conventions.py` holds types, folders,
   status vocabularies and the sanitising character sets; importing
   `vault.parser` does not import Django.
-- **Run:** `cd backend && uv run pytest tests/test_parser.py tests/test_links.py tests/test_slug.py && uv run ruff check vault tests`.
+- **Run:** `cd web-app/backend && uv run pytest tests/test_parser.py tests/test_links.py tests/test_slug.py && uv run ruff check vault tests`.
 - **Acceptance:** tests and ruff pass in WSL without Docker.
 
 #### P1-08 Vault conformance checker
@@ -1463,7 +1475,7 @@ recorded.
 - **Goal:** a CLI that validates any vault directory against the conventions by
   importing the parser and `conventions.py`, not by re-implementing them.
 - **Step:** 3. **Gate:** A.
-- **Files:** `backend/vault/conformance.py`, `backend/tests/test_conformance.py`.
+- **Files:** `web-app/backend/vault/conformance.py`, `web-app/backend/tests/test_conformance.py`.
 - **Depends on:** P1-07, P1-04.
 - **Agent:** `qa-test-engineer`. **Reviewers:** `code-reviewer`.
 - **Checks:** exactly the failures F1 to F8 and warnings W1 to W6 of section
@@ -1480,7 +1492,7 @@ recorded.
   code 0; a static
   test asserts `conformance.py` defines no YAML parsing or link regex of its own
   (imports only).
-- **Run:** `cd backend && uv run pytest tests/test_conformance.py && uv run python -m vault.conformance ../fixtures/golden-vault/vault`.
+- **Run:** `cd web-app/backend && uv run pytest tests/test_conformance.py && uv run python -m vault.conformance ../../second-brain/fixtures/golden-vault/vault`.
 - **Acceptance:** tests pass; the CLI output on the golden vault matches the
   README's expected codes exactly.
 
@@ -1489,7 +1501,7 @@ recorded.
 - **Goal:** install and uninstall the skill and commands into a Claude Code
   config directory without overwriting files it did not install.
 - **Step:** 3. **Gate:** A.
-- **Files:** `claude/install.sh`, `claude/tests/test_install.py`.
+- **Files:** `claude-workflow/install.sh`, `claude-workflow/tests/test_install.py`.
 - **Depends on:** none (layout fixed in section 6; tests use dummy files).
 - **Agent:** `devops-cloud-engineer`. **Reviewers:** `code-reviewer`, `security-engineer` (writes into `~/.claude`).
 - **Tests first:** with `--target <tmp>`: installs `skills/second-brain/` and
@@ -1497,7 +1509,7 @@ recorded.
   refuses (non-zero, no partial install) when a target file exists that is not
   in the manifest; `--uninstall` removes exactly the manifest's files; never
   touches `CLAUDE.md`, `settings.json` or `docs/`; `--dry-run` writes nothing.
-- **Run:** `uv run --project claude pytest claude/tests/test_install.py`.
+- **Run:** `uv run --project claude-workflow pytest claude-workflow/tests/test_install.py`.
 - **Acceptance:** tests pass; `shellcheck` clean if available, otherwise noted.
 
 #### P1-10 Command scenario tests (written first)
@@ -1505,10 +1517,10 @@ recorded.
 - **Goal:** a headless test harness and failing scenarios for every command, so
   the command tasks are test-driven (C16).
 - **Step:** 3. **Gate:** A.
-- **Files:** `claude/tests/commands/{conftest.py,test_*.py}`.
+- **Files:** `claude-workflow/tests/commands/{conftest.py,test_*.py}`.
 - **Depends on:** P1-06, P1-08, P1-09.
 - **Agent:** `qa-test-engineer`. **Reviewers:** `code-reviewer`.
-- **Harness:** for each test, copy `fixtures/golden-vault/vault` to a temp dir
+- **Harness:** for each test, copy `second-brain/fixtures/golden-vault/vault` to a temp dir
   and `git init` it; install the skill and commands with
   `install.sh --target <tmpcwd>/.claude` (project scope, so `~/.claude` is not
   touched); run `claude -p "<command> <args>" --output-format json` from
@@ -1553,7 +1565,7 @@ recorded.
   reached through a command's arguments and is covered by the writer tests
   (P1-22). The live scenarios are not run until the harness has passed a
   security re-review.
-- **Run:** `uv run --project claude pytest -m commands claude/tests/commands`.
+- **Run:** `uv run --project claude-workflow pytest -m commands claude-workflow/tests/commands`.
 - **Acceptance:** harness runs; every scenario fails for the expected reason
   (command not found).
 
@@ -1562,13 +1574,13 @@ recorded.
 - **Goal:** the five commands that create a note from a template, plus `/task`
   status changes.
 - **Step:** 3. **Gate:** A.
-- **Files:** `claude/commands/{capture,task,project,decision,knowledge}.md`.
+- **Files:** `claude-workflow/commands/{capture,task,project,decision,knowledge}.md`.
 - **Depends on:** P1-03, P1-10.
 - **Agent:** `technical-writer`. **Reviewers:** `code-reviewer`.
 - **Tests first:** the P1-10 scenarios for these five, including the two-turn
   `done` with evidence, a refused `/project` slug clash, and an unknown project
   on `/task`.
-- **Run:** `uv run --project claude pytest -m commands claude/tests/commands -k "capture or task or project or decision or knowledge"`.
+- **Run:** `uv run --project claude-workflow pytest -m commands claude-workflow/tests/commands -k "capture or task or project or decision or knowledge"`.
 - **Acceptance:** scenarios pass on two consecutive runs.
 
 #### P1-12 `/triage`
@@ -1576,7 +1588,7 @@ recorded.
 - **Goal:** classify inbox captures and, after one batch confirmation, convert
   or dismiss them.
 - **Step:** 3. **Gate:** A.
-- **Files:** `claude/commands/triage.md`.
+- **Files:** `claude-workflow/commands/triage.md`.
 - **Depends on:** P1-11.
 - **Agent:** `technical-writer`. **Reviewers:** `code-reviewer`.
 - **Tests first:** two-turn scenario with three fixture captures, per section
@@ -1586,7 +1598,7 @@ recorded.
   question) keeps `status: inbox`, gets its `classification` and no target
   note; "no" in turn 2 creates nothing; "yes" creates targets first, then sets
   `triaged` and `triaged_to`; capture files never moved or deleted.
-- **Run:** `uv run --project claude pytest -m commands claude/tests/commands -k triage`.
+- **Run:** `uv run --project claude-workflow pytest -m commands claude-workflow/tests/commands -k triage`.
 - **Acceptance:** scenarios pass on two consecutive runs.
 
 #### P1-13 `/daily` and `/standup`
@@ -1594,7 +1606,7 @@ recorded.
 - **Goal:** create or fill today's daily note with carry-forward, and produce
   the standup text.
 - **Step:** 3. **Gate:** A.
-- **Files:** `claude/commands/{daily,standup}.md`.
+- **Files:** `claude-workflow/commands/{daily,standup}.md`.
 - **Depends on:** P1-03, P1-10.
 - **Agent:** `technical-writer`. **Reviewers:** `code-reviewer`.
 - **Tests first:** both golden carry-forward scenarios at the pinned date
@@ -1603,7 +1615,7 @@ recorded.
   de-duplication, invalid `due` not carried, checkbox markers); running
   `/daily` twice leaves the note unchanged; a touched note is never modified;
   `/standup` with input fills the right sections and prints all six headings.
-- **Run:** `uv run --project claude pytest -m commands claude/tests/commands -k "daily or standup"`.
+- **Run:** `uv run --project claude-workflow pytest -m commands claude-workflow/tests/commands -k "daily or standup"`.
 - **Acceptance:** scenarios pass on two consecutive runs.
 
 #### P1-14 `/eod`
@@ -1611,13 +1623,13 @@ recorded.
 - **Goal:** close the day: append Done items, offer status changes, commit the
   vault once per day.
 - **Step:** 3. **Gate:** A.
-- **Files:** `claude/commands/eod.md`.
+- **Files:** `claude-workflow/commands/eod.md`.
 - **Depends on:** P1-13.
 - **Agent:** `technical-writer`. **Reviewers:** `code-reviewer`, `security-engineer` (git in the vault, secret scan).
 - **Tests first:** one commit per day with amend on rerun; refuses with a
   remote configured; planted secret stops the commit and names the file;
   two-turn scenario: no status change without "yes".
-- **Run:** `uv run --project claude pytest -m commands claude/tests/commands -k eod`.
+- **Run:** `uv run --project claude-workflow pytest -m commands claude-workflow/tests/commands -k eod`.
 - **Acceptance:** scenarios pass on two consecutive runs.
 
 #### P1-15 Install and smoke-test against the real vault
@@ -1628,9 +1640,9 @@ recorded.
 - **Files:** none in the repo; `~/.claude/skills/second-brain/`, `~/.claude/commands/`.
 - **Depends on:** P1-05, P1-11, P1-12, P1-13, P1-14.
 - **Agent:** user, orchestrator verifies (installing into `~/.claude` needs the user's go-ahead). **Reviewers:** `code-reviewer` on the install log.
-- **Run:** `claude/install.sh --dry-run`, then `claude/install.sh`; in a new
+- **Run:** `claude-workflow/install.sh --dry-run`, then `claude-workflow/install.sh`; in a new
   session run `/capture`, `/daily`, `/task`; then
-  `cd backend && uv run python -m vault.conformance "/mnt/d/Second Brain"`.
+  `cd web-app/backend && uv run python -m vault.conformance "/mnt/d/Second Brain"`.
 - **Acceptance:** the `/` menu shows all nine commands and each runs this
   project's file; the checker passes on the real vault;
   `git -C "/mnt/d/Second Brain" status` shows only the expected new notes.
@@ -1643,10 +1655,10 @@ skeleton tasks add their own Dockerfile and services.
 
 #### P1-16 Compose base, database, environment
 
-- **Goal:** `docker-compose.yml` with the `db` service, `.env.example`, ignore
+- **Goal:** `web-app/docker-compose.yml` with the `db` service, `web-app/.env.example`, ignore
   files and a static Compose check.
 - **Step:** 4. **Gate:** B.
-- **Files:** `docker-compose.yml` (`db` and volumes), `.env.example`, `.gitignore`, `scripts/check_compose.sh`.
+- **Files:** `web-app/docker-compose.yml` (`db` and volumes), `web-app/.env.example`, `.gitignore`, `web-app/scripts/check_compose.sh`.
 - **Depends on:** P1-02.
 - **Agent:** `devops-cloud-engineer`. **Reviewers:** `code-reviewer`, `security-engineer` (ports, secrets).
 - **`.env.example` keys:** `VAULT_PATH`, `TZ=Asia/Manila`, `DJANGO_SECRET_KEY`
@@ -1661,7 +1673,7 @@ skeleton tasks add their own Dockerfile and services.
   `docker-compose.yml`; neither `.env.example` nor `.env` (when present) sets
   `SECOND_BRAIN_TEST_MODE` or `SECOND_BRAIN_TODAY` (section 2.12). The script
   checks whichever services exist, so later tasks re-run it.
-- **Run:** `scripts/check_compose.sh && docker compose up -d db && docker compose ps`.
+- **Run:** `cd web-app && scripts/check_compose.sh && docker compose up -d db && docker compose ps`.
 - **Acceptance:** check passes; `db` healthy; `git grep` finds no real secret.
 
 #### P1-17 Django skeleton, backend image, `backend`/`indexer`/`test` services
@@ -1669,7 +1681,7 @@ skeleton tasks add their own Dockerfile and services.
 - **Goal:** Django project with settings from the environment, apps `vault` and
   `api`, health endpoint, the backend Dockerfile and its three services.
 - **Step:** 4. **Gate:** B.
-- **Files:** `backend/{Dockerfile,.dockerignore,pyproject.toml,uv.lock,manage.py,config/,api/,vault/clock.py,tests/conftest.py,tests/test_settings.py,tests/test_clock.py,tests/test_health.py,tests/test_isolation.py}`, `docker-compose.yml` (adds `backend`, `indexer`, `test`; the `test` service sets the section 2.12 variables).
+- **Files:** `web-app/backend/{Dockerfile,.dockerignore,pyproject.toml,uv.lock,manage.py,config/,api/,vault/clock.py,tests/conftest.py,tests/test_settings.py,tests/test_clock.py,tests/test_health.py,tests/test_isolation.py}`, `web-app/docker-compose.yml` (adds `backend`, `indexer`, `test`; the `test` service sets the section 2.12 variables).
 - **Depends on:** P1-16, P1-07.
 - **Agent:** `backend-engineer-python`. **Reviewers:** `code-reviewer`, `security-engineer` (settings, secrets, mounts).
 - **Tests first:** settings refuse to load when `DJANGO_SECRET_KEY` is missing
@@ -1683,7 +1695,7 @@ skeleton tasks add their own Dockerfile and services.
   test isolation per section 6 (autouse fixture fails if `/vault` exists or is
   touched; vault root is a per-test temp dir); the P1-07 parser tests still
   pass inside the image.
-- **Run:** `docker compose build backend && docker compose --profile test run --rm test pytest && docker compose --profile test run --rm test ruff check . && scripts/check_compose.sh`
+- **Run:** `cd web-app && docker compose build backend && docker compose --profile test run --rm test pytest && docker compose --profile test run --rm test ruff check . && scripts/check_compose.sh`
 - **Acceptance:** image builds; tests, ruff and Compose check pass;
   `docker compose up backend` serves `http://127.0.0.1:8000/api/health/`.
 
@@ -1692,14 +1704,14 @@ skeleton tasks add their own Dockerfile and services.
 - **Goal:** Vite + React + TypeScript + Tailwind + shadcn/ui with ESLint,
   Vitest, the `/api` proxy and polling watch, plus its Dockerfile and service.
 - **Step:** 4. **Gate:** B.
-- **Files:** `frontend/{Dockerfile,.dockerignore,package.json,package-lock.json,vite.config.ts,vitest.config.ts,eslint.config.js,tsconfig*.json,components.json,index.html,src/}`, `docker-compose.yml` (adds `frontend`).
+- **Files:** `web-app/dashboard/{Dockerfile,.dockerignore,package.json,package-lock.json,vite.config.ts,vitest.config.ts,eslint.config.js,tsconfig*.json,components.json,index.html,src/}`, `web-app/docker-compose.yml` (adds `frontend`).
 - **Depends on:** P1-16.
 - **Agent:** `frontend-engineer`. **Reviewers:** `code-reviewer`.
 - **Tests first:** a Vitest smoke test rendering the root component; a config
   test asserting the proxy target is `http://backend:8000` with `changeOrigin`
   false, `server.host` listens on all interfaces inside the container,
   `server.watch.usePolling` is true, and the allowed hosts accept `localhost`.
-- **Run:** `docker compose build frontend && docker compose run --rm frontend npm run lint && docker compose run --rm frontend npm run test -- --run && docker compose run --rm frontend npx tsc --noEmit && scripts/check_compose.sh`
+- **Run:** `cd web-app && docker compose build frontend && docker compose run --rm frontend npm run lint && docker compose run --rm frontend npm run test -- --run && docker compose run --rm frontend npx tsc --noEmit && scripts/check_compose.sh`
 - **Acceptance:** image builds; all pass; `http://localhost:5173` renders; an
   edit to `src/` from Windows hot-reloads within 5 s; idle CPU of the
   `frontend` container recorded (D11).
@@ -1709,7 +1721,7 @@ skeleton tasks add their own Dockerfile and services.
 - **Goal:** start, seed and stop the separate `sbw-e2e` Compose project with
   its own vault copy, database and user (section 6).
 - **Step:** 4. **Gate:** B.
-- **Files:** `scripts/e2e.sh`, `.env.e2e.example`, `scripts/tests/test_e2e_guard.sh`.
+- **Files:** `web-app/scripts/e2e.sh`, `web-app/.env.e2e.example`, `web-app/scripts/tests/test_e2e_guard.sh`.
 - **Depends on:** P1-17, P1-18.
 - **Agent:** `devops-cloud-engineer`. **Reviewers:** `code-reviewer`, `security-engineer` (credential handling, vault guard).
 - **Tests first:** guard test: the script exits non-zero when the project name
@@ -1725,7 +1737,7 @@ skeleton tasks add their own Dockerfile and services.
   `user` runs `createsuperuser --noinput` with
   `DJANGO_SUPERUSER_PASSWORD` only on that command line and only in the e2e
   project; `down -v` removes only `sbw-e2e` volumes.
-- **Run:** `scripts/tests/test_e2e_guard.sh && scripts/e2e.sh up && scripts/e2e.sh user && curl -fsS http://127.0.0.1:8001/api/health/ && scripts/e2e.sh down`
+- **Run:** `cd web-app && scripts/tests/test_e2e_guard.sh && scripts/e2e.sh up && scripts/e2e.sh user && curl -fsS http://127.0.0.1:8001/api/health/ && scripts/e2e.sh down`
 - **Acceptance:** all pass; `docker volume ls` after `down` shows the real
   stack's volumes untouched.
 
@@ -1738,7 +1750,7 @@ The parser part of step 5 is P1-07 (Gate A).
 - **Goal:** `Note`, `Link`, `Tag` per design section F, with the stored
   `simple` search vector and trigram index.
 - **Step:** 5. **Gate:** B.
-- **Files:** `backend/vault/models.py`, `backend/vault/migrations/`, `backend/tests/test_models.py`.
+- **Files:** `web-app/backend/vault/models.py`, `web-app/backend/vault/migrations/`, `web-app/backend/tests/test_models.py`.
 - **Depends on:** P1-17.
 - **Agent:** `backend-engineer-python`. **Reviewers:** `code-reviewer`.
 - **Tests first (review S-9):** the **first** test applies the migrations to an
@@ -1750,7 +1762,7 @@ The parser part of step 5 is P1-07 (Gate A).
   indexed, not unique; `pg_trgm` enabled; a query for a ticket key like
   `LOADUP-123` and for a path fragment finds the note; deleting a `Note`
   cascades its `Link` rows and tag joins.
-- **Run:** `docker compose --profile test run --rm test pytest tests/test_models.py && docker compose --profile test run --rm test python manage.py makemigrations --check --dry-run`
+- **Run:** `cd web-app && docker compose --profile test run --rm test pytest tests/test_models.py && docker compose --profile test run --rm test python manage.py makemigrations --check --dry-run`
 - **Acceptance:** tests pass; no pending migrations.
 
 ### Step 6: Indexer
@@ -1760,7 +1772,7 @@ The parser part of step 5 is P1-07 (Gate A).
 - **Goal:** incremental sync (add, edit, rename, delete), full rebuild, the
   rebuild-invariant test and the poll loop (merged per review O-1).
 - **Step:** 6. **Gate:** B.
-- **Files:** `backend/vault/indexer.py`, `backend/vault/management/commands/{sync_vault.py,reindex.py}`, `backend/tests/{test_indexer.py,test_rebuild_invariant.py,test_watch.py}`, `docker-compose.yml` (indexer command).
+- **Files:** `web-app/backend/vault/indexer.py`, `web-app/backend/vault/management/commands/{sync_vault.py,reindex.py}`, `web-app/backend/tests/{test_indexer.py,test_rebuild_invariant.py,test_watch.py}`, `web-app/docker-compose.yml` (indexer command).
 - **Depends on:** P1-07, P1-20, P1-19.
 - **Agent:** `backend-engineer-python`. **Reviewers:** `code-reviewer`.
 - **Tests first:** on a temp copy of the golden vault: first sync indexes
@@ -1775,13 +1787,13 @@ The parser part of step 5 is P1-07 (Gate A).
   dump of all index rows (excluding primary keys) equals the dump after
   `reindex`; the watch loop runs N passes with an injected clock, survives a
   pass error, warns on over-budget passes and stops on SIGTERM.
-- **Run:** `docker compose --profile test run --rm test pytest tests/test_indexer.py tests/test_rebuild_invariant.py tests/test_watch.py`
+- **Run:** `cd web-app && docker compose --profile test run --rm test pytest tests/test_indexer.py tests/test_rebuild_invariant.py tests/test_watch.py`
 - **Acceptance:** tests pass; `sync_vault` prints the one-line JSON summary;
-  in the `sbw-e2e` project (`scripts/e2e.sh up`, then
+  in the `sbw-e2e` project (`web-app/scripts/e2e.sh up`, then
   `docker compose -p sbw-e2e --env-file .env.e2e up -d indexer`), an edit made
   in Obsidian to the e2e vault copy is indexed within two poll intervals,
   checked with `docker compose -p sbw-e2e --env-file .env.e2e exec backend python manage.py sync_vault`
-  output; the real project's database is never used. Then `scripts/e2e.sh down`.
+  output; the real project's database is never used. Then `web-app/scripts/e2e.sh down`.
 
 ### Step 7: Vault writer
 
@@ -1789,7 +1801,7 @@ The parser part of step 5 is P1-07 (Gate A).
 
 - **Goal:** the only app code path that writes vault files, for creating notes.
 - **Step:** 7. **Gate:** B.
-- **Files:** `backend/vault/{writer.py,sanitize.py,templating.py}`, `backend/tests/{test_writer_create.py,test_sanitize.py,test_templating.py}`.
+- **Files:** `web-app/backend/vault/{writer.py,sanitize.py,templating.py}`, `web-app/backend/tests/{test_writer_create.py,test_sanitize.py,test_templating.py}`.
 - **Depends on:** P1-17, P1-07.
 - **Agent:** `backend-engineer-python`. **Reviewers:** `code-reviewer`, `security-engineer`.
 - **Tests first:** placeholder subset of section 3.1 (and rejection of other
@@ -1804,7 +1816,7 @@ The parser part of step 5 is P1-07 (Gate A).
   temp file removed on failure; a crash between temp write and rename leaves
   the target untouched; created files are LF, UTF-8, owner as the spike
   recorded; templates read from `<vault>/08-System/Templates/`.
-- **Run:** `docker compose --profile test run --rm test pytest tests/test_writer_create.py tests/test_sanitize.py tests/test_templating.py`
+- **Run:** `cd web-app && docker compose --profile test run --rm test pytest tests/test_writer_create.py tests/test_sanitize.py tests/test_templating.py`
 - **Acceptance:** tests pass; `python -m vault.conformance` passes on a vault
   copy after creates.
 
@@ -1813,7 +1825,7 @@ The parser part of step 5 is P1-07 (Gate A).
 - **Goal:** round-trip frontmatter edits, section appends and the untouched
   daily-note fill, all with the on-disk hash check.
 - **Step:** 7. **Gate:** B.
-- **Files:** `backend/vault/writer.py`, `backend/tests/test_writer_edit.py`.
+- **Files:** `web-app/backend/vault/writer.py`, `web-app/backend/tests/test_writer_edit.py`.
 - **Depends on:** P1-22.
 - **Agent:** `backend-engineer-python`. **Reviewers:** `code-reviewer`, `security-engineer`.
 - **Tests first:** setting `status` preserves unknown keys, key order,
@@ -1830,7 +1842,7 @@ The parser part of step 5 is P1-07 (Gate A).
   rendered from that template counts as untouched, a note rendered from the
   original template counts as touched, and the fill inserts carry-forward items
   correctly; `done` with evidence appends under `## Notes`.
-- **Run:** `docker compose --profile test run --rm test pytest tests/test_writer_edit.py`
+- **Run:** `cd web-app && docker compose --profile test run --rm test pytest tests/test_writer_edit.py`
 - **Acceptance:** tests pass.
 
 ### Step 8: API
@@ -1840,7 +1852,7 @@ The parser part of step 5 is P1-07 (Gate A).
 - **Goal:** the committed OpenAPI schema for every endpoint in section 5, with
   serializers and routing; unimplemented views return `501`.
 - **Step:** 8. **Gate:** B.
-- **Files:** `backend/api/{urls.py,serializers.py,views/}`, `backend/openapi.yaml`, `backend/tests/test_schema.py`.
+- **Files:** `web-app/backend/api/{urls.py,serializers.py,views/}`, `web-app/backend/openapi.yaml`, `web-app/backend/tests/test_schema.py`.
 - **Depends on:** P1-20.
 - **Agent:** `backend-engineer-python`. **Reviewers:** `code-reviewer`, `security-engineer` (auth surface).
 - **Tests first:** the committed `openapi.yaml` equals freshly generated
@@ -1848,7 +1860,7 @@ The parser part of step 5 is P1-07 (Gate A).
   health, csrf and login declares session auth. Views are split into one module
   per area (`notes`, `captures`, `standups`, `projects`, `dashboard`, `search`,
   `index`, `auth`) so later tasks do not edit the same file.
-- **Run:** `docker compose --profile test run --rm test python manage.py spectacular --file /tmp/openapi.yaml --validate --fail-on-warn && docker compose --profile test run --rm test pytest tests/test_schema.py`
+- **Run:** `cd web-app && docker compose --profile test run --rm test python manage.py spectacular --file /tmp/openapi.yaml --validate --fail-on-warn && docker compose --profile test run --rm test pytest tests/test_schema.py`
 - **Acceptance:** both pass with no warnings.
 
 #### P1-25 Authentication
@@ -1856,7 +1868,7 @@ The parser part of step 5 is P1-07 (Gate A).
 - **Goal:** single-user session login with CSRF enforced (C10); the user is
   created by hand (C18).
 - **Step:** 8. **Gate:** B.
-- **Files:** `backend/api/views/auth.py`, `backend/config/settings.py`, `backend/tests/test_auth.py`.
+- **Files:** `web-app/backend/api/views/auth.py`, `web-app/backend/config/settings.py`, `web-app/backend/tests/test_auth.py`.
 - **Depends on:** P1-24.
 - **Agent:** `backend-engineer-python`. **Reviewers:** `code-reviewer`, `security-engineer`.
 - **Tests first** (users created by pytest-django fixtures): login sets an
@@ -1866,7 +1878,7 @@ The parser part of step 5 is P1-07 (Gate A).
   throttled; every session-auth endpoint returns 401/403 when anonymous
   (parametrised over the schema's paths); logout clears the session; no code
   path creates a user from environment variables.
-- **Run:** `docker compose --profile test run --rm test pytest tests/test_auth.py`
+- **Run:** `cd web-app && docker compose --profile test run --rm test pytest tests/test_auth.py`
 - **Acceptance:** tests pass; backend entrypoint runs `migrate` and nothing
   that creates users.
 
@@ -1874,7 +1886,7 @@ The parser part of step 5 is P1-07 (Gate A).
 
 - **Goal:** the read side the pages use.
 - **Step:** 8. **Gate:** B.
-- **Files:** `backend/api/views/{notes.py,projects.py,dashboard.py}`, `backend/vault/queries.py`, `backend/tests/{test_api_notes.py,test_api_projects.py,test_api_dashboard.py}`.
+- **Files:** `web-app/backend/api/views/{notes.py,projects.py,dashboard.py}`, `web-app/backend/vault/queries.py`, `web-app/backend/tests/{test_api_notes.py,test_api_projects.py,test_api_dashboard.py}`.
 - **Depends on:** P1-25, P1-21.
 - **Agent:** `backend-engineer-python`. **Reviewers:** `code-reviewer`.
 - **Tests first:** against the indexed golden vault: each filter and ordering,
@@ -1886,14 +1898,14 @@ The parser part of step 5 is P1-07 (Gate A).
   sorted with "no due" (section 2.10);
   `today` and `overdue` frozen at 15:59 and 16:01 UTC (either side of Manila
   midnight, review O-8); bounded query count (no N+1).
-- **Run:** `docker compose --profile test run --rm test pytest tests/test_api_notes.py tests/test_api_projects.py tests/test_api_dashboard.py`
+- **Run:** `cd web-app && docker compose --profile test run --rm test pytest tests/test_api_notes.py tests/test_api_projects.py tests/test_api_dashboard.py`
 - **Acceptance:** tests pass; responses match `openapi.yaml`.
 
 #### P1-27 Search, index status, index refresh
 
 - **Goal:** full-text search and the endpoints behind the Index Status page.
 - **Step:** 8. **Gate:** B.
-- **Files:** `backend/api/views/{search.py,index.py}`, `backend/tests/{test_api_search.py,test_api_index.py}`.
+- **Files:** `web-app/backend/api/views/{search.py,index.py}`, `web-app/backend/tests/{test_api_search.py,test_api_index.py}`.
 - **Depends on:** P1-25, P1-21.
 - **Agent:** `backend-engineer-python`. **Reviewers:** `code-reviewer`.
 - **Tests first:** ticket keys, identifiers and path fragments found (no
@@ -1903,7 +1915,7 @@ The parser part of step 5 is P1-07 (Gate A).
   unknown statuses, invalid dates); `test_mode` and the pinned date appear only
   when both section 2.12 variables are set; refresh picks up a file changed on
   disk and returns the pass summary.
-- **Run:** `docker compose --profile test run --rm test pytest tests/test_api_search.py tests/test_api_index.py`
+- **Run:** `cd web-app && docker compose --profile test run --rm test pytest tests/test_api_search.py tests/test_api_index.py`
 - **Acceptance:** tests pass.
 
 #### P1-28 Write endpoints: create, capture, status, triage
@@ -1911,7 +1923,7 @@ The parser part of step 5 is P1-07 (Gate A).
 - **Goal:** the API write actions (C17), each through the writer, then
   re-indexing the one file.
 - **Step:** 8. **Gate:** B.
-- **Files:** `backend/api/views/{notes.py,captures.py}`, `backend/api/serializers.py`, `backend/tests/test_api_writes.py`.
+- **Files:** `web-app/backend/api/views/{notes.py,captures.py}`, `web-app/backend/api/serializers.py`, `web-app/backend/tests/test_api_writes.py`.
 - **Depends on:** P1-25, P1-23, P1-21.
 - **Agent:** `backend-engineer-python`. **Reviewers:** `code-reviewer`, `security-engineer`.
 - **Tests first:** create per type returns the indexed note and the file
@@ -1928,7 +1940,7 @@ The parser part of step 5 is P1-07 (Gate A).
   rejected with 400 and no file is read or written; triage never deletes or moves the
   capture; a failed file write indexes nothing; the request body cannot carry a
   path for create.
-- **Run:** `docker compose --profile test run --rm test pytest tests/test_api_writes.py`
+- **Run:** `cd web-app && docker compose --profile test run --rm test pytest tests/test_api_writes.py`
 - **Acceptance:** tests pass; `python -m vault.conformance` passes on the vault
   copy after the run.
 
@@ -1937,7 +1949,7 @@ The parser part of step 5 is P1-07 (Gate A).
 - **Goal:** create or fill today's daily note with section 2.2 carry-forward,
   read it, and append to it.
 - **Step:** 8. **Gate:** B.
-- **Files:** `backend/vault/carry_forward.py`, `backend/api/views/standups.py`, `backend/tests/{test_carry_forward.py,test_api_standups.py}`.
+- **Files:** `web-app/backend/vault/carry_forward.py`, `web-app/backend/api/views/standups.py`, `web-app/backend/tests/{test_carry_forward.py,test_api_standups.py}`.
 - **Depends on:** P1-28.
 - **Agent:** `backend-engineer-python`. **Reviewers:** `code-reviewer`.
 - **Tests first:** both golden scenarios produce exactly the expected note
@@ -1948,7 +1960,7 @@ The parser part of step 5 is P1-07 (Gate A).
   during fill yields 409 and no partial write; GET 404 preview equals what POST
   would write; append uses section 2.4 and the hash check; "today" is the
   Manila date at 15:59 and 16:01 UTC.
-- **Run:** `docker compose --profile test run --rm test pytest tests/test_carry_forward.py tests/test_api_standups.py`
+- **Run:** `cd web-app && docker compose --profile test run --rm test pytest tests/test_carry_forward.py tests/test_api_standups.py`
 - **Acceptance:** tests pass.
 
 #### P1-30 API-level rebuild invariant and permission matrix
@@ -1956,7 +1968,7 @@ The parser part of step 5 is P1-07 (Gate A).
 - **Goal:** prove at the API level that dropping the index loses nothing, and
   that no endpoint is reachable without a session.
 - **Step:** 8. **Gate:** B.
-- **Files:** `backend/tests/{test_api_rebuild_invariant.py,test_api_permissions.py}`.
+- **Files:** `web-app/backend/tests/{test_api_rebuild_invariant.py,test_api_permissions.py}`.
 - **Depends on:** P1-26, P1-27, P1-29.
 - **Agent:** `qa-test-engineer`. **Reviewers:** `code-reviewer`.
 - **Tests first:** a scripted sequence of API writes and disk edits; capture
@@ -1965,7 +1977,7 @@ The parser part of step 5 is P1-07 (Gate A).
   compare excluding timing fields; the test user can still log in after
   `reindex`. Every path in `openapi.yaml` is exercised anonymous, with a
   session but no CSRF token, and with a valid session.
-- **Run:** `docker compose --profile test run --rm test pytest tests/test_api_rebuild_invariant.py tests/test_api_permissions.py`
+- **Run:** `cd web-app && docker compose --profile test run --rm test pytest tests/test_api_rebuild_invariant.py tests/test_api_permissions.py`
 - **Acceptance:** tests pass; the full backend suite
   `docker compose --profile test run --rm test pytest` passes.
 
@@ -1981,10 +1993,10 @@ endpoint task. Page order follows the master plan, with Index Status last.
   handling, and an automated proof that CSRF works through the Vite proxy
   (review S-15).
 - **Step:** 9. **Gate:** B.
-- **Files:** `frontend/src/{main.tsx,routes.tsx,api/,components/AppShell.tsx,features/auth/}`, `scripts/check_csrf_proxy.sh`.
+- **Files:** `web-app/dashboard/src/{main.tsx,routes.tsx,api/,components/AppShell.tsx,features/auth/}`, `web-app/scripts/check_csrf_proxy.sh`.
 - **Depends on:** P1-18, P1-19, P1-24, P1-25.
 - **Agent:** `frontend-engineer`. **Reviewers:** `code-reviewer`, `security-engineer` (auth, CSRF in the client).
-- **Tests first:** types generated from `backend/openapi.yaml` compile; the
+- **Tests first:** types generated from `web-app/backend/openapi.yaml` compile; the
   client sends `X-CSRFToken` from the cookie on unsafe methods and never
   otherwise; 401/403 redirects to login and back; navigation shows exactly
   Dashboard, Tasks, Projects, Standups, Inbox, Knowledge, Decisions, Search,
@@ -1992,7 +2004,7 @@ endpoint task. Page order follows the master plan, with Index Status last.
   the e2e stack's frontend port with curl: login with the CSRF token succeeds;
   login without it returns 403; login with the token but `Origin:
   http://evil.example` returns 403.
-- **Run:** `docker compose run --rm frontend npm run test -- --run src/api src/features/auth src/components && docker compose run --rm frontend npm run lint && scripts/e2e.sh up && scripts/e2e.sh user && scripts/check_csrf_proxy.sh && scripts/e2e.sh down`
+- **Run:** `cd web-app && docker compose run --rm frontend npm run test -- --run src/api src/features/auth src/components && docker compose run --rm frontend npm run lint && scripts/e2e.sh up && scripts/e2e.sh user && scripts/check_csrf_proxy.sh && scripts/e2e.sh down`
 - **Acceptance:** all pass; the user logs in to the real stack (after
   `createsuperuser`) through `http://localhost:5173`.
 
@@ -2001,7 +2013,7 @@ endpoint task. Page order follows the master plan, with Index Status last.
 - **Goal:** one note detail view used by every page: metadata, rendered body,
   links, backlinks, parse errors.
 - **Step:** 9. **Gate:** B.
-- **Files:** `frontend/src/components/NoteReader.tsx`, `frontend/src/features/note/`.
+- **Files:** `web-app/dashboard/src/components/NoteReader.tsx`, `web-app/dashboard/src/features/note/`.
 - **Depends on:** P1-31, P1-26.
 - **Agent:** `frontend-engineer`. **Reviewers:** `code-reviewer`, `security-engineer` (rendering vault content).
 - **Tests first:** Markdown renders without raw HTML (`<script>` and an
@@ -2009,7 +2021,7 @@ endpoint task. Page order follows the master plan, with Index Status last.
   API's `links` map with no client-side normalisation, marked when ambiguous or
   unresolved; external links get `rel="noopener noreferrer"`; parse errors are
   shown.
-- **Run:** `docker compose run --rm frontend npm run test -- --run src/components/NoteReader src/features/note`
+- **Run:** `cd web-app && docker compose run --rm frontend npm run test -- --run src/components/NoteReader src/features/note`
 - **Acceptance:** tests pass; golden-vault notes render in the running app.
 
 #### P1-33 Dashboard page
@@ -2017,41 +2029,41 @@ endpoint task. Page order follows the master plan, with Index Status last.
 - **Goal:** design E's dashboard, the five quick actions and the small index
   status summary linking to the Index Status page.
 - **Step:** 9. **Gate:** B.
-- **Files:** `frontend/src/features/dashboard/`, `frontend/src/components/QuickActions.tsx`.
+- **Files:** `web-app/dashboard/src/features/dashboard/`, `web-app/dashboard/src/components/QuickActions.tsx`.
 - **Depends on:** P1-32, P1-28, P1-29.
 - **Agent:** `frontend-engineer`. **Reviewers:** `code-reviewer`.
 - **Tests first:** each section renders from a fixture response, empty states,
   `N/A`; each quick action calls the right endpoint and shows 409/422 errors;
   the index summary shows last pass time and problem count and links to
   `/index-status`.
-- **Run:** `docker compose run --rm frontend npm run test -- --run src/features/dashboard src/components/QuickActions`
+- **Run:** `cd web-app && docker compose run --rm frontend npm run test -- --run src/features/dashboard src/components/QuickActions`
 - **Acceptance:** tests pass; manual check against the running stack recorded.
 
 #### P1-34 Tasks page
 
 - **Goal:** task list and status board with filters, create and status change.
 - **Step:** 9. **Gate:** B.
-- **Files:** `frontend/src/features/tasks/`.
+- **Files:** `web-app/dashboard/src/features/tasks/`.
 - **Depends on:** P1-32, P1-28.
 - **Agent:** `frontend-engineer`. **Reviewers:** `code-reviewer`.
 - **Tests first:** filters map to query parameters; board columns are the seven
   task statuses; moving to `done` asks for confirmation and optional evidence;
   a 409 shows "changed in Obsidian, reload" and refetches.
-- **Run:** `docker compose run --rm frontend npm run test -- --run src/features/tasks`
+- **Run:** `cd web-app && docker compose run --rm frontend npm run test -- --run src/features/tasks`
 - **Acceptance:** tests pass; manual check recorded.
 
 #### P1-35 Inbox page
 
 - **Goal:** captures awaiting triage, quick capture and triage actions.
 - **Step:** 9. **Gate:** B.
-- **Files:** `frontend/src/features/inbox/`.
+- **Files:** `web-app/dashboard/src/features/inbox/`.
 - **Depends on:** P1-32, P1-28.
 - **Agent:** `frontend-engineer`. **Reviewers:** `code-reviewer`.
 - **Tests first:** lists only `status: inbox` captures; capture form posts and
   the item appears; triage dialog offers the nine classifications and six
   actions and sends `expected_hash`; a partial-failure response offers "retry"
   that sends `existing_target`.
-- **Run:** `docker compose run --rm frontend npm run test -- --run src/features/inbox`
+- **Run:** `cd web-app && docker compose run --rm frontend npm run test -- --run src/features/inbox`
 - **Acceptance:** tests pass; manual check recorded.
 
 #### P1-36 Standups page
@@ -2059,20 +2071,20 @@ endpoint task. Page order follows the master plan, with Index Status last.
 - **Goal:** daily notes by date; start or fill today's standup with
   carry-forward; append to a section.
 - **Step:** 9. **Gate:** B.
-- **Files:** `frontend/src/features/standups/`.
+- **Files:** `web-app/dashboard/src/features/standups/`.
 - **Depends on:** P1-32, P1-29.
 - **Agent:** `frontend-engineer`. **Reviewers:** `code-reviewer`.
 - **Tests first:** list newest first; "Start standup" shows the preview then
   creates; an untouched note offers "Fill with carry-forward"; a touched note
   is shown as-is; the append form targets one of the six sections.
-- **Run:** `docker compose run --rm frontend npm run test -- --run src/features/standups`
+- **Run:** `cd web-app && docker compose run --rm frontend npm run test -- --run src/features/standups`
 - **Acceptance:** tests pass; manual check recorded.
 
 #### P1-37 Projects, Knowledge, Decisions and Search pages
 
 - **Goal:** the four browse-and-read pages (merged per review O-1).
 - **Step:** 9. **Gate:** B.
-- **Files:** `frontend/src/features/{projects,knowledge,search}/`.
+- **Files:** `web-app/dashboard/src/features/{projects,knowledge,search}/`.
 - **Depends on:** P1-32, P1-27.
 - **Agent:** `frontend-engineer`. **Reviewers:** `code-reviewer`.
 - **Tests first:** Projects lists status and open-task count, detail sections
@@ -2080,7 +2092,7 @@ endpoint task. Page order follows the master plan, with Index Status last.
   Decisions lists `type=decision` with status filter; Search is debounced and
   URL-synced, each result shows type, title, snippet and source; empty and
   error states for all four.
-- **Run:** `docker compose run --rm frontend npm run test -- --run src/features/projects src/features/knowledge src/features/search`
+- **Run:** `cd web-app && docker compose run --rm frontend npm run test -- --run src/features/projects src/features/knowledge src/features/search`
 - **Acceptance:** tests pass; manual check recorded.
 
 #### P1-38 Index Status page
@@ -2089,7 +2101,7 @@ endpoint task. Page order follows the master plan, with Index Status last.
   errors, missing ids, duplicate ids, ambiguous links, and the "Refresh index"
   action.
 - **Step:** 9. **Gate:** B.
-- **Files:** `frontend/src/features/index-status/`.
+- **Files:** `web-app/dashboard/src/features/index-status/`.
 - **Depends on:** P1-32, P1-27.
 - **Agent:** `frontend-engineer`. **Reviewers:** `code-reviewer`.
 - **Tests first:** each category renders with its count and a list of affected
@@ -2098,7 +2110,7 @@ endpoint task. Page order follows the master plan, with Index Status last.
   it calls `POST /api/index/refresh/` once, disables the button while running,
   shows the returned pass summary, refetches the status, and shows an error
   state on failure.
-- **Run:** `docker compose run --rm frontend npm run test -- --run src/features/index-status`
+- **Run:** `cd web-app && docker compose run --rm frontend npm run test -- --run src/features/index-status`
 - **Acceptance:** tests pass; manual check: a note broken on disk appears after
   Refresh.
 
@@ -2110,16 +2122,16 @@ endpoint task. Page order follows the master plan, with Index Status last.
   and move it to done; start a standup with carry-forward (including the
   untouched-note fill); search; plus an Index Status refresh.
 - **Step:** 10. **Gate:** B.
-- **Files:** `frontend/e2e/{playwright.config.ts,auth.setup.ts,*.spec.ts}`, `docker-compose.yml` (`e2e` profile).
+- **Files:** `web-app/dashboard/e2e/{playwright.config.ts,auth.setup.ts,*.spec.ts}`, `web-app/docker-compose.yml` (`e2e` profile).
 - **Depends on:** P1-30, P1-33, P1-34, P1-35, P1-36, P1-37, P1-38.
 - **Agent:** `qa-test-engineer`. **Reviewers:** `code-reviewer`.
-- **Setup:** runs only in the `sbw-e2e` project (`scripts/e2e.sh up` and
+- **Setup:** runs only in the `sbw-e2e` project (`web-app/scripts/e2e.sh up` and
   `user`); a setup project logs in once and saves `storageState`; the config
   refuses to start if `VAULT_PATH` is the real vault.
 - **Tests first:** the five flows, each also asserting the resulting file on
   disk; one flow where the note is edited on disk between load and save and
   the UI shows the conflict.
-- **Run:** `scripts/e2e.sh up && scripts/e2e.sh user && docker compose -p sbw-e2e --env-file .env.e2e --profile e2e run --rm e2e npx playwright test && scripts/e2e.sh down`
+- **Run:** `cd web-app && scripts/e2e.sh up && scripts/e2e.sh user && docker compose -p sbw-e2e --env-file .env.e2e --profile e2e run --rm e2e npx playwright test && scripts/e2e.sh down`
 - **Acceptance:** all pass on two consecutive runs.
 
 #### P1-40 README and run instructions
@@ -2127,7 +2139,7 @@ endpoint task. Page order follows the master plan, with Index Status last.
 - **Goal:** a README that gets the user from clone to a running stack and
   explains recovery.
 - **Step:** 10. **Gate:** B.
-- **Files:** `README.md`, `scripts/check_readme.sh`.
+- **Files:** `README.md`, `web-app/scripts/check_readme.sh`.
 - **Depends on:** P1-39, P1-15.
 - **Agent:** `technical-writer`. **Reviewers:** `code-reviewer`.
 - **Content:** prerequisites (Docker WSL integration); `.env` from
@@ -2142,7 +2154,7 @@ endpoint task. Page order follows the master plan, with Index Status last.
 - **Tests first:** `check_readme.sh` extracts every fenced shell block marked
   `# verify` and runs it in a scratch checkout; only blocks that do not need
   Docker carry the marker (review O-2).
-- **Run:** `scripts/check_readme.sh`
+- **Run:** `web-app/scripts/check_readme.sh`
 - **Acceptance:** script passes; linked table of contents; every
   `.env.example` key documented.
 
@@ -2158,14 +2170,16 @@ endpoint task. Page order follows the master plan, with Index Status last.
 - **Agent:** user, with `technical-writer` drafting the review from the user's
   notes and the Index Status page. **Reviewers:** `code-reviewer` on the
   document; the user approves the phase.
-- **Run:** full suites: `docker compose --profile test run --rm test pytest`,
-  `docker compose run --rm frontend npm run test -- --run`,
-  `uv run --project claude pytest`, `uv run --project claude pytest -m commands claude/tests/commands`.
+- **Run:** full suites: in `web-app/`, `docker compose --profile test run --rm test pytest`
+  and `docker compose run --rm frontend npm run test -- --run`; from the root,
+  `uv run --project second-brain pytest second-brain/tests`,
+  `uv run --project claude-workflow pytest claude-workflow/tests`,
+  `uv run --project claude-workflow pytest -m commands claude-workflow/tests/commands`.
   Real-vault rebuild check without touching the real stack:
-  `scripts/e2e.sh up --vault-copy-of "/mnt/d/Second Brain"` and
-  `scripts/e2e.sh user`, capture the API read responses from the `sbw-e2e`
+  `web-app/scripts/e2e.sh up --vault-copy-of "/mnt/d/Second Brain"` and
+  `web-app/scripts/e2e.sh user`, capture the API read responses from the `sbw-e2e`
   project, run `reindex` there, capture again and compare with the P1-30
-  comparator, then `scripts/e2e.sh down`.
+  comparator, then `web-app/scripts/e2e.sh down`.
 - **Acceptance:** all suites pass; the rebuild comparison is identical; the
   review lists what was used, what was not, scan timings from the indexer
   logs, and follow-ups for Phase 2.
@@ -2264,7 +2278,7 @@ another to avoid editing the same file.
 | A7 | P1-12, P1-14 | |
 | A8 | P1-15 | |
 | B1 | P1-16 | |
-| B2 | P1-17, P1-18 | Both add services to `docker-compose.yml`: merge one after the other. |
+| B2 | P1-17, P1-18 | Both add services to `web-app/docker-compose.yml`: merge one after the other. |
 | B3 | P1-19, P1-20, P1-22 | |
 | B4 | P1-21, P1-23, P1-24 | |
 | B5 | P1-25 | |
@@ -2297,7 +2311,7 @@ Docker.
 |---|---|---|
 | Command tests are non-deterministic and cost tokens | Flaky acceptance for P1-11 to P1-14 | Structural assertions; "passes on two consecutive runs"; opt-in marker (C16); the same rules are covered deterministically by the parser, writer and carry-forward tests on the same fixture. |
 | Commands are prompts, not code | `/daily` may apply carry-forward slightly differently from the API | One written algorithm (section 2.2) in the skill; both golden scenarios used by both; the conformance checker runs on every command result. |
-| Parser built before the Django project exists | `backend/pyproject.toml` created twice | P1-07 creates a minimal manifest; P1-17 extends it and re-runs the parser tests inside the image. |
+| Parser built before the Django project exists | `web-app/backend/pyproject.toml` created twice | P1-07 creates a minimal manifest; P1-17 extends it and re-runs the parser tests inside the image. |
 | Command names shadowed by a built-in or plugin command | A command silently runs something else | Install script refuses to overwrite; P1-15 checks each name in the `/` menu. |
 | Spike soft passes change parameters late | Poll interval, uid or racy window differ from this plan | The results document is an input to P1-16, P1-17, P1-21 and P1-22 briefs; parameters live in `.env`. |
 | Obsidian reformats YAML when properties are edited in its UI | Round-trip expectations wrong | P1-05 records the behaviour; the fixture holds an Obsidian-formatted note; P1-23 tests it. |

@@ -36,7 +36,7 @@ only when those rows are filled in (section 7) and none fails.
 | Image | `python:3.12-slim` (Python 3.12.14 in the container; 3.12.3 on the WSL host) |
 | Mount as seen in the container | `D:\134 /vault 9p rw,noatime,aname=drvfs;path=D:\;uid=1000;gid=1000,cache=0x5,access=client,msize=65536` (WSL's drvfs, over 9p) |
 | Container user | `1000:1000` |
-| Selftest | `python3 scripts/spike/measure.py selftest`: 17/17 passed |
+| Selftest | `python3 web-app/scripts/spike/measure.py selftest`: 17/17 passed |
 
 ## 3. Results table
 
@@ -201,14 +201,14 @@ recorded as the plan asks, not gates:
 ## 7. Operator checklist
 
 Obsidian on Windows is needed for every step below. Work through them in
-order. Commands run in WSL from `/mnt/d/Projects/second-brain-workflow/scripts/spike`
+order. Commands run in WSL from `/mnt/d/Projects/second-brain-workflow/web-app/scripts/spike`
 unless a step says otherwise. Where a step says "record", write the value in
 the matching row of section 3 and change `pending: operator` to a verdict.
 
 **Step 0. Prepare (once)**
 
 ```
-cd /mnt/d/Projects/second-brain-workflow/scripts/spike
+cd /mnt/d/Projects/second-brain-workflow/web-app/scripts/spike
 ./run.sh prep-operator
 ```
 
@@ -359,23 +359,23 @@ WSL.
 **Step 5. Finish**
 
 1. Fill in the four pending rows of section 3 and the verdict in section 1.
-2. `scripts/spike/run.sh assemble` regenerates the raw JSON including the Step 1, 2 and 3 files.
-3. `scripts/spike/run.sh down` to remove the probe containers.
+2. `web-app/scripts/spike/run.sh assemble` regenerates the raw JSON including the Step 1, 2 and 3 files.
+3. `web-app/scripts/spike/run.sh down` to remove the probe containers.
 4. Close the vault in Obsidian, then delete `/mnt/d/sbw-spike` (plan section 8 cleanup).
 
 ## 8. Reproducing and cleanup
 
 ```
-python3 scripts/spike/measure.py selftest      # no Docker
-scripts/spike/run.sh auto                      # M0 to M11 and the automated parts of M3, M5c, M7
-scripts/spike/run.sh m12 10                    # M12, ten minutes at a 10 s interval
-scripts/spike/run.sh skew                      # 11-minute mtime vs WSL clock sampling (no Docker)
-scripts/spike/run.sh m3                        # 20 jittered WSL edits;  m11 re-records the illegal-character names
-scripts/spike/run.sh assemble                  # rewrite the raw JSON from /mnt/d/sbw-spike/results
+python3 web-app/scripts/spike/measure.py selftest      # no Docker
+web-app/scripts/spike/run.sh auto                      # M0 to M11 and the automated parts of M3, M5c, M7
+web-app/scripts/spike/run.sh m12 10                    # M12, ten minutes at a 10 s interval
+web-app/scripts/spike/run.sh skew                      # 11-minute mtime vs WSL clock sampling (no Docker)
+web-app/scripts/spike/run.sh m3                        # 20 jittered WSL edits;  m11 re-records the illegal-character names
+web-app/scripts/spike/run.sh assemble                  # rewrite the raw JSON from /mnt/d/sbw-spike/results
 ```
 
-`scripts/spike/.env` is untracked: the root `.gitignore` entry `.env` matches
-it (verified with `git check-ignore -v scripts/spike/.env`). Copy
+`web-app/scripts/spike/.env` is untracked: the root `.gitignore` entry `.env` matches
+it (verified with `git check-ignore -v web-app/scripts/spike/.env`). Copy
 `.env.example` to `.env` before the first run. The scratch folder
 `/mnt/d/sbw-spike` is left in place for the operator steps; the operator
 deletes it afterwards.

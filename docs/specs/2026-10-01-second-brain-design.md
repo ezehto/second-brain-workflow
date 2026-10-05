@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Approved 2026-10-05; amended 2026-10-05 with C14 to C24 |
+| Status | Approved 2026-10-05; amended 2026-10-05 with C14 to C26 |
 | Date | 2026-10-01 |
 | Source brief | "Obsidian-First Engineering Second Brain & Operating System" master prompt |
 | Companion | [`../plan/master-plan.md`](../plan/master-plan.md) |
@@ -99,6 +99,8 @@ Confirmed 2026-10-05 during review of the Phase 1 plan
 | C22 | Duplicate note names | Allowed in different folders. Ambiguous links resolve deterministically and are flagged "ambiguous". When the writer or a command writes a link to a stem that is not unique on disk, it writes the folder-qualified form `[[folder/Name]]`. Uniqueness checks read the filesystem, never the index. A create that collides with an existing name in the same folder, differing only by case, is still rejected. |
 | C23 | Mounts | The rule is "no other host data path": repository source and read-only test fixtures may be bind-mounted for development and tests. |
 | C24 | Index status | A dedicated Index Status page in Phase 1 navigation (last sync, counts, parse errors, missing and duplicate ids, ambiguous links, "Refresh index"). The Dashboard keeps a small summary that links to it. |
+| C25 | Repository layout | Three independent top-level folders: `second-brain/` (vault source only: templates, vault README, init script, golden sample vault; the real vault stays at `D:\Second Brain`, outside the repo), `web-app/` (`backend/`, `dashboard/`, Compose files) and `claude-workflow/` (skill, commands, installer, tests; installed globally into `~/.claude`). Confirmed 2026-10-05. |
+| C26 | Git from commands | A session never runs `git` directly. `/eod` commits through the fixed script `vault_git.py`, which refuses a vault with a remote, scans for secrets and writes the one daily commit (Phase 1 plan section 4.2). Supersedes the wording of C11 on how `/eod` commits, not who commits. |
 
 ---
 
@@ -197,6 +199,14 @@ project repositories.
 | `api` | DRF endpoints for lists, detail, search, dashboard aggregates and write actions. | db, vault writer |
 | `frontend` | React SPA. Never touches the vault or database directly. | api |
 | `db` | PostgreSQL index and cache. Disposable. | Nothing |
+
+The vault itself lives outside the repository. The repository holds three
+independent components: `second-brain/` (the vault source that the init script
+installs into a vault: seed templates, vault README, and the golden sample
+vault), `claude-workflow/` (the `second-brain` skill, the commands and their
+install script) and `web-app/` (the backend with `indexer`, `vault writer` and
+`api`, the dashboard frontend, and the Compose file). The Phase 1 plan, section
+6, shows the full tree.
 
 ### Data flows
 
@@ -516,7 +526,7 @@ are not duplicated.
 | `/usage` | New | 5 |
 | `/improve` | New | 6 |
 
-Commands live in the app repo under `claude/` and are installed into
+Commands live in the app repo under `claude-workflow/` and are installed into
 `~/.claude/` by a small install script, so they are versioned and work from any
 project directory.
 

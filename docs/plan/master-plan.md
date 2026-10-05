@@ -215,9 +215,12 @@ with Dashboard, Tasks, Projects, Standups, Inbox, Knowledge, Decisions, Search,
 Index Status (C24).
 Out of scope: integrations, usage, upskilling, migration of old notes.
 
-**Components.** Vault (`D:\Second Brain`), `claude/` (skill, commands, install
-script), `backend/` (Django project, apps `vault` for indexer and writer and
-`api`), `frontend/` (Vite SPA), `docker-compose.yml`, `.env.example`.
+**Components.** Vault (`D:\Second Brain`), outside the repository. The
+repository holds three independent components: `second-brain/` (the vault
+source: seed templates, vault README, init script, golden sample vault),
+`claude-workflow/` (skill, commands, install script) and `web-app/`
+(`backend/` Django project with apps `vault` for indexer and writer and `api`,
+`dashboard/` Vite SPA, `docker-compose.yml`, `.env.example`).
 
 **Dependencies.** Docker Desktop WSL integration enabled (user action).
 Decisions D1, D2, D3, D9 and D10 were answered on 2026-10-05, and the Phase 1
@@ -240,10 +243,11 @@ plan review added C14 to C24 (design section 0). Task-level plan:
 3. `second-brain` skill and Phase 1 commands (`/capture`, `/triage`, `/task`,
    `/project`, `/daily`, `/standup`, `/eod`, `/decision`, `/knowledge`), plus the
    install script. Usable before any app code exists. This step also produces a
-   **golden sample vault**, checked into the app repo, which steps 5 to 7 use as
-   their test fixture so commands and parser cannot drift apart unnoticed.
-4. Repo scaffold: Compose file with `db`, `backend`, `indexer`, `frontend`;
-   Dockerfiles; `.env.example`; Django project with settings from environment;
+   **golden sample vault**, checked into the app repo under `second-brain/`,
+   which steps 5 to 7 use as their test fixture so commands and parser cannot
+   drift apart unnoticed.
+4. Repo scaffold under `web-app/`: Compose file with `db`, `backend`,
+   `indexer`, `frontend`; Dockerfiles; `.env.example`; Django project with settings from environment;
    health endpoint; lint and test tooling (ruff, pytest, eslint, vitest).
 5. Index models (`Note`, `Link`, `Tag`) and the Markdown and frontmatter parser.
    The parser is pure Python and is built in WSL with `uv` before the spike;
