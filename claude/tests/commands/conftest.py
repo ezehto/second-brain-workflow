@@ -314,6 +314,10 @@ def verify_git_state(ws: Workspace) -> None:
     dot_git = ws.vault / ".git"
     if dot_git.is_symlink() or not dot_git.is_dir():
         raise GitTamperError(f"{dot_git} is no longer a plain directory")
+    for dirpath, dirnames, filenames in os.walk(dot_git, followlinks=False):
+        for name in dirnames + filenames:
+            if (Path(dirpath) / name).is_symlink():
+                raise GitTamperError(f"symbolic link under .git: {Path(dirpath, name).relative_to(ws.vault)}")
     if ws.git_config_bytes is None:
         raise GitTamperError("no recorded .git/config to compare with")
     if (dot_git / "config").read_bytes() != ws.git_config_bytes:
@@ -488,6 +492,7 @@ class SessionResult:
     argv: list[str]
     prompt: str
     events: list[dict[str, Any]] = field(default_factory=list)
+    profile: str = "default"  # the permission profile; a resume keeps it
     stderr: str = ""
     returncode: int | None = None
     timed_out: bool = False
@@ -633,7 +638,7 @@ def run_claude(
     settings = ws.settings_path(profile)
     settings.write_text(json.dumps(permission_settings(ws, profile), indent=2))
     argv = build_argv(ws, prompt, config, profile=profile, resume=resume)
-    session = SessionResult(argv=argv, prompt=prompt)
+    session = SessionResult(argv=argv, prompt=prompt, profile=profile)
 
     with tempfile.TemporaryFile(mode="w+", encoding="utf-8", errors="replace") as err:
         proc = subprocess.Popen(
@@ -676,7 +681,22 @@ def run_claude(
         session.timed_out = timer_fired.is_set()
         err.seek(0)
         session.stderr = err.read()
+    cost = (session.result or {}).get("total_cost_usd")
+    if isinstance(cost, int | float):
+        RUN_COSTS.append(float(cost))
     return session
+
+
+RUN_COSTS: list[float] = []  # total_cost_usd of every collected session in this pytest run
+
+
+def cost_summary() -> str:
+    return f"claude sessions: {len(RUN_COSTS)}, total cost USD {sum(RUN_COSTS):.4f}"
+
+
+def pytest_terminal_summary(terminalreporter) -> None:
+    if RUN_COSTS:
+        terminalreporter.write_line(cost_summary())
 
 
 def describe(session: SessionResult) -> str:
@@ -697,8 +717,12 @@ def describe(session: SessionResult) -> str:
     lines.append("session text:")
     lines.append(session.all_text or "(none)")
     if session.permission_denials:
-        lines.append("permission denials:")
-        lines += [f"  {d.get('tool_name')}: {json.dumps(d.get('tool_input'))[:300]}" for d in session.permission_denials]
+        lines.append("permission denials (Bash commands are allowed only as exact commands, so an added "
+                      "redirection, `; echo $?` or a different path is denied):")
+        for d in session.permission_denials:
+            tool_input = d.get("tool_input") or {}
+            shown = tool_input.get("command") if d.get("tool_name") == "Bash" else json.dumps(tool_input)
+            lines.append(f"  {d.get('tool_name')}: {shown}")
     if session.tool_uses:
         lines.append("tool calls:")
         lines += [f"  {name}: {json.dumps(args)[:200]}" for name, args in session.tool_uses]
@@ -715,6 +739,30 @@ def paths_outside(text: str, root: Path) -> list[str]:
     """Absolute paths in `text` that are not under `root`."""
     root_r = Path(root).resolve()
     return [p for p in ABS_PATH_RE.findall(text) if not contains(root_r, Path(p))]
+
+
+def allowed_bash_commands(ws: Workspace, profile: str) -> set[str]:
+    """The exact commands (no wildcard) a profile allows."""
+    rules = permission_settings(ws, profile)["permissions"]["allow"]
+    return {r[len("Bash("):-1] for r in rules if r.startswith("Bash(") and "*" not in r}
+
+
+def denials_outside_root(session: SessionResult, ws: Workspace, profile: str) -> list[dict[str, Any]]:
+    """Refused calls that named a path outside the temporary root. A denial of a
+    command that is exactly one the profile allows (for example the skill's own
+    `[ ... -ef "/mnt/d/Second Brain" ]` check) is not counted: it names the real
+    vault only to compare against it."""
+    exempt = allowed_bash_commands(ws, profile)
+    found = []
+    for d in session.permission_denials:
+        tool_input = d.get("tool_input") or {}
+        command = tool_input.get("command") if d.get("tool_name") == "Bash" else json.dumps(tool_input)
+        if command in exempt:
+            continue
+        paths = paths_outside(command or "", ws.root)
+        if paths:
+            found.append({"tool": d.get("tool_name"), "command": command, "paths": paths})
+    return found
 
 
 # --- Snapshots ---------------------------------------------------------------------------------
@@ -1025,10 +1073,11 @@ class Harness:
         return session
 
     def reply(self, previous: SessionResult, answer: str, *, profile: str | None = None) -> SessionResult:
-        """Turn 2: resume the same session with the user's answer (permissions passed again)."""
+        """Turn 2: resume the same session with the user's answer. The permissions
+        are passed again, under the profile turn 1 used unless one is given."""
         expect(bool(previous.session_id), "no session id to resume", previous)
         marks = git_marks(self.ws)
-        session = run_claude(self.ws, answer, self.config, profile=profile or self.profile,
+        session = run_claude(self.ws, answer, self.config, profile=profile or previous.profile,
                              resume=previous.session_id)
         self._check(session, marks)
         expect(session.session_id == previous.session_id,

@@ -360,11 +360,11 @@ def test_commit_eod_in_a_repository_without_commits(vg, tmp_path, home, monkeypa
     assert subjects(empty) == [f"eod: {TODAY}"]
 
 
-def test_nothing_to_commit_is_refused_cleanly(vg, vault, capsys):
+def test_nothing_to_commit_is_an_outcome_and_changes_nothing(vg, vault, capsys):
     before = (head(vault), index_bytes(vault))
     code, out, err = run(vg, capsys, "commit-eod", TODAY)
-    assert code == 1
-    assert "nothing to commit" in out
+    assert code == 0
+    assert out.startswith("nothing to commit") and out.count("\n") == 1
     assert err == ""
     assert (head(vault), index_bytes(vault)) == before
 
@@ -374,7 +374,7 @@ def test_nothing_to_commit_after_todays_commit_changes_nothing(vg, vault, capsys
     assert run(vg, capsys, "commit-eod", TODAY)[0] == 0
     before = head(vault)
     code, out, _ = run(vg, capsys, "commit-eod", TODAY)
-    assert code == 1 and "nothing to commit" in out
+    assert code == 0 and out.startswith("nothing to commit")
     assert head(vault) == before
 
 
@@ -427,17 +427,37 @@ def test_outside_test_mode_the_date_must_be_today_in_manila(vg, vault, capsys, m
     assert subjects(vault)[0] == "eod: 2026-10-05"
 
 
-def test_manila_today_uses_the_real_clock(vg):
-    expected = datetime.datetime.now(ZoneInfo("Asia/Manila")).date()
-    assert vg._manila_today() in (expected, expected + datetime.timedelta(days=1))
+@pytest.mark.parametrize("utc,manila", [
+    ("2026-10-04T15:59:59", "2026-10-04"),   # 23:59:59 in Manila
+    ("2026-10-04T16:00:00", "2026-10-05"),   # midnight in Manila, still the 4th in UTC
+    ("2026-10-05T15:30:00", "2026-10-05"),
+])
+def test_today_is_taken_in_manila(vg, monkeypatch, utc, manila):
+    instant = datetime.datetime.fromisoformat(utc).replace(tzinfo=datetime.timezone.utc)
+    monkeypatch.setattr(vg, "_utc_now", lambda: instant)
+    assert vg._manila_today().isoformat() == manila
 
 
-def test_test_mode_must_be_exactly_1(vg, vault, capsys, monkeypatch):
-    monkeypatch.setenv("SECOND_BRAIN_TEST_MODE", "true")
+def test_utc_now_is_the_real_clock(vg):
+    before = datetime.datetime.now(datetime.timezone.utc)
+    now = vg._utc_now()
+    assert now.utcoffset() == datetime.timedelta(0)
+    assert abs((now - before).total_seconds()) < 60
+
+
+@pytest.mark.parametrize("value", ["true", "yes", "01", " 1", "1 ", "0", ""])
+def test_test_mode_must_be_exactly_1(vg, stand_in, capsys, monkeypatch, value):
+    """Any other value is ordinary mode: the pinned date is ignored and the real
+    vault (here its stand-in) is the default, with no test-mode guard."""
+    monkeypatch.setenv("SECOND_BRAIN_TEST_MODE", value)
+    monkeypatch.setenv("SECOND_BRAIN_TODAY", TODAY)
+    monkeypatch.delenv("SECOND_BRAIN_VAULT", raising=False)
     monkeypatch.setattr(vg, "_manila_today", lambda: datetime.date(2026, 10, 5))
-    (vault / "a.md").write_text("x\n")
-    code, _, err = run(vg, capsys, "commit-eod", TODAY)  # pinned date ignored
-    assert code == 1
+    code, _, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 1 and "is not today (2026-10-05)" in err
+    code, out, err = run(vg, capsys, "commit-eod", "2026-10-05")
+    assert code == 0, err
+    assert subjects(stand_in)[0] == "eod: 2026-10-05"
 
 
 # -------------------------------------------------------------- remotes
@@ -577,7 +597,7 @@ def test_secret_in_a_modified_tracked_file_is_refused(vg, vault, capsys):
 def test_added_line_that_looks_like_a_diff_header_is_scanned(vg, vault, capsys):
     (vault / "a.md").write_text("++ password = " + FILLER + "\n++ b/other\n")
     code, _, err = run(vg, capsys, "commit-eod", TODAY)
-    assert code == 1 and "a.md (password)" in err
+    assert code == 1 and "a.md:1 (password)" in err
 
 
 def test_secret_in_a_binary_file_is_refused(vg, vault, capsys):
@@ -603,10 +623,11 @@ def test_file_name_in_a_refusal_is_escaped(vg, vault, capsys):
     assert "\x1b" not in err and "\\x1b" in err
 
 
-def test_one_match_is_reported_once_per_file_and_kind(vg, vault, capsys):
-    (vault / "a.md").write_text(("token: " + FILLER + "\n") * 5)
+def test_each_matching_line_is_reported_with_its_number(vg, vault, capsys):
+    (vault / "a.md").write_text("intro\n" + ("token: " + FILLER + "\n") * 3)
     code, _, err = run(vg, capsys, "commit-eod", TODAY)
-    assert code == 1 and err.count("a.md (token)") == 1
+    assert code == 1
+    assert "a.md:2 (token), a.md:3 (token), a.md:4 (token)" in err
 
 
 def test_removing_a_secret_is_allowed(vg, vault, capsys):
@@ -624,7 +645,7 @@ def test_removing_a_secret_is_allowed(vg, vault, capsys):
     "secret sauce", "tokens are counted", "token_count: 5", "AKIA is a prefix",
     "Passwords should be rotated", "glpat-short",
 ])
-def test_harmless_text_is_committed(vg, vault, capsys, text):
+def test_harmless_text_is_committed_basic(vg, vault, capsys, text):
     (vault / "a.md").write_text(text + "\n")
     code, _, err = run(vg, capsys, "commit-eod", TODAY)
     assert code == 0, err
@@ -1159,3 +1180,513 @@ def test_every_git_call_is_isolated(vg, vault, capsys, monkeypatch):
         assert "--no-ext-diff" in cmd and "--no-textconv" in cmd
     commits = [cmd for cmd, _ in calls if "commit" in cmd]
     assert commits and all("--no-verify" in c and "--no-gpg-sign" in c for c in commits)
+
+
+# ============================================ review round 2: secret scan rules
+
+# Fake values only. Pieces are joined at run time so this file holds no
+# literal secret-shaped text.
+FAKE_DJANGO = "django-insecure-" + "4f8a9c2e7b1d3f6a0e5c"
+FAKE_AWS_SECRET = "wJalrXUtnFEMI" + "/K7MDENG/bPxRfiCYFAKEKEY"
+FAKE_JWT = "eyJhbGciOiJIUzI1NiJ9" + ".eyJzdWIiOiJmYWtlIn0.c2lnbmF0dXJlZmFrZQ"
+
+# Each of these, alone in an added line, must not block the commit.
+NOT_SECRETS = [
+    "Rotate the API key: done",
+    "- [x] Rotate the API key: done",
+    "password: <your password>",
+    "token: ${TOKEN}",
+    "password: {{ vault_password }}",
+    "password = os.environ['DB_PASSWORD']",
+    "token = request.headers.get('Authorization')",
+    "secret = get_secret('db')",
+    "Secret: the cache is Redis",
+    "**Token**: the refresh flow is broken",
+    "password: changeme",
+    "password: REDACTED",
+    "password: None",
+    "Password: stored in 1Password",
+    "csrf_token = {% csrf_token %}",
+    "max_token: 4096",
+    "## Secret: management",
+    "DB_PASSWORD=${DB_PASSWORD}",
+    "skip: sk-learn-preprocessing-pipeline-notes",
+    # decisions where the plan's rules leave a case open (see the report)
+    "secret_name: prod-db-credentials",
+    "DB_PASS=hunter2",
+    "password: $DB_PASSWORD",
+    "password: xxxxxxxxxx",
+    "token: ********",
+    "api_key: settings.API_KEY",
+    "token_url: https://auth.example.com/oauth/token",
+    "secret_path: /run/secrets/db_password",
+    "token_type: refresh_token",
+    "passenger: Abcdef123456",
+    "bypass: Abcdef123456",
+    "| password | stored in the team vault |",
+    "| Key | Value |",
+    "postgres://app:${DB_PASSWORD}@db/app",
+    "https://user:<password>@host/path",
+    "Authorization: Bearer <token>",
+    "Authorization: Bearer $TOKEN",
+    "task-2026-10-09-retrospective-notes-and-actions",
+    "AKIA" + "Q7XZ" * 4 + "Q",
+    "ASIAPACIFICREGIONSALES",
+    "see ghp_" + "abcdefghijklmnopqrstuvwxyz",
+]
+
+
+@pytest.mark.parametrize("text", NOT_SECRETS)
+def test_harmless_line_is_committed(vg, vault, capsys, text):
+    (vault / "note.md").write_text("# Note\n\n" + text + "\n")
+    code, out, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 0, err
+    assert subjects(vault)[0] == f"eod: {TODAY}"
+
+
+# (kind, added lines) that must be caught; the reported line is the last one.
+SECRET_LINES = [
+    ("secret", ["SECRET_KEY = '" + FAKE_DJANGO + "'"]),
+    ("secret", ["AWS_SECRET_ACCESS_KEY=" + FAKE_AWS_SECRET]),
+    ("secret", ["aws_secret_access_key = " + FAKE_AWS_SECRET]),
+    ("secret", ["secretKey: Fk3" + "Qz9Lm2Vx8"]),
+    ("private key", ["private_key: 3f9a8b7c" + "6d5e4f3a"]),
+    ("password", ["DB_PASS=Fake-Pass-" + "2024"]),
+    ("password", ["pwd: Fak3" + "Pwd99x"]),
+    ("password", ["passwd: Fak3" + "Passwd9"]),
+    ("password", ["passphrase: Correct-" + "Horse-9"]),
+    ("password", ["password = 'Fake-" + "Pa55word'"]),
+    ("password", ['"password": "Fake-' + 'Pa55word",']),
+    ("password", ["DB_PASSWORD=hunter" + "2hunter2"]),
+    ("password", ["password: Abc12345" + "XYZ  # prod"]),
+    ("token", ["access_token: Q7x" + "Q7xQ7xQ7x"]),
+    ("token", ["**Token**: Q7x" + "Q7xQ7xQ7x"]),
+    ("api key", ["API key: Q7x" + "Q7xQ7xQ7x"]),
+    ("api key", ["x-api-key: Q7x" + "Q7xQ7xQ7x"]),
+    ("URL credentials", ["postgres://app:Fake-" + "Pw-123@db/app"]),
+    ("URL credentials", ["https://user:Fake" + "Pw42@host"]),
+    ("URL credentials", ["https://user:pw@host"]),
+    ("authorization header", ["Authorization: Bearer " + FAKE_JWT]),
+    ("authorization header", ['-H "Authorization: Basic ' + "ZmFrZTpmYWtlcGFzcw==" + '"']),
+    ("AWS access key", ["ASIA" + "Q7XZ" * 4]),
+    ("AWS access key", ["AKIA" + "Q7XZ" * 4]),
+    ("password", ["| user | password |", "| --- | --- |", "| admin | x |",
+                  "| password | Fake-" + "Pa55word |"]),
+    ("token", ["| **API token** | `Q7x" + "Q7xQ7xQ7x` |"]),
+    ("password", ["password:", "  Fake-" + "Pa55word"]),
+    ("token", ["- token:", "  Q7x" + "Q7xQ7xQ7x"]),
+]
+
+
+@pytest.mark.parametrize("kind,lines", SECRET_LINES,
+                         ids=[f"{k}:{lines[-1][:24]}" for k, lines in SECRET_LINES])
+def test_secret_line_is_caught(vg, vault, capsys, kind, lines):
+    (vault / "note.md").write_text("# Note\n\n" + "\n".join(lines) + "\n")
+    code, out, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 1, out
+    assert f"note.md:{2 + len(lines)} ({kind})" in err
+    for line in lines:
+        for word in line.split():
+            if len(word) >= 8 and any(c.isdigit() for c in word):
+                assert word.strip("'\"`|,") not in out + err
+    assert subjects(vault) == ["Initialize vault"]
+
+
+@pytest.mark.parametrize("prefix", ["ghp_", "gho_", "ghu_", "ghs_", "ghr_", "github_pat_"])
+def test_each_github_prefix_is_caught(vg, vault, capsys, prefix):
+    (vault / "note.md").write_text("see " + prefix + FILLER + "\n")
+    code, _, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 1 and "note.md:1 (GitHub token)" in err
+
+
+@pytest.mark.parametrize("prefix,kind", [("glpat-", "GitLab token"), ("sk-", "sk- key"),
+                                         ("xoxb-", "Slack token")])
+def test_other_token_prefixes_are_caught(vg, vault, capsys, prefix, kind):
+    (vault / "note.md").write_text("(" + prefix + FILLER + ")\n")
+    code, _, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 1 and f"note.md:1 ({kind})" in err
+
+
+def test_secret_in_an_added_file_name_is_caught_and_not_printed(vg, vault, capsys):
+    name = "ghp_" + FILLER + ".md"
+    (vault / "00-Inbox").mkdir()
+    (vault / "00-Inbox" / name).write_text("password: Fake-" + "Pa55word\n")
+    code, out, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 1
+    assert "file name" in err and "GitHub token" in err
+    assert FILLER not in out + err and name not in out + err
+    assert "(password)" in err  # the content match, under a redacted label
+
+
+def test_a_tab_after_a_file_name_with_spaces_is_not_part_of_the_name(vg, vault, capsys):
+    (vault / "01-Daily").mkdir()
+    (vault / "01-Daily" / "my daily note.md").write_text("token: " + FILLER + "\n")
+    code, _, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 1
+    assert "01-Daily/my daily note.md:1 (token)" in err
+
+
+def test_escape_hatch_skips_only_the_marked_line(vg, vault, capsys):
+    mark = "<!-- sbw: not-a-secret -->"
+    (vault / "note.md").write_text(
+        f"token: {FILLER} {mark}\n"
+        f"password: Fake-Pa55word {mark}\n"
+        f"secret: {FILLER}\n"
+    )
+    code, _, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 1
+    assert "note.md:3 (secret)" in err
+    assert "note.md:1" not in err and "note.md:2" not in err
+    (vault / "note.md").write_text(f"token: {FILLER} {mark}\n")
+    code, _, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 0, err
+
+
+def test_escape_hatch_must_be_exact(vg, vault, capsys):
+    (vault / "note.md").write_text(f"token: {FILLER} <!-- not-a-secret -->\n")
+    assert run(vg, capsys, "commit-eod", TODAY)[0] == 1
+
+
+def test_refusal_lists_ten_matches_then_how_many_more(vg, vault, capsys):
+    (vault / "note.md").write_text("".join(f"token: {FILLER}{i:02d}\n" for i in range(13)))
+    code, out, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 1
+    assert err.startswith("refused: ") and err.count("\n") == 1
+    entries = [f"note.md:{n} (token)" for n in range(1, 14)]
+    assert all(e in err for e in entries[:10])
+    assert entries[10] not in err and "and 3 more" in err
+    assert "Remove the value" in err and "<!-- sbw: not-a-secret -->" in err
+    assert "/eod" in err
+    assert FILLER not in out + err and "token: " not in out + err
+    assert head(vault) and subjects(vault) == ["Initialize vault"]
+    assert "note.md" in staged_names(vault)  # left staged
+
+
+def test_secret_text_never_appears_in_any_output(vg, vault, capsys):
+    secrets = ["Fake-" + "Pa55word", FILLER, "ghp_" + FILLER, FAKE_JWT]
+    (vault / "note.md").write_text(
+        f"password: {secrets[0]}\nkey: {secrets[2]}\nAuthorization: Bearer {secrets[3]}\n"
+        f"token = '{secrets[1]}'\n")
+    code, out, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 1
+    for secret in secrets:
+        assert secret not in out and secret not in err
+    assert "note.md:1 (password)" in err and "note.md:4 (token)" in err
+
+
+# ======================================== review round 2: repository state
+
+
+@pytest.mark.parametrize("where", ["COMMIT_EDITMSG", "logs", "refs/heads/sub"])
+def test_symlink_anywhere_under_git_is_refused(vg, vault, tmp_path, capsys, where):
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "victim.txt").write_text("precious\n")
+    link = vault / ".git" / where
+    if where == "COMMIT_EDITMSG":
+        link.unlink(missing_ok=True)
+        link.symlink_to(outside / "victim.txt")
+    else:
+        if link.exists():
+            shutil.rmtree(link)
+        link.symlink_to(outside, target_is_directory=True)
+    (vault / "a.md").write_text("x\n")
+    before = snapshot(outside, outside / "none")
+    code, _, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 1 and "symbolic link" in err and "rm " in err
+    assert snapshot(outside, outside / "none") == before
+    assert (outside / "victim.txt").read_text() == "precious\n"
+    assert subjects(vault) == ["Initialize vault"]
+
+
+def test_symlink_created_under_git_just_before_the_commit_is_refused(
+    vg, vault, tmp_path, capsys, monkeypatch
+):
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "victim.txt").write_text("precious\n")
+    real_scan = vg.scan_diff
+
+    def scan_then_link(*args, **kwargs):
+        result = real_scan(*args, **kwargs)
+        (vault / ".git" / "COMMIT_EDITMSG").unlink(missing_ok=True)
+        (vault / ".git" / "COMMIT_EDITMSG").symlink_to(outside / "victim.txt")
+        return result
+
+    monkeypatch.setattr(vg, "scan_diff", scan_then_link)
+    (vault / "a.md").write_text("x\n")
+    code, _, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 1 and "symbolic link" in err
+    assert (outside / "victim.txt").read_text() == "precious\n"
+    assert subjects(vault) == ["Initialize vault"]
+
+
+def _conflict(vault):
+    git(vault, "checkout", "-q", "-b", "side")
+    (vault / "README.md").write_text("side\n")
+    git(vault, "commit", "-q", "-am", "side")
+    git(vault, "checkout", "-q", "main")
+    (vault / "README.md").write_text("main\n")
+    git(vault, "commit", "-q", "-am", "main change")
+
+
+def test_merge_in_progress_is_refused(vg, vault, capsys):
+    _conflict(vault)
+    git(vault, "merge", "side", check=False)
+    assert (vault / ".git" / "MERGE_HEAD").exists()
+    before = (head(vault), index_bytes(vault))
+    code, _, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 1 and "merge" in err and "merge --abort" in err
+    assert f"git -C '{vault}'" in err and err.count("\n") == 1
+    assert (head(vault), index_bytes(vault)) == before
+
+
+@pytest.mark.parametrize("marker,word,command", [
+    ("CHERRY_PICK_HEAD", "cherry-pick", "cherry-pick --abort"),
+    ("REVERT_HEAD", "revert", "revert --abort"),
+    ("rebase-merge", "rebase", "rebase --abort"),
+    ("rebase-apply", "rebase", "rebase --abort"),
+])
+def test_other_operations_in_progress_are_refused(vg, vault, capsys, marker, word, command):
+    target = vault / ".git" / marker
+    if marker.startswith("rebase"):
+        target.mkdir()
+    else:
+        target.write_text(head(vault) + "\n")
+    (vault / "a.md").write_text("x\n")
+    code, _, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 1 and word in err and command in err
+    assert subjects(vault) == ["Initialize vault"]
+
+
+def test_unmerged_paths_are_refused(vg, vault, capsys):
+    _conflict(vault)
+    git(vault, "merge", "side", check=False)
+    (vault / ".git" / "MERGE_HEAD").unlink()  # unmerged paths without a merge state
+    code, _, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 1 and "unmerged" in err and "reset --merge" in err
+    assert subjects(vault)[0] == "main change"
+
+
+def test_detached_head_is_refused(vg, vault, capsys):
+    git(vault, "checkout", "-q", "--detach")
+    (vault / "a.md").write_text("x\n")
+    code, _, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 1 and "detached" in err and "switch main" in err
+
+
+@pytest.mark.parametrize("with_commit", [False, True])
+def test_nested_repository_is_refused(vg, vault, capsys, with_commit):
+    nested = make_repo(vault / "projects" / "inner", commit=with_commit)
+    (nested / "file.md").write_text("x\n")
+    (vault / "a.md").write_text("x\n")
+    before = (head(vault), index_bytes(vault))
+    for argv in (["commit-eod", TODAY], ["stage"]):
+        code, _, err = run(vg, capsys, *argv)
+        assert code == 1 and "nested git repository" in err and "projects/inner" in err
+    assert (head(vault), index_bytes(vault)) == before
+
+
+def test_nested_git_file_is_refused(vg, vault, capsys):
+    (vault / "sub").mkdir()
+    (vault / "sub" / ".git").write_text("gitdir: /nowhere\n")
+    code, _, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 1 and "nested git repository" in err
+
+
+def test_same_day_amend_that_would_be_empty_is_nothing_to_commit(vg, vault, capsys):
+    (vault / "a.md").write_text("x\n")
+    assert run(vg, capsys, "commit-eod", TODAY)[0] == 0
+    before = head(vault)
+    (vault / "a.md").unlink()  # everything changed today is undone
+    code, out, err = run(vg, capsys, "commit-eod", TODAY)
+    assert (code, err) == (0, "")
+    assert out.startswith("nothing to commit")
+    assert head(vault) == before
+
+
+def test_change_that_vanishes_after_the_status_check_is_nothing_to_commit(
+    vg, vault, capsys, monkeypatch
+):
+    """The race between `status` and `add -A`: the change is undone in between."""
+    (vault / "a.md").write_text("x\n")
+    real_run = vg.Repo.run
+
+    def undo_before_add(self, args, *a, **k):
+        if args[:1] == ["add"]:
+            (vault / "a.md").unlink()
+        return real_run(self, args, *a, **k)
+
+    monkeypatch.setattr(vg.Repo, "run", undo_before_add)
+    code, out, _ = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 0 and out.startswith("nothing to commit")
+    assert subjects(vault) == ["Initialize vault"]
+
+
+# ========================================================= messages, output
+
+
+def test_stale_index_lock_names_the_command(vg, vault, capsys):
+    (vault / ".git" / "index.lock").write_text("")
+    (vault / "a.md").write_text("x\n")
+    code, _, err = run(vg, capsys, "stage")
+    assert code == 1 and err.count("\n") == 1
+    assert "no git process is running" in err
+    assert f"rm '{vault}/.git/index.lock'" in err
+
+
+def test_status_works_while_index_lock_exists(vg, vault, capsys):
+    (vault / ".git" / "index.lock").write_text("")
+    (vault / "a.md").write_text("x\n")
+    code, out, err = run(vg, capsys, "status")
+    assert (code, err) == (0, "") and "a.md" in out
+
+
+def test_denied_config_names_the_unset_command(vg, vault, tmp_path, capsys):
+    _local_config(vault, '[filter "x"]\n\tclean = cat\n')
+    code, _, err = run(vg, capsys, "status")
+    assert code == 1 and f"git -C '{vault}' config --unset-all filter.x.clean" in err
+
+
+def test_remote_refusal_names_the_remove_command(vg, vault, capsys):
+    git(vault, "remote", "add", "origin", "/nowhere")
+    (vault / "a.md").write_text("x\n")
+    code, _, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 1 and f"git -C '{vault}' remote remove origin" in err
+
+
+def test_missing_identity_names_the_config_command(vg, vault, capsys):
+    git(vault, "config", "--unset", "user.email")
+    (vault / "a.md").write_text("x\n")
+    code, _, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 1 and f"git -C '{vault}' config user.email" in err
+
+
+STATUS_CAP = 256 * 1024
+
+
+def test_status_output_is_capped_at_256_kib(vg, vault, capsys):
+    for i in range(3000):
+        (vault / f"{'n' * 90}-{i:05d}.md").write_text("x")
+    code, out, _ = run(vg, capsys, "status")
+    assert code == 0
+    body, _, last = out.rstrip("\n").rpartition("\n")
+    assert last.startswith("[truncated:")
+    assert len((body + "\n").encode()) <= STATUS_CAP
+    assert len((body + "\n").encode()) > STATUS_CAP - 200
+
+
+def test_staged_diff_cap_is_256_kib(vg, vault, capsys):
+    (vault / "big.md").write_text("line of text\n" * 60000)
+    git(vault, "add", "-A")
+    code, out, _ = run(vg, capsys, "staged-diff")
+    body, _, last = out.rstrip("\n").rpartition("\n")
+    assert last.startswith("[truncated:") and str(STATUS_CAP) in last
+    assert STATUS_CAP - 200 < len((body + "\n").encode()) <= STATUS_CAP
+
+
+def test_staged_diff_names_section(vg, vault, capsys):
+    (vault / "README.md").write_text("changed\n")
+    (vault / "new note.md").write_text("x\n")
+    (vault / "a\tb.md").write_text("y\n")
+    git(vault, "add", "-A")
+    code, out, _ = run(vg, capsys, "staged-diff")
+    names, _, diff = out.partition("\n\n")
+    assert names.split("\n") == ["M\tREADME.md", 'A\t"a\\tb.md"', "A\tnew note.md"]
+    assert diff.startswith("diff --git ")
+
+
+def test_c1_and_bidi_characters_are_escaped(vg, vault, capsys):
+    (vault / "a\u202eb\u0085c\u009bd.md").write_text("x\n")
+    code, out, _ = run(vg, capsys, "status")
+    assert code == 0
+    for ch in "\u202e\u0085\u009b":
+        assert ch not in out
+    assert "\\u202e" in out
+    git(vault, "add", "-A")
+    out = run(vg, capsys, "staged-diff")[1]
+    assert not any(ch in out for ch in "\u202e\u0085\u009b")
+
+
+def test_remote_output_is_escaped(vg, vault, capsys):
+    (vault / ".git" / "remotes").mkdir()
+    (vault / ".git" / "remotes" / "a\x1bb\u202ec").write_text("URL: /nowhere\n")
+    code, out, _ = run(vg, capsys, "remote")
+    assert code == 0
+    assert out == "a\\x1bb\\u202ec\n"
+
+
+def test_os_error_is_a_one_line_refusal(vg, vault, capsys, monkeypatch):
+    def broken(*a, **k):
+        raise PermissionError(13, "Permission denied", "/somewhere")
+
+    monkeypatch.setattr(vg, "_walk_git_dir", broken)
+    code, out, err = run(vg, capsys, "status")
+    assert code == 1 and out == ""
+    assert err.startswith("refused: ") and err.count("\n") == 1
+    assert "Permission denied" in err and "Traceback" not in err
+
+
+# ============================================= review round 2: path checks
+
+
+@pytest.mark.parametrize("part", ["DOCUME~1", "a~2b", "~1"])
+def test_short_name_component_is_refused(vg, home, tmp_path, capsys, monkeypatch, part):
+    err = _refused(vg, capsys, monkeypatch, tmp_path / part / "vault")
+    assert "short-name" in err
+
+
+def _mountinfo(*mounts):
+    lines = ["20 1 8:1 / / rw - ext4 /dev/sda1 rw"]
+    for n, (point, tail) in enumerate(mounts):
+        escaped = str(point).replace(" ", "\\040")
+        lines.append(f"{100 + n} 20 0:{50 + n} / {escaped} rw - {tail}")
+    return "\n".join(lines) + "\n"
+
+
+C_TAIL = r"9p C:\134 rw,dirsync,aname=drvfs;path=C:\;uid=1000"
+D_TAIL = r"9p D:\134 rw,dirsync,aname=drvfs;path=D:\;uid=1000"
+
+
+def test_vault_on_another_mount_of_drive_c_is_refused(vg, vault, capsys, monkeypatch):
+    text = _mountinfo((vault.parent, C_TAIL))
+    monkeypatch.setattr(vg, "_read_mountinfo", lambda: text)
+    assert "drive C" in _refused(vg, capsys, monkeypatch, vault)
+
+
+def test_old_style_drvfs_mount_of_c_is_refused(vg, vault, capsys, monkeypatch):
+    text = _mountinfo((vault.parent, r"drvfs C:\134 rw"))
+    monkeypatch.setattr(vg, "_read_mountinfo", lambda: text)
+    assert "drive C" in _refused(vg, capsys, monkeypatch, vault)
+
+
+def test_vault_on_drive_d_mount_is_accepted(vg, vault, capsys, monkeypatch):
+    text = _mountinfo((vault.parent, D_TAIL))
+    monkeypatch.setattr(vg, "_read_mountinfo", lambda: text)
+    assert run(vg, capsys, "status")[0] == 0
+
+
+def test_unreadable_mountinfo_is_refused(vg, vault, capsys, monkeypatch):
+    def broken():
+        raise OSError("no /proc")
+
+    monkeypatch.setattr(vg, "_read_mountinfo", broken)
+    assert "mount" in _refused(vg, capsys, monkeypatch, vault)
+
+
+def test_real_vault_through_a_second_mount_of_its_drive_is_refused_in_test_mode(
+    vg, home, tmp_path, capsys, monkeypatch
+):
+    """Two mount points of D: show one directory under two names that samefile
+    cannot match (each mount has its own device number)."""
+    mount_a, mount_b = tmp_path / "mnt-a", tmp_path / "mnt-b"
+    real = make_repo(mount_a / VAULT_NAME)
+    alias = make_repo(mount_b / VAULT_NAME)
+    monkeypatch.setattr(vg, "DEFAULT_VAULT", str(real))
+    text = _mountinfo((mount_a, D_TAIL), (mount_b, D_TAIL))
+    monkeypatch.setattr(vg, "_read_mountinfo", lambda: text)
+    monkeypatch.setenv("SECOND_BRAIN_TEST_MODE", "1")
+    monkeypatch.setenv("SECOND_BRAIN_TODAY", TODAY)
+    monkeypatch.setenv("SECOND_BRAIN_VAULT", str(alias))
+    code, _, err = run(vg, capsys, "status")
+    assert code == 1 and "real vault" in err

@@ -4,16 +4,39 @@ Plan 4.1: an argument that is exactly an existing project's slug shows that
 project's summary and writes nothing; an argument whose slug equals an existing
 project's slug is refused, naming the existing note; anything else creates.
 
-Live: one `claude -p` call per test.
+Live: one `claude -p` call per live test; `test_names_existing_project` is not live.
 """
+
+import re
 
 import pytest
 
-pytestmark = pytest.mark.commands
-
 NEW_PROJECT = "02-Work/Projects/Tidal Lantern Survey.md"
+CLASH_ARGUMENT = "Harbor Lights!"
 
 
+def names_existing_project(text):
+    """True when a reply names the existing `Harbor Lights` note or its slug, not
+    merely the echoed argument `Harbor Lights!`."""
+    return "harbor-lights" in text.lower() or re.search(r"Harbor Lights(?!!)", text) is not None
+
+
+@pytest.mark.parametrize(
+    "text, names",
+    [
+        ("Refused: [[Harbor Lights]] already has this slug.", True),
+        ("Refused: 02-Work/Projects/Harbor Lights.md exists.", True),
+        ("Refused: the slug harbor-lights is taken.", True),
+        ("The project Harbor Lights already exists.", True),
+        ("Refused: Harbor Lights! clashes with an existing project.", False),
+        ("Refused.", False),
+    ],
+)
+def test_names_existing_project(text, names):
+    assert names_existing_project(text) is names
+
+
+@pytest.mark.commands
 def test_project_creates_an_active_project_note(sb):
     before, baseline = sb.snapshot(), sb.findings()
 
@@ -24,20 +47,19 @@ def test_project_creates_an_active_project_note(sb):
     sb.assert_no_new_findings(baseline, session)
 
 
+@pytest.mark.commands
 def test_project_refuses_a_title_whose_slug_clashes_and_names_the_existing_note(sb):
     """`Harbor Lights!` is a new file name but slugifies to `harbor-lights`."""
     before = sb.snapshot()
 
-    session = sb.run("/project", "Harbor Lights!")
+    session = sb.run("/project", CLASH_ARGUMENT)
 
     sb.unchanged(before, session)
-    text = session.all_text
-    # The prompt itself says "Harbor Lights!", so echoing it is not enough.
-    names_it = ("harbor-lights" in text.lower() or "Harbor Lights.md" in text
-                or "02-Work/Projects/Harbor Lights" in text)
-    sb.expect(names_it, "the refusal names neither the existing note nor its slug", session)
+    sb.expect(names_existing_project(session.all_text),
+              "the refusal names neither the existing note nor its slug", session)
 
 
+@pytest.mark.commands
 def test_project_slug_shows_the_summary_and_writes_nothing(sb):
     before = sb.snapshot()
 

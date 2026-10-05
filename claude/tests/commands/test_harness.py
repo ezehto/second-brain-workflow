@@ -834,3 +834,106 @@ def test_headings_skip_fenced_code(hx):
 def test_heading_order_in_printed_text(hx):
     text = "Standup\n\n**Done:**\n- x\n## Today\n- y\nBlockers\nDecisions / Updates:\n### Follow-ups\nRelated Tasks / Projects"
     assert hx.heading_order_in_text(text, hx.STANDUP_HEADINGS) == list(hx.STANDUP_HEADINGS)
+
+
+# --- Re-review follow-ups ------------------------------------------------------------------------
+
+
+def _argv_recording_fake(tmp_path, record, init=INIT_EVENT):
+    return _fake_claude(tmp_path, f"open({str(record)!r}, 'a').write(json.dumps(sys.argv) + '\\n')\n"
+                        + _emit(init, RESULT_EVENT))
+
+
+def _recorded(record):
+    return [json.loads(line) for line in record.read_text().splitlines()]
+
+
+def test_run_with_the_guard_profile_offers_no_write_tool_and_reply_keeps_it(hx, ws, tmp_path):
+    _install_command(ws, "capture")
+    record = tmp_path / "argv.jsonl"
+    harness = hx.Harness(ws, hx.HarnessConfig(claude_bin=_argv_recording_fake(tmp_path, record)))
+    first = harness.run("/capture", "x", profile="guard", vault_env=False)
+    assert json.loads(ws.settings_path("guard").read_text()) == hx.permission_settings(ws, "guard")
+    harness.reply(first, "yes")
+    for argv in _recorded(record):
+        assert argv[argv.index("--tools") + 1] == "Read,Bash,Skill"
+        assert argv[argv.index("--settings") + 1] == str(ws.settings_path("guard"))
+
+
+def test_reply_keeps_the_harness_profile_of_the_first_turn(hx, ws, tmp_path):
+    _install_command(ws, "eod")
+    record = tmp_path / "argv.jsonl"
+    fake = _argv_recording_fake(tmp_path, record, {**INIT_EVENT, "slash_commands": ["eod"]})
+    harness = hx.Harness(ws, hx.HarnessConfig(claude_bin=fake), profile="eod")
+    first = harness.run("/eod")
+    harness.profile = "default"  # a later change must not leak into turn 2 of the same session
+    harness.reply(first, "no")
+    for argv in _recorded(record):
+        assert argv[argv.index("--settings") + 1] == str(ws.settings_path("eod"))
+
+
+def test_check_new_note_rejects_a_given_value_that_differs(hx, ws):
+    harness = _write_task(hx, ws, GOOD_TASK)
+    session = hx.SessionResult(argv=[], prompt="/task x")
+    with pytest.raises(pytest.fail.Exception, match="priority is 'medium', expected 'high'"):
+        harness.check_new_note(TASK, "task", session, priority="high")
+
+
+def test_kill_returns_promptly_when_a_child_holds_stdout(hx, ws, tmp_path):
+    fake = _fake_claude(tmp_path, "import subprocess\nsubprocess.Popen(['sleep', '120'])\n" + _emit(INIT_EVENT, RESULT_EVENT))
+    start = time.monotonic()
+    session = hx.run_claude(ws, "x", hx.HarnessConfig(claude_bin=fake))
+    assert time.monotonic() - start < 30
+    assert session.problem() is None, hx.describe(session)
+
+
+def test_a_code_absent_from_the_golden_baseline_is_a_new_finding(hx, ws):
+    baseline = hx.findings(ws.vault)
+    assert not any(code == "F6" for code, _ in baseline)
+    (ws.vault / "08-System" / "Templates" / "task.md").unlink()
+    assert {code for code, _ in hx.new_findings(baseline, hx.findings(ws.vault))} == {"F6"}
+
+
+@pytest.mark.parametrize("where", ["refs/heads/evil", "hooks-dir-link", "info/exclude"])
+def test_harness_git_refuses_a_symlink_anywhere_under_dot_git(hx, ws, tmp_path, where):
+    target = tmp_path / "elsewhere"
+    target.mkdir()
+    link = ws.vault / ".git" / where
+    if link.exists():
+        link.unlink()
+    link.parent.mkdir(parents=True, exist_ok=True)
+    link.symlink_to(target, target_is_directory=True)
+    with pytest.raises(hx.GitTamperError, match="symbolic link"):
+        hx.git(ws, "status")
+
+
+def test_denials_outside_root_exempt_the_guards_exact_allowed_commands(hx, ws):
+    guard_cmd = '[ "$SECOND_BRAIN_VAULT" -ef "/mnt/d/Second Brain" ]'
+    session = hx.SessionResult(argv=[], prompt="p", events=[INIT_EVENT, {**RESULT_EVENT, "permission_denials": [
+        {"tool_name": "Bash", "tool_input": {"command": guard_cmd}},
+        {"tool_name": "Bash", "tool_input": {"command": f"{guard_cmd} && echo real"}},
+        {"tool_name": "Read", "tool_input": {"file_path": "/mnt/d/Second Brain/x.md"}},
+        {"tool_name": "Read", "tool_input": {"file_path": f"{ws.vault}/a.md"}},
+    ]}])
+    found = hx.denials_outside_root(session, ws, "guard")
+    assert [d["command"] for d in found] == [f"{guard_cmd} && echo real", '{"file_path": "/mnt/d/Second Brain/x.md"}']
+    assert all(d["paths"] for d in found)
+
+
+def test_describe_shows_cost_and_denied_commands_in_full(hx):
+    long_cmd = "python3 .claude/skills/second-brain/scripts/vault_git.py commit-eod 2026-10-09 2>&1; echo $? " + "x" * 400
+    session = hx.SessionResult(argv=[], prompt="/eod", events=[INIT_EVENT, {**RESULT_EVENT, "total_cost_usd": 0.1234,
+        "permission_denials": [{"tool_name": "Bash", "tool_input": {"command": long_cmd}}]}])
+    text = hx.describe(session)
+    assert "cost_usd=0.1234" in text
+    assert long_cmd in text
+    assert "allowed only as exact commands" in text
+
+
+def test_run_claude_adds_the_session_cost_to_the_run_total(hx, ws, tmp_path, monkeypatch):
+    monkeypatch.setattr(hx, "RUN_COSTS", [])
+    fake = _fake_claude(tmp_path, _emit(INIT_EVENT, {**RESULT_EVENT, "total_cost_usd": 0.25}))
+    hx.run_claude(ws, "x", hx.HarnessConfig(claude_bin=fake))
+    hx.run_claude(ws, "y", hx.HarnessConfig(claude_bin=fake))
+    assert hx.RUN_COSTS == [0.25, 0.25]
+    assert "0.5000" in hx.cost_summary()

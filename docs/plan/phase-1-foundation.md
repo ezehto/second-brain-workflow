@@ -979,15 +979,57 @@ Rules the script enforces itself, whatever the caller says:
   `core.fsmonitor=false`, `core.pager=cat`, `core.sshCommand=false` and
   `credential.helper=` on the command line. It never pushes, fetches, adds a
   remote or writes git configuration.
-- `commit-eod` refuses when a remote is configured, when the date is not a
-  real `YYYY-MM-DD` date, and when the secret scan matches. The scan covers
-  added lines of the staged diff: private key headers, `password`, `token`,
-  `secret` or `api key` followed by `:` or `=` and a non-empty value, and
-  common token prefixes (`ghp_`, `github_pat_`, `glpat-`, `sk-`, `xox`,
-  `AKIA`). On a match it prints the file name and the kind of match, never
-  the matched text, and exits non-zero without committing.
-- Exit code 0 on success, 1 on a refusal with a one-line reason, 2 on a usage
-  error.
+- `commit-eod` refuses when a remote is configured; when the date is not a
+  real `YYYY-MM-DD` date or is not today (the pinned date in test mode, in
+  which an unset `SECOND_BRAIN_TODAY` is a refusal, otherwise today in
+  `Asia/Manila`); when the vault is in the middle of a merge, rebase,
+  cherry-pick or revert, has unmerged paths or a detached `HEAD`; when a
+  nested git repository lies below the vault root; when any symbolic link
+  exists anywhere under `.git` (checked again immediately before committing);
+  and when the secret scan matches.
+- **Secret scan.** It reads the added lines of the staged diff and the names
+  of added files. It exists to catch the user's own accidents, so it must not
+  block ordinary engineering notes. A line matches when it contains:
+  - a private key header (`-----BEGIN ... PRIVATE KEY-----`);
+  - a known token prefix followed by a long run of token characters and not
+    preceded by a letter or digit: `ghp_`, `gho_`, `ghu_`, `ghs_`, `ghr_`,
+    `github_pat_`, `glpat-`, `sk-`, `xox`, `AKIA`, `ASIA`;
+  - credentials inside a URL (`scheme://user:password@host`);
+  - `Authorization: Bearer` or `Basic` followed by a long token;
+  - a **key** whose name contains `password`, `passwd`, `pwd`, `passphrase`,
+    `token`, `secret`, `api key` or `private key` (with `_` or `-` allowed
+    between the words, other word characters allowed around them, so
+    `SECRET_KEY`, `AWS_SECRET_ACCESS_KEY`, `DB_PASSWORD` and `secretKey` all
+    count), followed by `:` or `=` and a **value that looks like a secret**.
+    The value may be on the same line, in the next cell of a Markdown table
+    row, or alone on the following line after a bare `key:`.
+  A value looks like a secret only if, after removing surrounding quotes, it
+  is a single run of at least 8 characters without spaces, and is none of: a
+  placeholder (`<...>`, `${...}`, `$NAME`, `{{...}}`, `{%...%}`, `***`, a run
+  of `x`, `changeme`, `redacted`, `example`, `none`, `null`, `true`, `false`,
+  `yes`, `no`, `done`, `todo`); a code expression (it contains `(` or `[`, or
+  is a dotted name such as `os.environ`); or a plain lower-case dictionary
+  word or hyphenated phrase with no digit and no upper-case letter. So
+  "Rotate the API key: done", `token: ${TOKEN}`, `password = get_secret('db')`
+  and "Secret: the cache is Redis" do not match, and
+  `SECRET_KEY = 'django-insecure-4f...'` does.
+- **Escape hatch.** A line that carries the comment `<!-- sbw: not-a-secret -->`
+  is skipped, so a false positive never blocks the daily commit for good. Only
+  the user adds it; the skill tells a session never to add it.
+- **On a match** it commits nothing, leaves the changes staged, and prints at
+  most ten `<file>:<line> (<kind>)` entries plus "and N more", then what to do
+  (remove the value, or mark the line if it is not a secret, and run `/eod`
+  again). It never prints the matched text or the line. A refused change may
+  remain as an unreferenced object in `.git` until git prunes it; that is an
+  accepted residual risk, since the vault never leaves the machine.
+- **Messages** are one line and say what the user can do. A refusal caused by
+  git state the session cannot change (a setting to remove, a merge to finish,
+  a lock file) names the exact command for the user to run in a terminal.
+- `status` and `staged-diff` output is capped at 256 KiB with a truncation
+  line.
+- Exit code 0 on success, including "nothing to commit" (printed on stdout:
+  an outcome, not an error); 1 on a refusal, with a one-line reason on stderr
+  starting `refused:`; 2 on a usage error.
 
 ---
 
@@ -1489,8 +1531,9 @@ recorded.
   frontmatter keys and values, including `project` written as a wikilink and
   folder-qualified links where stems are duplicated; section headings intact;
   no other file changed (snapshot diff); conformance reports no failures.
-  `/daily`: both carry-forward scenarios match the expected notes (the ordered
-  item list of each section, compared after trimming whitespace), and a touched
+  `/daily`: the three carry-forward scenarios match the fixture's expected
+  files byte for byte, as their `scenario.json` says (the new note's `id` is
+  matched by its pattern), and a touched
   note is left unchanged. A guard scenario: with test mode set and
   `SECOND_BRAIN_VAULT` unset, the command refuses and writes nothing. `/eod`: one commit
   `eod: <date>`, second run amends, no remote; a planted secret stops the

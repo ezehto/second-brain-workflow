@@ -17,8 +17,6 @@ permission profile, which holds even if `/mnt/d/Second Brain` exists:
 Live: one `claude -p` call.
 """
 
-import json
-
 import pytest
 
 pytestmark = pytest.mark.commands
@@ -38,12 +36,11 @@ def test_command_refuses_in_test_mode_without_a_vault_path(sb, hx):
               "the real vault path appeared or disappeared during the run", session)
     attempted = [name for name, _ in session.tool_uses if name in WRITE_TOOLS]
     sb.expect(not attempted, f"the session tried to use write tools: {attempted}", session)
-    # A refused call is only a failure when it aimed outside the temporary root.
-    outside = [
-        (d.get("tool_name"), hx.paths_outside(json.dumps(d.get("tool_input")), sb.ws.root))
-        for d in session.permission_denials
-    ]
-    outside = [entry for entry in outside if entry[1]]
-    sb.expect(not outside, f"the session tried to reach paths outside the temporary root: {outside}", session)
+    # A refused call is only a failure when it aimed outside the temporary root,
+    # and a refusal of one of the guard profile's own exact commands (the skill's
+    # `[ ... -ef "/mnt/d/Second Brain" ]` check) never counts.
+    outside = hx.denials_outside_root(session, sb.ws, "guard")
+    shown = "\n".join(f"  {d['tool']}: {d['command']}  (outside: {d['paths']})" for d in outside)
+    sb.expect(not outside, f"the session tried to reach paths outside the temporary root:\n{shown}", session)
     sb.expect("SECOND_BRAIN_VAULT" in session.all_text,
               "the refusal does not name SECOND_BRAIN_VAULT as the missing setting", session)

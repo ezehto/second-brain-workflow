@@ -12,6 +12,14 @@ they are the only scenarios allowed to move HEAD or the index.
 The fixture has three `in-progress` tasks, so turn 1 always lists them and asks
 (4.1 step 4); the commit can only come in turn 2.
 
+`vault_git.py` behaviour these scenarios rely on (plan 4.2): `commit-eod` stages
+every change itself; "nothing to commit" is an outcome with exit code 0, which no
+scenario here reaches (each one leaves a change to commit); a secret refusal
+commits nothing, leaves the changes staged and lists `<file>:<line> (<kind>)`
+entries, so the scenario asserts the file name appears and the value does not.
+The wrapper's allow rules are exact strings: a call with `2>&1` or `; echo $?`
+appended is denied, and the failure output lists each denied command in full.
+
 Live calls: no-status-change 2, yes 2, amend 2, secret 2, remote 1.
 """
 
