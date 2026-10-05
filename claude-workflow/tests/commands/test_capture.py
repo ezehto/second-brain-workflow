@@ -1,6 +1,6 @@
 """/capture scenarios (P1-10, P1-11; plan sections 2.5 rule 9, 2.12, 4).
 
-Live: each test runs `claude -p` once (see conftest.py); two calls.
+Live: each test runs `claude -p` once (see conftest.py); three calls.
 """
 
 import re
@@ -45,4 +45,23 @@ def test_capture_sanitises_colon_and_question_mark_in_the_name_and_keeps_the_bod
     rel = sb.changes(before, session, added=(UNSAFE_NAME,))[UNSAFE_NAME]
     note = sb.check_new_note(rel, "capture", session, status="inbox", tags=[])
     sb.expect(UNSAFE_TEXT in note.body, f"the body is not the text verbatim: {note.body!r}", session)
+    sb.assert_no_new_findings(baseline, session)
+
+
+SHELL_TEXT = "R&D review; Mark's notes on the pier lamps are due Friday"
+# Plan 2.5: rule 9 takes the first 8 words, "R&D review; Mark's notes on the pier
+# lamps"; `&`, `;` and `'` are not in rule 3's set, so nothing else changes. Any
+# lookup the command makes must pass the text in single quotes with `'` written
+# as `'\''` (plan 4.1); the harness's Bash-usage check enforces that on every turn.
+SHELL_NAME = re.compile(r"00-Inbox/2026-10-09 ([0-9]{4}) R&D review; Mark's notes on the pier lamps\.md")
+
+
+def test_capture_keeps_ampersand_semicolon_and_apostrophe(sb):
+    before, baseline = sb.snapshot(), sb.findings()
+
+    session = sb.run("/capture", SHELL_TEXT)
+
+    rel = sb.changes(before, session, added=(SHELL_NAME,))[SHELL_NAME]
+    note = sb.check_new_note(rel, "capture", session, status="inbox", tags=[])
+    sb.expect(SHELL_TEXT in note.body, f"the body is not the text verbatim: {note.body!r}", session)
     sb.assert_no_new_findings(baseline, session)

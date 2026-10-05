@@ -69,6 +69,7 @@ USAGE = ("usage: vault_git.py env | stem NAME | project TEXT | remote | status |
 # Notes (section 2.9): the templates folder, and how many stem lines are printed.
 TEMPLATES_FOLDER = "08-System/Templates"
 SBIGNORE = ".sbignore"
+SBIGNORE_LIMIT = 64 * 1024
 MAX_STEM_LINES = 50
 
 # Pinned on every call. Command-line -c beats the repository's own config.
@@ -513,15 +514,41 @@ def _check_git_dir(vault: str) -> None:
 
 
 def _read_sbignore(root: str) -> list:
-    """The .sbignore patterns. A missing or symlinked file means none."""
+    """The .sbignore patterns. A missing or symlinked file means none. Anything
+    but a regular file of at most 64 KiB is refused, so a lookup can never hang
+    on a FIFO or read without bound: checked with lstat, opened with O_NOFOLLOW
+    and O_NONBLOCK, and the opened descriptor checked again with fstat."""
     path = f"{root}/{SBIGNORE}"
-    if os.path.islink(path):
-        return []
     try:
-        with open(path, "rb") as fh:
-            text = fh.read().decode("utf-8-sig", errors="replace")
+        st = os.lstat(path)
     except FileNotFoundError:
         return []
+    if stat.S_ISLNK(st.st_mode):
+        return []
+    if not stat.S_ISREG(st.st_mode):
+        raise Refusal(f"{SBIGNORE} is not a regular file; remove or replace it")
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except FileNotFoundError:
+        return []
+    except OSError as exc:
+        raise Refusal(f"cannot read {SBIGNORE}: {exc.strerror}") from None
+    try:
+        if not stat.S_ISREG(os.fstat(fd).st_mode):
+            raise Refusal(f"{SBIGNORE} is not a regular file; remove or replace it")
+        data = b""
+        while len(data) <= SBIGNORE_LIMIT:
+            chunk = os.read(fd, SBIGNORE_LIMIT + 1 - len(data))
+            if not chunk:
+                break
+            data += chunk
+    except OSError as exc:
+        raise Refusal(f"cannot read {SBIGNORE}: {exc.strerror}") from None
+    finally:
+        os.close(fd)
+    if len(data) > SBIGNORE_LIMIT:
+        raise Refusal(f"{SBIGNORE} is larger than 64 KiB; shorten it")
+    text = data.decode("utf-8-sig", errors="replace")
     lines = (line.strip() for line in text.splitlines())
     return [line for line in lines if line and not line.startswith("#")]
 
@@ -583,11 +610,18 @@ def _fold(text: str) -> str:
     return unicodedata.normalize("NFC", unicodedata.normalize("NFC", text).casefold())
 
 
+def _shell_quote_broken(text: str) -> bool:
+    """Sessions pass stem and project arguments in single quotes and never use
+    "$", "`", "<" or ">": any of them reaching the script means the quoting
+    broke."""
+    return any(c in text for c in "$`<>")
+
+
 def _stem_name(raw: str):
     """The note name to look up, or None when the argument is not a plain name."""
     name = raw[:-3] if raw.casefold().endswith(".md") else raw
     if (not name or name.startswith("-") or "/" in name or "\\" in name
-            or not name.isprintable()):
+            or not name.isprintable() or _shell_quote_broken(name)):
         return None
     return name
 
@@ -1214,7 +1248,10 @@ def main(argv: list | None = None) -> int:
             or any(a.startswith("-") for a in argv)
             or (argv[0] == "stem" and _stem_name(argv[1]) is None)
             or (argv[0] == "project" and not argv[1].isprintable())
-            or (argv[0] == "project" and not argv[1])):
+            or (argv[0] == "project" and not argv[1])
+            or (argv[0] == "project" and _shell_quote_broken(argv[1]))
+            or (argv[0] == "project" and "/" in argv[1]
+                and not _WIKILINK.fullmatch(argv[1]))):
         print(USAGE, file=sys.stderr)
         return 2
     verb = argv[0]

@@ -988,9 +988,9 @@ def test_bash_usage_accepts_the_wrapper_verbs_ls_and_pwd(hx, ws):
     commands = [
         f"python3 -I {script} env",
         f"python3 -I {ws.cwd}/{script} env",
-        f"python3 -I {script} stem Paint the gate",
-        f"python3 -I {script} project night-owl",
-        f'python3 -I {script} project "[[Harbor Lights]]"',
+        f"python3 -I {script} stem 'Paint the gate'",
+        f"python3 -I {script} project 'night-owl'",
+        f"python3 -I {script} project '[[Harbor Lights]]'",
         "ls", f"ls {ws.vault}/02-Work/Tasks", "pwd",
     ]
     session = hx.SessionResult(argv=[], prompt="p", events=_bash_session(*commands))
@@ -1016,8 +1016,8 @@ def test_bash_usage_rejects_anything_else(hx, ws, command):
 
 def test_bash_usage_follows_the_profile(hx, ws):
     stage = "python3 -I .claude/skills/second-brain/scripts/vault_git.py stage"
-    stem = "python3 -I .claude/skills/second-brain/scripts/vault_git.py stem Harbor Lights"
-    project = "python3 -I .claude/skills/second-brain/scripts/vault_git.py project harbor-lights"
+    stem = "python3 -I .claude/skills/second-brain/scripts/vault_git.py stem 'Harbor Lights'"
+    project = "python3 -I .claude/skills/second-brain/scripts/vault_git.py project 'harbor-lights'"
     session = hx.SessionResult(argv=[], prompt="p", events=_bash_session(stage, stem, project, "ls"))
     assert hx.unexpected_bash(session, ws, "eod") == []
     assert hx.unexpected_bash(session, ws, "default") == [stage]
@@ -1040,3 +1040,122 @@ def test_describe_counts_denied_bash_commands(hx):
     text = hx.describe(session)
     assert "denied Bash commands: 2" in text
     assert "cat a" in text and "head b" in text
+
+
+# --- Lookup arguments: one single-quoted shell word (plan 4.1 "Passing text to the script") ----
+
+LOOKUP = ".claude/skills/second-brain/scripts/vault_git.py"
+
+
+@pytest.mark.parametrize(
+    "argument",
+    ["'R&D notes'", "'it'\\''s'", "'a; b | c * ~'", "'[[Harbor Lights]]'", "'Café lights'", "''", "'~'",
+     "'[[02-Work/Projects/Harbor Lights]]'"],
+)
+@pytest.mark.parametrize("verb", ["stem", "project"])
+def test_lookup_argument_in_single_quotes_is_accepted(hx, ws, verb, argument):
+    for script in (LOOKUP, f"{ws.cwd}/{LOOKUP}"):
+        command = f"python3 -I {script} {verb} {argument}"
+        session = hx.SessionResult(argv=[], prompt="p", events=_bash_session(command))
+        assert hx.unexpected_bash(session, ws, "default") == [], command
+
+
+@pytest.mark.parametrize(
+    "argument",
+    ['"Pay $5"', '"Harbor Lights"', "Plain", "'a' ; ls", "$HOME", "~", "'a' 'b'", "'Pay $5'",
+     "'a`id`'", "'unterminated", "'a'b", "'a' && ls", "'it\\'s'", "'a<b'", "'a>b'", "'<x>'"],
+)
+def test_lookup_argument_other_than_one_single_quoted_word_fails(hx, ws, argument):
+    command = f"python3 -I {LOOKUP} stem {argument}"
+    session = hx.SessionResult(argv=[], prompt="p", events=_bash_session(command))
+    assert hx.unexpected_bash(session, ws, "default") == [command]
+
+
+def test_single_quoted_word_parser(hx):
+    assert hx.single_quoted_word("'R&D notes'") == "R&D notes"
+    assert hx.single_quoted_word("'it'\\''s'") == "it's"
+    for bad in ("Plain", "'a' 'b'", "'a'b", "'a", "\"a\"", "'a' ; ls", ""):
+        assert hx.single_quoted_word(bad) is None, bad
+
+
+def test_dollar_and_backtick_fail_in_any_command(hx, ws):
+    for command in ("ls $HOME", "ls `pwd`", f"python3 -I {LOOKUP} env $X", "ls > out.txt", "ls < in.txt",
+                    f"python3 -I {LOOKUP} env >/dev/null", "ls ~", "ls ~/x", "pwd ~"):
+        session = hx.SessionResult(argv=[], prompt="p", events=_bash_session(command))
+        assert hx.unexpected_bash(session, ws, "eod") == [command], command
+
+
+# --- `$` and backtick deny rules, and skill shell execution --------------------------------------
+
+
+def _doc_rule_matches(rule, command):
+    """Claude Code's documented Bash rule semantics: `*` stands for any text and
+    may appear anywhere, everything else matches as written."""
+    body = rule[len("Bash("):-1]
+    return re.fullmatch(".*".join(re.escape(part) for part in body.split("*")), command, re.S) is not None
+
+
+def test_every_profile_denies_any_command_containing_a_dollar_or_backtick(hx, ws):
+    for profile in hx.PROFILES:
+        deny = hx.permission_settings(ws, profile)["permissions"]["deny"]
+        assert {"Bash(*$*)", "Bash(*`*)", "Bash(*>*)", "Bash(*<*)"} <= set(deny), profile
+        for command in (f"python3 -I {LOOKUP} stem \"Pay $5\"", "ls $HOME", "echo `id`",
+                        f"python3 -I {LOOKUP} project '$HOME'", "ls > out.txt", "ls < in.txt",
+                        f"python3 -I {LOOKUP} stem 'a>b'", f"python3 -I {LOOKUP} env 2>&1"):
+            assert any(_doc_rule_matches(rule, command) for rule in deny), (profile, command)
+        for command in (f"python3 -I {LOOKUP} env", f"python3 -I {LOOKUP} stem 'R&D notes'", "ls", "pwd",
+                        f"python3 -I {LOOKUP} project '[[02-Work/Projects/Harbor Lights]]'",
+                        f"python3 -I {LOOKUP} stem '~'"):
+            assert not any(_doc_rule_matches(rule, command) for rule in deny if rule.startswith("Bash(")), command
+
+
+def test_settings_disable_skill_shell_execution(hx, ws):
+    for profile in hx.PROFILES:
+        settings = hx.permission_settings(ws, profile)
+        assert settings["disableSkillShellExecution"] is True, profile
+
+
+# --- Tool-use order on one file -------------------------------------------------------------------
+
+
+def test_file_writes_lists_edits_and_writes_to_a_path_in_order(hx):
+    path = "/tmp/x/vault/02-Work/Tasks/Wire the dock lights.md"
+    content = [
+        {"type": "tool_use", "id": "a", "name": "Read", "input": {"file_path": path}},
+        {"type": "tool_use", "id": "b", "name": "Edit", "input": {"file_path": path, "old_string": "## Notes\n",
+                                                                  "new_string": "## Notes\n\nEvidence\n"}},
+        {"type": "tool_use", "id": "c", "name": "Edit", "input": {"file_path": "/other.md", "new_string": "x"}},
+        {"type": "tool_use", "id": "d", "name": "Write", "input": {"file_path": path, "content": "status: done\n"}},
+    ]
+    session = hx.SessionResult(argv=[], prompt="p", events=[{"type": "assistant", "message": {"content": content}}])
+    assert hx.file_writes(session, path) == ["## Notes\n\nEvidence\n", "status: done\n"]
+    assert hx.first_write_containing(session, path, "evidence") == 0
+    assert hx.first_write_containing(session, path, "status: done") == 1
+    assert hx.first_write_containing(session, path, "absent") is None
+
+
+def test_harness_write_order_helpers_take_vault_relative_paths(hx, ws):
+    rel = "02-Work/Tasks/Wire the dock lights.md"
+    path = str(ws.vault / rel)
+    content = [
+        {"type": "tool_use", "id": "a", "name": "Edit", "input": {"file_path": path, "new_string": "status: done"}},
+        {"type": "tool_use", "id": "b", "name": "Edit", "input": {"file_path": path, "new_string": "Tested after dark"}},
+    ]
+    session = hx.SessionResult(argv=[], prompt="p", events=[{"type": "assistant", "message": {"content": content}}])
+    harness = hx.Harness(ws, hx.HarnessConfig())
+    assert harness.file_writes(session, rel) == ["status: done", "Tested after dark"]
+    # Status written before the evidence: the scenario's ordering check fails.
+    assert harness.first_write_containing(session, rel, "status: done") == 0
+    assert harness.first_write_containing(session, rel, "tested after dark") == 1
+
+
+def test_no_allowed_command_contains_a_redirection_character_or_tilde(hx, ws):
+    for profile in hx.PROFILES:
+        for command in hx.allowed_bash_commands(ws, profile):
+            assert not set(command) & {"<", ">", "~", "$", "`"}, (profile, command)
+
+
+@pytest.mark.parametrize("markexpr, live", [("not commands", False), ("", False), ("commands", True),
+                                            ("commands and not slow", True)])
+def test_cost_line_only_for_a_live_selection(hx, markexpr, live):
+    assert hx.live_run_selected(markexpr) is live

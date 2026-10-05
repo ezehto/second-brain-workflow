@@ -1,6 +1,6 @@
 """/task scenarios (P1-10, P1-11; plan sections 2.1, 2.3, 2.5, 4; SKILL.md dates rule).
 
-Live: one `claude -p` call per test, two for the two-turn `done` tests; ten calls.
+Live: one `claude -p` call per test, two for the two-turn `done` tests; twelve calls.
 """
 
 import re
@@ -71,6 +71,13 @@ def test_task_done_asks_for_evidence_then_records_it_on_yes(sb):
     sb.expect({k: v for k, v in note.frontmatter.items() if k != "status"}
               == {k: v for k, v in original.frontmatter.items() if k != "status"},
               "frontmatter keys other than status changed", turn2)
+    # Plan 4.1: the evidence is appended first and the status line changed
+    # second (one edit carrying both is also fine), so a stop in between never
+    # leaves a `done` task without evidence.
+    evidence_at = sb.first_write_containing(turn2, WIRE, EVIDENCE_FRAGMENT)
+    status_at = sb.first_write_containing(turn2, WIRE, "status: done")
+    sb.expect(evidence_at is not None and status_at is not None and evidence_at <= status_at,
+              f"the evidence was not written before the status (writes: {sb.file_writes(turn2, WIRE)})", turn2)
     sections = sb.sections(WIRE)
     sb.expect(any(EVIDENCE_FRAGMENT in line.lower() for line in sections.get("Notes", [])),
               f"the evidence is not under ## Notes: {sections}", turn2)
@@ -132,3 +139,36 @@ def test_task_named_like_an_ignored_note_writes_nothing_and_asks_for_another(sb)
     sb.unchanged(before, session)
     sb.expect(sb.read(scratch) == original, f"{scratch} changed", session)
     sb.expect("title" in session.all_text.lower(), "the reply does not ask for a different title", session)
+
+
+def test_task_title_with_a_dollar_sign_gets_a_safe_file_name(sb):
+    """Plan 2.5 rule 3 replaces `$` with a space, rule 4 collapses the run:
+    "Pay $5 invoice" becomes `Pay 5 invoice.md`. The title is the file name stem;
+    the task template has no title heading, so the body is the template's
+    headings (section 3). No Bash call may contain `$` (plan 4.1)."""
+    new_task = "02-Work/Tasks/Pay 5 invoice.md"
+    before, baseline = sb.snapshot(), sb.findings()
+
+    session = sb.run("/task", "Pay $5 invoice")
+
+    sb.changes(before, session, added=(new_task,))
+    sb.check_new_note(new_task, "task", session, status="planned")
+    with_dollar = [args.get("command", "") for name, args in session.tool_uses
+                   if name == "Bash" and "$" in args.get("command", "")]
+    sb.expect(not with_dollar, f"Bash calls contained `$`: {with_dollar}", session)
+    sb.assert_no_new_findings(baseline, session)
+
+
+def test_task_refuses_to_change_a_note_with_malformed_frontmatter(sb):
+    """Plan 4.1 "Changing an existing note": a note whose frontmatter is malformed
+    is never edited; the command says so and stops. `Broken yaml task.md` has an
+    unclosed flow sequence (fixture README)."""
+    broken = "02-Work/Tasks/Broken yaml task.md"
+    before = sb.snapshot()
+    original = sb.read(broken)
+
+    session = sb.run("/task", "Broken yaml task status:in-progress")
+
+    sb.unchanged(before, session)
+    sb.expect(sb.read(broken) == original, f"{broken} changed", session)
+    sb.expect("frontmatter" in session.text.lower(), "the reply does not say the frontmatter is the problem", session)

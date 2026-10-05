@@ -762,8 +762,8 @@ def test_task_evidence_and_project_summary(needle):
 # ---- running tools, finding and changing notes (plan 4.1, 4.2 stem) ----------------
 
 ENV_LINE = "vault_git.py env"
-PROJECT_LINE = 'python3 -I ${CLAUDE_SKILL_DIR}/scripts/vault_git.py project "<text>"'
-STEM_LINE = 'python3 -I ${CLAUDE_SKILL_DIR}/scripts/vault_git.py stem "<name>"'
+PROJECT_LINE = "python3 -I ${CLAUDE_SKILL_DIR}/scripts/vault_git.py project '<text>'"
+STEM_LINE = "python3 -I ${CLAUDE_SKILL_DIR}/scripts/vault_git.py stem '<name>'"
 
 
 def test_env_and_stem_command_lines_once_in_skill_and_never_in_references():
@@ -812,7 +812,8 @@ def test_running_tools_and_note_rules(needle):
     "rel,needle",
     [
         (("reference", "links.md"), "bare when `stem` prints at most one `note` line for the target's name and folder-qualified otherwise"),
-        (("reference", "links.md"), "the note being created does not count"),
+        (("reference", "links.md"), "counts toward uniqueness unless it is itself the link target"),
+        (("reference", "links.md"), "a task named like its project gets a folder-qualified project link"),
         (("reference", "naming.md"), "`stem` verb"),
         (("reference", "conventions.md"), "`stem` applies the ignore rules"),
     ],
@@ -841,10 +842,10 @@ def test_no_uniqueness_or_notehood_from_ls(doc):
 @pytest.mark.parametrize(
     "rel,needle",
     [
-        (SK, "A new note's name clashes when any line, `note` or `ignored`, has its path in the target folder"),
+        (SK, "A new note's name clashes when any line, `note` or `ignored`, has its path directly in the target folder, not in a subfolder"),
         (SK, "an ignored file of that name is still a file a write would overwrite"),
         (SK, "Lines in other folders are not clashes"),
-        (("reference", "naming.md"), "any line, `note` or `ignored`, whose path is in the target folder is a clash"),
+        (("reference", "naming.md"), "any line, `note` or `ignored`, whose path is directly in the target folder, not in a subfolder, is a clash"),
         (("reference", "naming.md"), "an ignored file of that name is still a file a write would overwrite"),
         (("reference", "naming.md"), "lines in other folders are not clashes"),
         (SK, "Only a note on a `note` line may be edited"),
@@ -874,3 +875,80 @@ def test_no_hand_slug_or_folder_scan_instruction(doc):
         s = sentence.lower()
         if "slugify" in s and re.search(r"\b(match|compare|compute|find)\b", s):
             assert re.search(r"\bnever\b|script|indexer|description", s), sentence
+
+
+# ---- quoting, stem output limits, known limits (plan 4.1) --------------------------
+
+@pytest.mark.parametrize(
+    "rel,needle",
+    [
+        (SK, "Always use single quotes"),
+        (SK, "each `'` inside it written as `'\\''`"),
+        (SK, "never double quotes"),
+        (SK, "never pass text containing `$`, a backtick, `<` or `>`"),
+        (SK, "the script refuses all four"),
+        (SK, "\"ask\" applies to a name or value the user typed for a lookup"),
+        (SK, "does not run `stem`"),
+        (SK, "`project` also refuses a `/` outside a wikilink"),
+        (SK, "No `$` or backtick expansion, and no `~` at the start of an unquoted word, in any command line"),
+        (SK, "A final `[N more not shown]` line means the list is incomplete: ask, do not decide"),
+        (SK, "show the paths exactly as printed"),
+        (("reference", "naming.md"), "`$` and the backtick"),
+        (("reference", "naming.md"), "a hand-made note with `$` in its name is still valid"),
+        (("reference", "conventions.md"), "## Known limits"),
+        (("reference", "conventions.md"), "begins with another slash-command name loads that command too"),
+        (("reference", "conventions.md"), "`${CLAUDE_...}` placeholders in argument text are substituted"),
+    ],
+)
+def test_quoting_and_limits(rel, needle):
+    assert has(skill_text(*rel), needle)
+
+
+@pytest.mark.parametrize("doc", DOCS, ids=lambda p: p.name)
+def test_no_double_quoted_script_argument(doc):
+    text = read(doc)
+    assert not re.search(r'vault_git\.py\s+(stem|project)\s+"', text)
+    assert not re.search(r'vault_git\.py\s+(stem|project)\s+[^\'\s<]', text)
+
+
+# ---- review round: unasked commands, four characters, links wording ----------------
+
+@pytest.mark.parametrize(
+    "needle",
+    [
+        "a hand-made note whose name contains `$`, a backtick, `<` or `>`",
+        "does not run `stem` and writes the folder-qualified form, which is never ambiguous",
+        "a `project` value containing one of them is treated as an unknown project",
+        "At most one note in total",
+        "the `stem` `note` lines, plus the note being created when it shares the name and is not the target",
+    ],
+)
+def test_links_unasked_commands_and_total(needle):
+    assert has(skill_text("reference", "links.md"), needle)
+
+
+def test_quoting_is_its_own_item_covering_both_verbs():
+    sec = section(read(SKILL_MD), "## Running tools")
+    items = re.split(r"\n(?=\d\. )", sec)
+    quoting = [i for i in items if "Quoting" in i]
+    assert len(quoting) == 1
+    assert "Find a project" not in quoting[0] and "Find a note" not in quoting[0]
+    assert "`stem`" in quoting[0] and "`project`" in quoting[0]
+    project_item = next(i for i in items if "Find a project" in i)
+    assert "Quoting" not in project_item
+
+
+def test_no_bare_double_quoted_lookup_in_command_files():
+    cmds = SKILL.parents[1] / "commands"
+    files = sorted(cmds.glob("*.md"))
+    assert files, "no command files found"
+    for f in files:
+        text = read(f)
+        assert not re.search(r'vault_git\.py\s+(stem|project)\s+"', text), f.name
+        assert not re.search(r'vault_git\.py\s+(stem|project)\s+[^\'\s<]', text), f.name
+
+
+def test_refusal_exit_code_statement_stands():
+    text = norm(read(SKILL_MD))
+    assert "1 is a refusal with a one-line reason" in text
+    assert "2 is a usage error" in text

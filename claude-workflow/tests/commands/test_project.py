@@ -84,3 +84,17 @@ def test_project_with_a_duplicated_slug_names_both_notes_and_writes_nothing(sb):
     text = session.all_text
     sb.expect("Night Owl" in text and "Night-Owl" in text,
               "the reply does not name both notes that share the slug", session)
+
+
+@pytest.mark.commands
+def test_project_refuses_a_path_argument(sb):
+    """Plan 4.1 "/project": an argument containing `/` that is not a wikilink is
+    refused; a project is named by a title or a slug, not a path."""
+    before = sb.snapshot()
+
+    session = sb.run("/project", "some/path")
+
+    sb.unchanged(before, session)
+    reply = session.text.lower()
+    sb.expect("path" in reply or "/" in reply or "slash" in reply,
+              "the reply does not say the argument is a path", session)

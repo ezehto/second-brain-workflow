@@ -292,8 +292,13 @@ name from a title. Daily notes are exempt (always `YYYY-MM-DD.md`).
 
 1. Normalise to Unicode NFC.
 2. Remove control characters (U+0000 to U+001F, U+007F).
-3. Replace each of `\ / : * ? " < > |` (Windows-illegal) and `# ^ [ ]`
-   (break Obsidian links) with a space.
+3. Replace each of `\ / : * ? " < > |` (Windows-illegal), `# ^ [ ]`
+   (break Obsidian links) and `$` and the backtick (expanded by a shell even
+   inside double quotes, so a name containing one cannot be passed safely to
+   the lookup verbs of section 4.2) with a space. The last two are a rule for
+   names the commands and the writer create; a note the user made by hand with
+   `$` or a backtick in its name is still a valid note, and the checker's F5
+   does not flag it.
 4. Collapse whitespace runs to one space; trim both ends.
 5. Strip leading dots (a leading dot would hide the file and look like a
    writer temp file) and trailing dots and spaces (Windows strips them).
@@ -959,10 +964,54 @@ Settled on 2026-10-05 after the command-test and security reviews.
   templates, trash or symbolic links, and is cut off on a large vault. It runs
   `vault_git.py stem <name>` and uses the lines printed. An emitted link is
   bare when `stem` prints at most one `note` line for the target's name and
-  folder-qualified otherwise (section 2.5); the note being created does not
-  count. A new note's name clashes when `stem` prints any line, `note` or
-  `ignored`, whose path is in the target folder: an ignored file of the same
+  folder-qualified otherwise (section 2.5); whether the note being created
+  counts is stated under "Emitted links and the note being created" below. A
+  new note's name clashes when `stem` prints any line, `note` or `ignored`,
+  whose path is directly in the target folder: an ignored file of the same
   name is still a file that a write would overwrite.
+- **Passing text to the script.** `stem` and `project` are the only verbs
+  that take text a session composes, and that text may come from a pasted
+  capture. It must reach the script unchanged and must never be interpreted by
+  the shell. So: the argument is always wrapped in single quotes, with each
+  `'` inside it written as `'\''`; double quotes are never used, because a
+  shell still expands `$` and backticks inside them (demonstrated: a note
+  `Pay $5 now.md` was not found, and `project $HOME` printed the slug of the
+  home directory). A name or text containing `$` or a backtick is never passed
+  at all: names the commands create cannot contain them (section 2.5 rule 3),
+  and if the user types one for a lookup the command says it cannot look that
+  name up and asks. A command that asks nothing (`/daily`, `/standup`) can
+  still meet such a name on a note the user made by hand: when it emits a link
+  to that note it does not run `stem` and writes the folder-qualified form,
+  which is never ambiguous; a `project` value containing `$` or a backtick is
+  treated as an unknown project. `<` and `>` are treated the same way (no note name can
+  contain them). The script also refuses an argument containing any of the
+  four, so the two rules agree, and `project` refuses a `/` outside a wikilink
+  (section 4.2). Permission rules for vault sessions deny any command
+  containing `$`, a backtick, `<` or `>`, as the test harness does. They
+  belong in a settings file used only for vault sessions, never in the user's
+  global settings, where they would break ordinary work; P1-15 documents that
+  file. Residual risks recorded for P1-15: a glob over the current directory
+  is not stopped at run time (it shows nothing Read cannot), and an `ls <path>`
+  allow rule lists paths outside the vault unless reads outside the working
+  directories are blocked.
+- **Reading `stem` output.** A clash is a line whose path is directly in the
+  target folder, not in a subfolder of it. A final `[N more not shown]` line
+  means the listing is incomplete: the command asks instead of deciding. When
+  asking the user to choose between several `note` lines, it shows the paths
+  exactly as printed.
+- **Emitted links and the note being created.** The note being created counts
+  toward uniqueness unless it is itself the link's target: a task named like
+  its project gets a folder-qualified project link, because two notes will
+  share that name once the task exists.
+- **`/task <value> status:<status>`.** A value containing `/` is a
+  vault-relative path (`.md` is added if missing); otherwise it is a title (a
+  trailing `.md` is dropped).
+- **`/project`.** An argument containing `/` that is not a wikilink is refused:
+  a project is named by a title or a slug, not a path.
+- **Known limits of Claude Code that no command text can prevent.** Argument
+  text that begins with another slash-command name (`/capture /daily was
+  late`) makes Claude Code load that command too. `${CLAUDE_...}` placeholders
+  in argument text are substituted.
 - **Finding a project.** A command never slugifies by hand or scans the
   projects folder: it runs `vault_git.py project <text>` with the slug, title
   or wikilink the user gave and uses the result (one `note` line: that
@@ -986,10 +1035,7 @@ Settled on 2026-10-05 after the command-test and security reviews.
   delimiter that ordinary text is unlikely to contain and says the text runs
   to that delimiter; if the delimiter itself appears inside the text, the
   command refuses and says so, because it can no longer tell where the text
-  ends. Known limit: Claude Code substitutes `${CLAUDE_...}` variables in
-  a command file after inserting the arguments, so argument text that contains
-  such a placeholder (for example `${CLAUDE_SKILL_DIR}`) is stored with the
-  value substituted, not verbatim. No command text can prevent that.
+  ends.
 - **`/task`:** when marking a task `done`, the evidence is appended first and
   the status line is changed second, so a stop in between never leaves a
   `done` task without evidence.
@@ -1040,8 +1086,8 @@ fixed verbs, and the same protection applies to the real vault.
 | Verb | Does |
 |---|---|
 | `env` | prints `vault`, `today`, `now` and `test_mode` (section 2.12); runs no git; the one verb every command uses |
-| `stem <name>` | prints one line per file in the vault whose stem equals `<name>` (NFC, case-insensitive): `note <vault-relative path>` for a real note under the ignore rules of section 2.9, `ignored <vault-relative path>` for a file of that name that is not a real note (a template, a file under a dot folder such as `.trash`, a file matched by `.sbignore`, a symbolic link). Nothing printed means no file of that name exists. Runs no git. The argument is a note name, never a path (a `/`, a leading `-` or a control character is a usage error) |
-| `project <text>` | prints `slug=<slug>` (the section 2.1 slug of `<text>`, which may be a slug, a title or a wikilink), then one line `note <vault-relative path>` for each real note under `02-Work/Projects/` whose stem has that slug. No path line means an unknown project; more than one means the slug is duplicated and resolves to none. Runs no git |
+| `stem <name>` | prints one line per file in the vault whose stem equals `<name>` (NFC, case-insensitive): `note <vault-relative path>` for a real note under the ignore rules of section 2.9, `ignored <vault-relative path>` for a file of that name that is not a real note (a template, a file under a dot folder such as `.trash`, a file matched by `.sbignore`, a symbolic link). Nothing printed means no file of that name exists. Runs no git. The argument is a note name, never a path (a `/`, a leading `-`, a control character, a `$`, a backtick, a `<` or a `>` is a usage error) |
+| `project <text>` | prints `slug=<slug>` (the section 2.1 slug of `<text>`, which may be a slug, a title or a wikilink), then one line `note <vault-relative path>` for each real note under `02-Work/Projects/` whose stem has that slug. No path line means an unknown project; more than one means the slug is duplicated and resolves to none. Runs no git. A `$`, a backtick, a `<` or a `>` in the argument is a usage error, and so is a `/` unless the whole argument is a wikilink: an unquoted `~` or path glob expanded by a shell always yields a `/`, so this refusal is what stops the verb from echoing a home directory or a file name outside the vault as a slug, whatever the permission rules allow. Both lookup verbs read `.sbignore` only if it is a regular file (checked with `lstat`, opened with `O_NOFOLLOW` and `O_NONBLOCK`) of at most 64 KiB; a symbolic link or a missing file means no patterns, and anything else (a FIFO, a device, a directory, an oversized file) is refused with a `refused:` line and exit code 1, like every other refusal, so a lookup can never hang or read without bound |
 | `remote` | prints the configured remotes, one per line (nothing means none) |
 | `status` | prints `git status --porcelain` |
 | `stage` | `git add -A` |

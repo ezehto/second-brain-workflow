@@ -15,8 +15,11 @@ Apply in order, to the title that becomes the file name stem.
 
 1. Normalise to Unicode NFC.
 2. Remove control characters (U+0000 to U+001F, U+007F).
-3. Replace each of `\ / : * ? " < > |` (illegal on Windows) and `# ^ [ ]`
-   (break Obsidian links) with a space.
+3. Replace each of `\ / : * ? " < > |` (illegal on Windows), `# ^ [ ]`
+   (break Obsidian links) and `$` and the backtick (a shell expands them even in
+   double quotes, so the lookup verbs cannot take them) with a space. The last
+   two apply to names commands create: a hand-made note with `$` in its name is
+   still valid.
 4. Collapse runs of whitespace to one space. Trim both ends.
 5. Strip leading dots (a leading dot hides the file and looks like a writer
    temp file). Strip trailing dots and spaces (Windows removes them).
@@ -43,6 +46,6 @@ result with the rules above.
   such a note, use the folder-qualified form, see [links.md](links.md).
 - Find clashes with the `stem` verb at write time (see
   [../SKILL.md](../SKILL.md#running-tools)). Any line, `note` or `ignored`, whose
-  path is in the target folder is a clash, because an ignored file of that name
+  path is directly in the target folder, not in a subfolder, is a clash, because an ignored file of that name
   is still a file a write would overwrite. Lines in other folders are not
   clashes. Never rely on an index; it can be a poll interval out of date.

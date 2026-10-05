@@ -16,9 +16,18 @@ Whenever you write a wikilink (in `project`, `triaged_to`, carry-forward items
 or a `## Links` section), run the `stem` verb for the target's name (see
 [../SKILL.md](../SKILL.md#running-tools)). The link is bare when `stem` prints at
 most one `note` line for the target's name and folder-qualified otherwise. The
-note being created does not count. `ignored` lines do not count either.
+note being created counts toward uniqueness unless it is itself the link target:
+a task named like its project gets a folder-qualified project link, because two
+notes will share that name once the task exists. `ignored` lines do not count.
 
-- At most one `note` line: write `[[Name]]`.
+A command that asks nothing (`/daily`, `/standup`) can meet a hand-made note
+whose name contains `$`, a backtick, `<` or `>`. When it emits a link to that
+existing note it does not run `stem` and writes the folder-qualified form, which
+is never ambiguous. A `project` value containing one of them is treated as an
+unknown project.
+
+- At most one note in total (the `stem` `note` lines, plus the note being
+  created when it shares the name and is not the target): write `[[Name]]`.
 - More than one: write the vault-relative path without `.md`:
   `[[02-Work/Tasks/Name]]`.
 

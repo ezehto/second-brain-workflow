@@ -37,9 +37,9 @@ run by `addopts = ["-m", "not commands"]` in claude-workflow/pyproject.toml. Any
 `-m` expression given on the command line replaces that default and can select
 the live scenarios: they launch `claude` and spend tokens.
 
-Live calls for a full `-m commands` run: 39 (capture 2, daily 4, decision 1,
-eod 9, guard 1, knowledge 1, project 4, standup 1, task 10, template edit 1,
-triage 4, canary 1).
+Live calls for a full `-m commands` run: 44 (capture 3, daily 4, decision 1,
+eod 9, guard 1, knowledge 1, project 5, standup 1, task 12, template edit 1,
+triage 4, canary 2).
 
 Every turn of every scenario also fails if the session ran any Bash command
 other than the wrapper's verbs its profile allows (`env`; `stem` and `project`
@@ -148,7 +148,17 @@ BASH_DENY = tuple(f"Bash({name}{form})" for name in READ_ONLY_DENIED for form in
     "Bash(git *)",
     # Backstops: `ls *` is the one wildcard Bash rule left, and `ls $(cmd)`
     # must not run cmd. Kept although no allowed command needs them.
-    "Bash(*$(*)",  # command substitution
+    # Plan 4.1 "Passing text to the script": a command never passes text that
+    # contains `$` or a backtick, so any command containing either is denied
+    # (a shell expands both even inside double quotes). Claude Code honours a
+    # `*` anywhere in a rule, including at the start (`Bash(* --version)` in
+    # its permission docs).
+    "Bash(*$*)",
+    # No allowed command and no note name contains `<` or `>` (plan 4.1), so any
+    # redirection is denied outright, whatever its target.
+    "Bash(*>*)",
+    "Bash(*<*)",
+    "Bash(*$(*)",  # command substitution (also covered by the rule above)
     "Bash(*`*)",
     "Bash(*<(*)",  # process substitution
     "Bash(*>(*)",
@@ -447,7 +457,12 @@ def permission_settings(ws: Workspace, profile: str = "default") -> dict[str, An
         allow += vault_git_rules(ws)
     deny = [f"{tool}({_rule_path(p)}/**)" for p in PROTECTED for tool in ("Read", "Edit")]
     deny += BASH_DENY
-    return {"permissions": {"allow": allow, "deny": deny, "disableBypassPermissionsMode": "disable"}}
+    return {
+        "permissions": {"allow": allow, "deny": deny, "disableBypassPermissionsMode": "disable"},
+        # `!`cmd`` placeholders in skills and commands are replaced, not run
+        # (Claude Code settings key, v2.1.228 and later).
+        "disableSkillShellExecution": True,
+    }
 
 
 def build_env(ws: Workspace, *, vault_env: bool = True, base: dict[str, str] | None = None) -> dict[str, str]:
@@ -707,8 +722,15 @@ def cost_summary() -> str:
     return f"claude sessions: {len(RUN_COSTS)}, total cost USD {sum(RUN_COSTS):.4f}"
 
 
+def live_run_selected(markexpr: str) -> bool:
+    """Whether a `-m` expression selects the live scenarios. The default
+    `not commands` does not, so the fake sessions of the unit tests never
+    produce a misleading cost line."""
+    return "commands" in markexpr and "not commands" not in markexpr
+
+
 def pytest_terminal_summary(terminalreporter) -> None:
-    if RUN_COSTS:
+    if RUN_COSTS and live_run_selected(terminalreporter.config.getoption("markexpr") or ""):
         terminalreporter.write_line(cost_summary())
 
 
@@ -765,7 +787,30 @@ def allowed_bash_commands(ws: Workspace, profile: str) -> set[str]:
     return {r[len("Bash("):-1] for r in rules if r.startswith("Bash(") and "*" not in r}
 
 
-SHELL_OPERATORS = re.compile(r"&&|\|\||[;|&\n`<>]|\$\(")
+SHELL_OPERATORS = re.compile(r"&&|\|\||[;|&\n`<>$]")
+NEVER_IN_A_COMMAND = re.compile(r"[$`<>]")  # anywhere, even inside a quoted lookup argument
+HOME_TILDE = "~"  # expanded by the shell outside quotes: only fine inside a lookup argument
+SINGLE_QUOTED_WORD = re.compile(r"'[^']*'(?:\\''[^']*')*")
+LOOKUP_PREFIX = re.compile(r"python3 -I (\S+/vault_git\.py) (stem|project) ")
+
+
+def single_quoted_word(text: str) -> str | None:
+    """The value of `text` if it is exactly one shell word made of single-quoted
+    parts joined by the `'\\''` idiom (plan 4.1), else None."""
+    if not SINGLE_QUOTED_WORD.fullmatch(text):
+        return None
+    return text[1:-1].replace("'\\''", "'")
+
+
+def _lookup_call_ok(command: str, rules: list[str]) -> bool | None:
+    """For a `stem`/`project` call: True when the argument is one single-quoted
+    word (any character inside), False otherwise; None when not a lookup call."""
+    m = LOOKUP_PREFIX.match(command)
+    if not m:
+        return None
+    if not any(_rule_matches(r, command) for r in rules):
+        return False  # wrong script path, or a profile without the lookup verbs
+    return single_quoted_word(command[m.end():]) is not None
 
 
 def _rule_matches(rule_command: str, command: str) -> bool:
@@ -778,7 +823,10 @@ def _rule_matches(rule_command: str, command: str) -> bool:
 def unexpected_bash(session: SessionResult, ws: Workspace, profile: str) -> list[str]:
     """Bash commands the session ran (or tried) that are not one of the profile's
     allowed commands: the wrapper's verbs, `ls` and `pwd`. A compound command,
-    a redirection or a substitution is never one of them."""
+    `$`, a backtick, `<` or `>` is never one of them, and outside a lookup
+    argument neither is `~`. A `stem`/`project` argument must be exactly one
+    single-quoted shell word (plan 4.1); inside it any character but `$`, the
+    backtick, `<` and `>` is fine, `~` included."""
     rules = [r[len("Bash("):-1] for r in permission_settings(ws, profile)["permissions"]["allow"]
              if r.startswith("Bash(")]
     out = []
@@ -786,9 +834,37 @@ def unexpected_bash(session: SessionResult, ws: Workspace, profile: str) -> list
         if name != "Bash":
             continue
         command = (args.get("command") or "").strip()
-        if SHELL_OPERATORS.search(command) or not any(_rule_matches(r, command) for r in rules):
+        if NEVER_IN_A_COMMAND.search(command):
+            out.append(command)
+            continue
+        lookup = _lookup_call_ok(command, rules)
+        if lookup is not None:
+            if not lookup:
+                out.append(command)
+            continue
+        if (SHELL_OPERATORS.search(command) or HOME_TILDE in command
+                or not any(_rule_matches(r, command) for r in rules)):
             out.append(command)
     return out
+
+
+def file_writes(session: SessionResult, path: str) -> list[str]:
+    """In tool-use order, the text each Edit or Write call put into `path`
+    (an Edit's `new_string`, a Write's `content`)."""
+    out = []
+    for name, args in session.tool_uses:
+        if name in ("Edit", "Write") and args.get("file_path") == path:
+            out.append(args.get("new_string") if name == "Edit" else args.get("content") or "")
+    return [text or "" for text in out]
+
+
+def first_write_containing(session: SessionResult, path: str, fragment: str) -> int | None:
+    """Index in file_writes() of the first write whose text contains `fragment`
+    (case-insensitive), or None."""
+    for i, text in enumerate(file_writes(session, path)):
+        if fragment.lower() in text.lower():
+            return i
+    return None
 
 
 def denials_outside_root(session: SessionResult, ws: Workspace, profile: str) -> list[dict[str, Any]]:
@@ -1140,6 +1216,13 @@ class Harness:
         if not self.allow_git_writes:
             expect(after[0] == marks[0], f"HEAD moved from {marks[0]} to {after[0]}: only /eod commits (4.1)", session)
             expect(after[1] == marks[1], "the git index changed: only /eod stages (4.1)", session)
+
+    def file_writes(self, session: SessionResult, rel: str) -> list[str]:
+        """The text each Edit/Write put into the vault note `rel`, in order."""
+        return file_writes(session, str(self.path(rel)))
+
+    def first_write_containing(self, session: SessionResult, rel: str, fragment: str) -> int | None:
+        return first_write_containing(session, str(self.path(rel)), fragment)
 
     def assert_bash_usage(self, session: SessionResult) -> None:
         """Fail when the session ran any Bash command other than the wrapper's

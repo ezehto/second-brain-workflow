@@ -17,6 +17,7 @@ folders and statuses; the other reference files must agree with it.
 - [Defaults](#defaults)
 - [Ignored paths](#ignored-paths)
 - [Vault git](#vault-git)
+- [Known limits](#known-limits)
 
 ## Vault path
 
@@ -157,3 +158,9 @@ template as a real task or decision.
 The vault is its own local git repo on branch `main`, with no remote. The vault init script (one initial commit) and `/eod` are the only git writers.
 A session never runs `git` itself. `/eod` uses a fixed script, see
 [../SKILL.md](../SKILL.md#git-and-eod).
+
+## Known limits
+
+Claude Code limits that no command text can prevent: argument text that
+begins with another slash-command name loads that command too (`/capture /daily
+was late`), and `${CLAUDE_...}` placeholders in argument text are substituted.

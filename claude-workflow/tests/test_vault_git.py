@@ -2674,13 +2674,18 @@ def test_stem_reads_no_file_but_sbignore(vg, notes, capsys, monkeypatch):
     notes("A.md")
     (notes.root / ".sbignore").write_text("B.md\n")
     opened = []
-    real_open = open
+    real_open, real_os_open = open, os.open
 
     def spy(path, *args, **kwargs):
         opened.append(os.fsdecode(path))
         return real_open(path, *args, **kwargs)
 
+    def os_spy(path, *args, **kwargs):
+        opened.append(os.fsdecode(path))
+        return real_os_open(path, *args, **kwargs)
+
     monkeypatch.setattr("builtins.open", spy)
+    monkeypatch.setattr(os, "open", os_spy)
     monkeypatch.setattr(vg, "_read_mountinfo", lambda: "")
     assert stem(vg, capsys, "A") == ["A.md"]
     assert [p for p in opened if p.startswith(str(notes.root))] == [
@@ -2872,3 +2877,145 @@ def test_project_missing_vault_guard_and_no_git(vg, notes, tmp_path, capsys, mon
 
 def test_project_usage_text_says_type_is_not_checked(vg):
     assert "type: project" in vg.__doc__
+
+
+# ================================== .sbignore read bounds; $ and backtick
+
+
+def _sbignore_refused(vg, capsys, verb="stem"):
+    code, out, err = run(vg, capsys, verb, "Alpha")
+    assert code == 1 and out == ""
+    assert err.startswith("refused: ") and err.count("\n") == 1 and ".sbignore" in err
+    return err
+
+
+@pytest.mark.parametrize("verb", ["stem", "project"])
+def test_sbignore_fifo_is_refused_without_hanging(notes, verb):
+    notes("02-Work/Projects/Alpha.md")
+    os.mkfifo(notes.root / ".sbignore")
+    try:
+        result = subprocess.run([sys.executable, "-I", str(SCRIPT), verb, "Alpha"],
+                                capture_output=True, text=True, timeout=20,
+                                env=os.environ.copy())
+    except subprocess.TimeoutExpired:
+        pytest.fail("reading a FIFO .sbignore hung")
+    assert result.returncode == 1 and result.stdout == ""
+    assert result.stderr.startswith("refused: ") and ".sbignore" in result.stderr
+    assert result.stderr.count("\n") == 1
+
+
+@pytest.mark.parametrize("verb", ["stem", "project"])
+def test_sbignore_directory_is_refused(vg, notes, capsys, verb):
+    notes("02-Work/Projects/Alpha.md")
+    (notes.root / ".sbignore").mkdir()
+    assert "not a regular file" in _sbignore_refused(vg, capsys, verb)
+
+
+def test_sbignore_of_exactly_64_kib_is_read(vg, notes, capsys):
+    notes("Alpha.md")
+    notes("Beta.md")
+    body = b"Beta.md\n"
+    data = body + b"#" * (64 * 1024 - len(body) - 1) + b"\n"
+    assert len(data) == 64 * 1024
+    (notes.root / ".sbignore").write_bytes(data)
+    assert stem(vg, capsys, "Alpha") == ["Alpha.md"]
+    assert stem(vg, capsys, "Beta") == []
+
+
+@pytest.mark.parametrize("verb", ["stem", "project"])
+def test_sbignore_larger_than_64_kib_is_refused_not_truncated(vg, notes, capsys, verb):
+    notes("02-Work/Projects/Alpha.md")
+    (notes.root / ".sbignore").write_bytes(b"#" * (64 * 1024) + b"\n")
+    assert len((notes.root / ".sbignore").read_bytes()) == 64 * 1024 + 1
+    assert "64 KiB" in _sbignore_refused(vg, capsys, verb)
+
+
+def test_sbignore_unreadable_is_refused(vg, notes, capsys):
+    notes("Alpha.md")
+    path = notes.root / ".sbignore"
+    path.write_text("x.md\n")
+    path.chmod(0)
+    try:
+        if os.access(path, os.R_OK):
+            pytest.skip("running with privileges that ignore file modes")
+        _sbignore_refused(vg, capsys)
+    finally:
+        path.chmod(0o644)
+
+
+def test_sbignore_replaced_by_a_fifo_after_lstat_is_refused(vg, notes, capsys, monkeypatch):
+    """The fd itself is checked: a regular file at lstat time but a FIFO when
+    opened is refused (simulated by reporting a FIFO from fstat)."""
+    notes("Alpha.md")
+    (notes.root / ".sbignore").write_text("x.md\n")
+    real_fstat = os.fstat
+
+    def fstat(fd):
+        values = list(real_fstat(fd))
+        values[stat.ST_MODE] = stat.S_IFIFO | 0o644
+        return os.stat_result(values)
+
+    monkeypatch.setattr(os, "fstat", fstat)
+    assert "not a regular file" in _sbignore_refused(vg, capsys)
+
+
+def test_sbignore_opened_with_no_follow_and_non_blocking(vg, notes, capsys, monkeypatch):
+    notes("Alpha.md")
+    (notes.root / ".sbignore").write_text("x.md\n")
+    flags = []
+    real_open = os.open
+
+    def spy(path, flag, *args, **kwargs):
+        if os.fsdecode(path).endswith(".sbignore"):
+            flags.append(flag)
+        return real_open(path, flag, *args, **kwargs)
+
+    monkeypatch.setattr(os, "open", spy)
+    assert stem(vg, capsys, "Alpha") == ["Alpha.md"]
+    assert flags and all(f & os.O_NOFOLLOW and f & os.O_NONBLOCK for f in flags)
+
+
+@pytest.mark.parametrize("verb", ["stem", "project"])
+@pytest.mark.parametrize("arg", ["a$b", "$HOME", "a`b", "`id`", "x$(id)", "a<b", "<in",
+                                 "a>b", "out>", "[[A<b]]", "[[A>b]]"])
+def test_dollar_and_backtick_are_usage_errors(vg, notes, capsys, monkeypatch, verb, arg):
+    walked = []
+    monkeypatch.setattr(vg.os, "walk", lambda *a, **k: walked.append(a) or iter(()))
+    code, out, err = run(vg, capsys, verb, arg)
+    assert code == 2 and out == "" and "usage" in err and err.count("\n") == 1
+    assert walked == []
+
+
+# ============================== project: a "/" only inside a whole wikilink
+
+
+@pytest.mark.parametrize("arg", [
+    "/home/x", "/etc/hostname", "a/b", "~/x", "/home/dubu", "02-Work/Projects/Alpha",
+    "[[Alpha]]/x", "x [[02-Work/Projects/Alpha]]", "[[02-Work/Projects/Alpha]] x",
+    "[[02-Work/Projects/Alpha", "02-Work/Projects/Alpha]]",
+])
+def test_project_slash_outside_a_wikilink_is_a_usage_error(vg, notes, capsys, monkeypatch,
+                                                           arg):
+    walked = []
+    monkeypatch.setattr(vg.os, "walk", lambda *a, **k: walked.append(a) or iter(()))
+    code, out, err = run(vg, capsys, "project", arg)
+    assert code == 2 and out == "" and "usage" in err and err.count("\n") == 1
+    assert walked == []
+
+
+@pytest.mark.parametrize("arg", [
+    "[[02-Work/Projects/Alpha]]", "[[Alpha]]", "[[Alpha|alias]]",
+    "[[02-Work/Projects/Alpha|the alpha#Goal]]", "alpha", "Alpha", "Alpha!",
+])
+def test_project_wikilinks_slugs_and_titles_are_accepted(vg, notes, capsys, arg):
+    notes("02-Work/Projects/Alpha.md")
+    assert project_lines(vg, capsys, arg) == ["slug=alpha", "note 02-Work/Projects/Alpha.md"]
+
+
+def test_project_from_the_command_line_refuses_an_expanded_path(notes):
+    notes("02-Work/Projects/Alpha.md")
+    result = cli("project", str(notes.root))
+    assert result.returncode == 2 and result.stdout == "" and "usage" in result.stderr
+    result = cli("project", "[[02-Work/Projects/Alpha]]")
+    assert result.returncode == 0
+    assert result.stdout == "slug=alpha\nnote 02-Work/Projects/Alpha.md\n"
