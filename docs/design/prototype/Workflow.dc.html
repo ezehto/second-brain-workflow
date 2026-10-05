@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Workflow</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<style>
+body{margin:0;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#F3F3F8;background:#0F0F14;font-size:14px;line-height:1.5}
+*{box-sizing:border-box}
+a{color:#9B8CFF}a:hover{color:#BDB2FF}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid #9B8CFF;outline-offset:2px}
+h1,h2,h3{margin:0;font-weight:700;letter-spacing:-0.01em}
+.day{font-size:clamp(24px,3.2vw,34px);font-weight:800;letter-spacing:-0.02em;line-height:1.15}
+.mono{font-family:'DM Mono',ui-monospace,monospace;font-size:12px}
+.num{font-variant-numeric:tabular-nums}
+.muted{color:#A3A3B5}
+.note{font-size:12px;color:#A3A3B5}
+.btn{min-height:38px;padding:0 14px;border:1px solid #2F2F3D;background:#242430;color:#F3F3F8;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;font-weight:600;white-space:nowrap;text-decoration:none}
+.btn:hover{background:#2F2F3D;color:#F3F3F8}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.primary{background:#6B58E6;border-color:#6B58E6;color:#FFFFFF}
+.btn.primary:hover{background:#7C6AF0;color:#FFFFFF}
+.btn.small{min-height:32px;padding:0 12px;font-size:13px}
+.linkbtn{background:none;border:0;padding:0;cursor:pointer;color:#F3F3F8;font-weight:600;text-align:left;text-decoration:none}
+.linkbtn:hover{color:#BDB2FF;text-decoration:underline;text-underline-offset:3px}
+.chip{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border:0 !important;border-radius:999px;background:#242430 !important;font-size:12px;font-weight:600;white-space:nowrap;width:fit-content}
+.chip::before{content:"";flex:none;width:7px;height:7px;border-radius:50%;background:currentColor}
+.chip.back::before{width:9px;height:9px;border-radius:0;clip-path:polygon(100% 0,0 50%,100% 100%)}
+.tag{display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;width:fit-content}
+.tag.loop{border:1px solid #FF7D73;color:#FF7D73;background:none}
+.card{background:#1B1B24;border:1px solid #2F2F3D;border-radius:16px}
+.card-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px 12px}
+.card-head h2{font-size:16px}
+.card.accent{background:#6B58E6;border-color:#6B58E6;color:#FFFFFF}
+.card.accent .muted,.card.accent .note{color:#E4DFFF}
+.tile{display:flex;align-items:center;gap:14px;padding:16px 18px;background:#1B1B24;border:1px solid #2F2F3D;border-radius:16px;text-align:left;color:#F3F3F8}
+.tile-v{font-size:20px;font-weight:800;line-height:1.2}
+.tile-l{font-size:13px;color:#A3A3B5}
+.icon{flex:none;width:42px;height:42px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;background:#2A2550;color:#9B8CFF}
+.icon svg{width:20px;height:20px}
+.row{display:grid;align-items:center;gap:12px;padding:11px 20px;border-top:1px solid #2F2F3D}
+.row.sel{background:#242430;box-shadow:inset 3px 0 0 #9B8CFF}
+.head{font-size:12px;font-weight:600;color:#A3A3B5;background:#242430;border-top:0}
+.scroll{overflow-x:auto}
+.empty{padding:14px 20px;color:#A3A3B5}
+.field{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:600;color:#A3A3B5}
+.input{min-height:38px;padding:6px 12px;border:1px solid #2F2F3D;border-radius:10px;background:#242430;font-weight:400;font-size:14px;color:#F3F3F8}
+.input::placeholder{color:#7D7D90}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav-item{display:flex;align-items:center;gap:10px;min-height:40px;padding:0 12px;border:0;border-radius:10px;background:none;cursor:pointer;font-weight:600;color:#A3A3B5;text-align:left;text-decoration:none}
+.nav-item svg{flex:none;width:18px;height:18px}
+.nav-item:hover{background:#242430;color:#F3F3F8}
+.nav-item.on,.nav-item.on:hover{background:#6B58E6;color:#FFFFFF}
+.seg{min-height:32px;padding:0 14px;border:0;background:none;color:#A3A3B5;border-radius:999px;cursor:pointer;font-size:13px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.seg:hover{background:#2F2F3D;color:#F3F3F8}
+.seg.on,.seg.on:hover{background:#6B58E6;color:#FFFFFF}
+.segs{display:inline-flex;flex-wrap:wrap;gap:2px;padding:4px;background:#242430;border-radius:999px}
+.sec-h{font-size:12px;font-weight:600;color:#7D7D90;margin:0 0 4px}
+.hash{font-family:'DM Mono',monospace;font-weight:400;font-size:13px;color:#7D7D90}
+.gh{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;padding:12px 20px;border-top:1px solid #2F2F3D;background:#15151C}
+.gh h3{font-size:15px}
+.tc{height:34px;display:flex;align-items:center;justify-content:center;border-left:1px solid #2F2F3D}
+.tm{width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;line-height:1}
+.m-fwd{background:#9B8CFF}
+.m-back{background:#3A2422;border:2px solid #FF7D73;color:#FF7D73}
+.m-fail{background:#3A2422;border:2px solid #FF7D73;color:#FF7D73}
+.m-pass{background:#1E3329;border:2px solid #5ED39A;color:#5ED39A}
+.trow{display:grid;grid-template-columns:54px repeat(6,54px) minmax(220px,1fr);align-items:center;border-top:1px solid #2F2F3D}
+.th{font-size:11.5px;font-weight:700;text-align:center;color:#A3A3B5}
+.conn{flex:none;align-self:center;width:18px;height:2px;background:#7D7D90}
+@media (max-width:820px){.nav{flex-direction:row;flex-wrap:wrap}.nav-item{min-height:44px}.btn,.seg,.input{min-height:44px}}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-direction: column">
+<div style="flex: 1; display: flex; flex-wrap: wrap; align-items: stretch">
+
+<nav aria-label="Main" style="flex: 1 0 230px; background: #15151C; border-right: 1px solid #2F2F3D; padding: 20px 14px; display: flex; flex-direction: column; gap: 18px">
+<div style="display: flex; flex-direction: column; gap: 2px; padding: 0 12px">
+<div style="display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 17px"><span style="width: 22px; height: 22px; border-radius: 7px; background: #6B58E6"></span>Second Brain</div>
+<div class="mono muted">D:\Second Brain</div>
+</div>
+<div>
+<div class="sec-h" style="padding: 0 12px">Today</div>
+<div class="nav">
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Dashboard</a>
+<a class="nav-item" href="Standup.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.7A8 8 0 1 1 21 12z"/></svg>Standup</a>
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1.5 3h5L16 13h5"/></svg>Inbox</a>
+</div>
+</div>
+<div>
+<div class="sec-h" style="padding: 0 12px">Work</div>
+<div class="nav">
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>Tasks</a>
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Projects</a>
+<a class="nav-item on" href="Workflow.dc.html" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="12" r="2.5"/><path d="M6 8.5v7"/><path d="M8.5 6H13a5 5 0 0 1 5 3.5"/></svg>Workflow</a>
+<a class="nav-item" href="Timeline.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Timeline</a>
+</div>
+</div>
+<div>
+<div class="sec-h" style="padding: 0 12px">Knowledge</div>
+<div class="nav">
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h10"/></svg>Knowledge</a>
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18"/><path d="M12 6h7l-2 3 2 3h-7"/><path d="M12 13H5l2 2.5L5 18h7"/></svg>Decisions</a>
+<a class="nav-item" href="Upskilling.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>Upskilling</a>
+</div>
+</div>
+<div>
+<div class="sec-h" style="padding: 0 12px">System</div>
+<div class="nav">
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>Search</a>
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg>Index status</a>
+</div>
+</div>
+</nav>
+
+<div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; padding: 20px 28px 8px">
+<div style="flex: 1 1 240px; display: flex; flex-direction: column; gap: 2px">
+<h1 style="font-size: 24px; font-weight: 800">Workflow</h1>
+<div class="muted">What each item is doing across projects, and why it came back.</div>
+</div>
+<a class="input" href="Main.dc.html" style="flex: 2 1 240px; max-width: 380px; display: flex; align-items: center; gap: 8px; text-decoration: none; color: #A3A3B5"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>Search the vault</a>
+<div class="segs">
+<span class="seg on" aria-current="true" style="cursor: default">All projects</span>
+<a class="seg" href="Project.dc.html">IPP</a>
+</div>
+<span aria-label="raymark" title="raymark" style="width: 36px; height: 36px; border-radius: 50%; background: #2A2550; color: #BDB2FF; display: inline-flex; align-items: center; justify-content: center; font-weight: 700">R</span>
+</header>
+
+<main style="flex: 1; padding: 12px 28px 28px; display: flex; flex-direction: column; gap: 20px; max-width: 1320px; width: 100%">
+
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px">
+<div class="note">Needs a stage, rework count and failure reason on each task, not in the plan yet. Sample data.</div>
+<div role="group" aria-label="Project" class="segs">
+<sc-for list="{{filters}}" as="f" hint-placeholder-count="4">
+<button class="seg {{f.cls}}" aria-pressed="{{f.pressed}}" onClick="{{f.pick}}">{{f.label}} <span class="num">{{f.n}}</span></button>
+</sc-for>
+</div>
+</div>
+
+<section class="card" aria-label="Items per stage" style="padding: 20px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px">
+<sc-for list="{{strip}}" as="g" hint-placeholder-count="6">
+<div style="display: flex; align-items: stretch; flex: 1 1 150px; min-width: 0; gap: 8px">
+<div style="flex: 1; min-width: 0; background: #242430; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 6px">
+<span style="font-weight: 700">{{g.name}}</span>
+<span style="font-size: 32px; font-weight: 800; line-height: 1.05" class="num">{{g.n}}</span>
+<span class="tag" style="background: {{g.backBg}}; color: {{g.backFg}}">{{g.backText}}</span>
+<span class="tag" style="background: {{g.blockBg}}; color: {{g.blockFg}}">{{g.blockText}}</span>
+</div>
+<sc-if value="{{g.hasConn}}" hint-placeholder-val="{{true}}"><span class="conn" aria-hidden="true"></span></sc-if>
+</div>
+</sc-for>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+<span class="muted" style="font-size: 13px; font-weight: 600">Backward moves</span>
+<sc-for list="{{returns}}" as="r" hint-placeholder-count="4">
+<span class="tag loop">{{r.text}}</span>
+</sc-for>
+<sc-if value="{{hasReturns}}" hint-placeholder-val="{{true}}"><span class="note">Each tag is a return path and how many times it was taken.</span></sc-if>
+<sc-if value="{{noReturns}}" hint-placeholder-val="{{false}}"><span class="note">No item has moved backwards.</span></sc-if>
+</div>
+<div class="note">Blocked is a state of an item, not a stage, so a blocked item is counted in the stage it is stuck in.</div>
+</section>
+
+<section aria-label="Where is work stuck" style="display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px"><h2 style="font-size: 16px">Where is work stuck</h2><span class="note">Counted from the items below</span></div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 16px; align-items: stretch">
+<div class="tile" style="align-items: flex-start">
+<span class="icon" style="background: #3A3020; color: #F5B85C"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+<div style="display: flex; flex-direction: column; gap: 2px; min-width: 0"><span class="tile-l">Stage with the most waiting items</span><span class="tile-v">{{stuck.stageName}}</span><span class="tile-l">{{stuck.stageText}}</span></div>
+</div>
+<div class="tile" style="align-items: flex-start">
+<span class="icon" style="background: #3A2422; color: #FF7D73"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5"/><path d="M12 18v.5"/></svg></span>
+<div style="display: flex; flex-direction: column; gap: 2px; min-width: 0"><span class="tile-l">Commonest failure since Monday 5 Oct</span><span class="tile-v">{{stuck.failName}}</span><span class="tile-l">{{stuck.failText}}</span></div>
+</div>
+<div class="tile" style="align-items: flex-start">
+<span class="icon" style="background: #1F2C44; color: #6EA8FF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M17 5a3.5 3.5 0 0 1 0 7"/><path d="M18.5 14.5a6.5 6.5 0 0 1 3 5.5"/></svg></span>
+<div style="display: flex; flex-direction: column; gap: 2px; min-width: 0"><span class="tile-l">Waiting on someone else</span><span class="tile-v">{{stuck.waitN}} items</span>
+<sc-for list="{{stuck.waiting}}" as="w" hint-placeholder-count="3">
+<span style="font-size: 13px"><button class="linkbtn" onClick="{{w.pick}}">{{w.title}}</button> <span class="muted">{{w.owner}}</span></span>
+</sc-for>
+</div>
+</div>
+</div>
+</section>
+
+<section class="card" style="overflow: hidden">
+<div class="card-head"><h2>Work items by stage</h2><span class="note">Select an item to see its loop history</span></div>
+<div class="scroll"><div style="min-width: 1000px">
+<div class="row head" style="grid-template-columns: minmax(0, 2.4fr) 150px 118px minmax(0, 2fr) 128px"><span>Item</span><span>Moves</span><span>Rework</span><span>Required action</span><span>Owner</span></div>
+<sc-for list="{{groups}}" as="g" hint-placeholder-count="6">
+<div>
+<div class="gh"><h3>{{g.name}}</h3><span class="count num" style="font-size: 12px; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: #242430">{{g.n}}</span><span class="muted" style="font-size: 13px">{{g.desc}}</span></div>
+<sc-for list="{{g.rows}}" as="r" hint-placeholder-count="2">
+<div class="row {{r.cls}}" style="grid-template-columns: minmax(0, 2.4fr) 150px 118px minmax(0, 2fr) 128px; align-items: start">
+<div style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
+<button class="linkbtn" aria-pressed="{{r.selected}}" onClick="{{r.pick}}">{{r.title}}</button>
+<a href="Project.dc.html" style="font-size: 13px; width: fit-content">{{r.projectTitle}}</a>
+<sc-if value="{{r.returned}}" hint-placeholder-val="{{false}}"><span style="font-size: 13px"><strong style="color: #FF7D73">{{r.failWord}}.</strong> {{r.failText}}</span></sc-if>
+<sc-if value="{{r.blocked}}" hint-placeholder-val="{{false}}"><span style="font-size: 13px"><strong style="color: #FF7D73">Blocker.</strong> {{r.blocker}}</span></sc-if>
+</div>
+<div style="display: flex; flex-direction: column; gap: 3px; font-size: 13px">
+<sc-if value="{{r.returned}}" hint-placeholder-val="{{false}}"><span class="chip back" style="color: #FF7D73">Sent back</span></sc-if>
+<sc-if value="{{r.blocked}}" hint-placeholder-val="{{false}}"><span class="chip" style="color: #FF7D73">Blocked</span></sc-if>
+<span><span class="muted">Now</span> {{r.stage}}</span>
+<span><span class="muted">From</span> {{r.prev}}</span>
+<span><span class="muted">Next</span> {{r.next}}</span>
+</div>
+<div style="display: flex; flex-direction: column; font-size: 13px">
+<span style="font-size: 18px; font-weight: 800; color: {{r.reworkFg}}" class="num">{{r.rework}}</span>
+<span style="font-weight: 600; color: {{r.reworkFg}}">{{r.reworkNote}}</span>
+</div>
+<div style="font-size: 13px">{{r.action}}</div>
+<div style="font-size: 13px; font-weight: 600">{{r.owner}}</div>
+</div>
+</sc-for>
+<sc-if value="{{g.empty}}" hint-placeholder-val="{{false}}"><div class="empty">Nothing in this stage.</div></sc-if>
+</div>
+</sc-for>
+</div></div>
+</section>
+
+<section class="card" aria-label="Loop history" style="overflow: hidden">
+<div class="card-head"><h2>Loop history: {{cur.title}}</h2><a href="Project.dc.html" style="font-size: 13px; font-weight: 600">{{cur.projectTitle}}</a></div>
+<div style="display: flex; flex-wrap: wrap; align-items: stretch">
+
+<div style="flex: 1 1 600px; min-width: 0; padding: 4px 20px 20px; display: flex; flex-direction: column; gap: 12px">
+<div class="sec-h" style="margin: 0; color: #A3A3B5">The path it actually took</div>
+<div class="scroll"><div style="min-width: 600px">
+<div class="trow" style="border-top: 0; padding-bottom: 6px"><span></span><span class="th">Understand</span><span class="th">Plan</span><span class="th">Implement</span><span class="th">Test</span><span class="th">Review</span><span class="th">Complete</span><span class="th" style="text-align: left; padding-left: 12px">Step</span></div>
+<sc-for list="{{cur.trail}}" as="t" hint-placeholder-count="6">
+<div class="trow" style="padding: 3px 0">
+<span class="num muted" style="font-size: 13px">{{t.date}}</span>
+<sc-for list="{{t.cells}}" as="c" hint-placeholder-count="6"><span class="tc"><span class="tm {{c.cls}}">{{c.glyph}}</span></span></sc-for>
+<span style="padding-left: 12px; font-size: 13px; display: flex; flex-direction: column"><span><strong style="color: {{t.fg}}">{{t.label}}</strong><sc-if value="{{t.isNow}}" hint-placeholder-val="{{false}}"> <span class="tag" style="background: #2A2550; color: #BDB2FF; height: 18px; padding: 0 8px">Now</span></sc-if></span><sc-if value="{{t.hasNote}}" hint-placeholder-val="{{false}}"><span class="muted">{{t.note}}</span></sc-if></span>
+</div>
+</sc-for>
+</div></div>
+<div class="note">Purple node: reached the stage. Red node with an arrow: came back to a stage. Red node with a cross: failed there. Green node with a tick: passed.</div>
+
+<sc-if value="{{cur.hasRule}}" hint-placeholder-val="{{true}}">
+<div style="background: #242430; border-radius: 12px; padding: 12px 14px; font-size: 13px; display: flex; flex-direction: column; gap: 4px">
+<div><strong style="color: #FF7D73">{{cur.ruleWord}}</strong> <span class="mono">{{cur.code}}</span></div>
+<div>{{cur.rule}}</div>
+</div>
+</sc-if>
+<sc-if value="{{cur.hasStop}}" hint-placeholder-val="{{false}}">
+<div style="background: {{cur.stopBg}}; border: 1px solid {{cur.stopFg}}; border-radius: 12px; padding: 12px 14px; font-size: 13px; display: flex; flex-direction: column; gap: 4px">
+<div><strong style="color: {{cur.stopFg}}">{{cur.stopWord}}</strong></div>
+<div style="color: {{cur.stopFg}}">{{cur.stopText}}</div>
+</div>
+</sc-if>
+</div>
+
+<div style="flex: 1 1 380px; min-width: 0; padding: 4px 20px 20px; display: flex; flex-direction: column; gap: 14px">
+<div class="card accent" style="padding: 16px 18px; display: flex; flex-direction: column; gap: 6px">
+<span class="note" style="font-weight: 600">Do next</span>
+<span style="font-size: 16px; font-weight: 700; line-height: 1.35">{{cur.action}}</span>
+<span class="muted" style="font-size: 13px">Owner: {{cur.owner}}. Stage: {{cur.stage}}.</span>
+</div>
+
+<div style="display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: 6px 12px; font-size: 13px">
+<span class="muted" style="font-weight: 600">Came from</span><span>{{cur.prev}}</span>
+<span class="muted" style="font-weight: 600">Next</span><span>{{cur.next}}</span>
+<span class="muted" style="font-weight: 600">Failure</span><span>{{cur.failure}}</span>
+<span class="muted" style="font-weight: 600">Rework</span><span>{{cur.reworkText}}</span>
+<span class="muted" style="font-weight: 600">Blocker</span><span>{{cur.blockerText}}</span>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<button class="btn" disabled="{{cur.noTest}}" onClick="{{openTest}}">Record test result</button>
+<button class="btn" disabled="{{cur.noReview}}" onClick="{{openReview}}">Record review result</button>
+<button class="btn" disabled="{{cur.noBack}}" onClick="{{openBack}}">Send back to planning</button>
+<sc-if value="{{cur.canBlock}}" hint-placeholder-val="{{true}}"><button class="btn" onClick="{{openBlock}}">Mark blocked</button></sc-if>
+<sc-if value="{{cur.blocked}}" hint-placeholder-val="{{false}}"><button class="btn" onClick="{{clearBlock}}">Clear blocker</button></sc-if>
+<button class="btn primary" disabled="{{cur.noComplete}}" onClick="{{openComplete}}">Mark complete</button>
+</div>
+<div class="note">{{cur.hint}}</div>
+
+<sc-if value="{{formOpen}}" hint-placeholder-val="{{false}}">
+<div style="background: #242430; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px">
+<div style="font-weight: 700">{{formTitle}}</div>
+<sc-if value="{{isResultForm}}" hint-placeholder-val="{{false}}">
+<div role="group" aria-label="Result" class="segs" style="background: #1B1B24; width: fit-content">
+<button class="seg {{passCls}}" aria-pressed="{{isPass}}" onClick="{{pickPass}}">Passed</button>
+<button class="seg {{failCls}}" aria-pressed="{{isFail}}" onClick="{{pickFail}}">Failed</button>
+</div>
+</sc-if>
+<sc-if value="{{showReason}}" hint-placeholder-val="{{false}}">
+<label class="field">Why it moves back
+<select class="input" style="background: #1B1B24" value="{{fReason}}" onChange="{{setReason}}"><option value="">Choose a reason</option><option value="impl">Implementation issue: plan still valid, fix and retest</option><option value="plan">Design issue: plan no longer valid, replan</option><option value="req">Requirement issue: unclear or conflicting, clarify</option></select>
+</label>
+<div class="note">{{destText}}</div>
+</sc-if>
+<sc-if value="{{showNote}}" hint-placeholder-val="{{false}}">
+<label class="field">What happened, in plain words<input class="input" style="background: #1B1B24" type="text" placeholder="The retried callback wrote the row twice" value="{{fNote}}" onChange="{{setNote}}"></label>
+</sc-if>
+<sc-if value="{{isBlockForm}}" hint-placeholder-val="{{false}}">
+<label class="field">Blocked by<input class="input" style="background: #1B1B24" type="text" placeholder="Staging database refresh" value="{{fBlocker}}" onChange="{{setBlocker}}"></label>
+<label class="field">Waiting on
+<select class="input" style="background: #1B1B24" value="{{fWaiting}}" onChange="{{setWaiting}}"><option value="Infra">Infra</option><option value="QA">QA</option><option value="Product owner">Product owner</option><option value="Provider account manager">Provider account manager</option><option value="Reviewer">Reviewer</option></select>
+</label>
+</sc-if>
+<sc-if value="{{isCompleteForm}}" hint-placeholder-val="{{false}}">
+<label class="field">Evidence that it is done<input class="input" style="background: #1B1B24" type="text" placeholder="Callback tests pass, review approved, runbook updated" value="{{fEvidence}}" onChange="{{setEvidence}}"></label>
+</sc-if>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<button class="btn primary small" disabled="{{submitDisabled}}" onClick="{{submit}}">{{submitLabel}}</button>
+<button class="btn small" onClick="{{closeForm}}">Cancel</button>
+</div>
+</div>
+</sc-if>
+
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div class="sec-h" style="margin: 0; color: #A3A3B5">Frontmatter this view would write</div>
+<div class="mono" style="background: #242430; border-radius: 12px; padding: 10px 12px; line-height: 1.6; overflow-wrap: anywhere">
+<div style="color: #A3A3B5">{{cur.path}}</div>
+<div><span class="hash">---</span></div>
+<div>status: {{cur.fmStatus}}</div>
+<div>stage: {{cur.fmStage}}</div>
+<div>rework: {{cur.fmRework}}</div>
+<div>failure: {{cur.fmFailure}}</div>
+<div><span class="hash">---</span></div>
+</div>
+</div>
+</div>
+
+</div>
+</section>
+
+</main>
+</div>
+</div>
+</div>
+<sc-if value="{{hasToast}}" hint-placeholder-val="{{false}}">
+<div role="status" style="position: fixed; right: 20px; bottom: 20px; max-width: 460px; padding: 12px 16px; background: #F3F3F8; color: #0F0F14; border-radius: 12px; font-size: 13px; font-weight: 500">{{toast}}</div>
+</sc-if>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2760}}'>
+class Component extends DCLogic {
+  state = {
+    items: this.seed(), filter: 'all', sel: 'retry', toast: '',
+    fMode: '', fResult: 'pass', fReason: '', fNote: '', fBlocker: '', fWaiting: 'Infra', fEvidence: ''
+  };
+
+  seed() {
+    const s = (st, d, note) => ({ t: 's', st: st, d: d, note: note || '' });
+    const f = (st, d, cls, src, note) => ({ t: 'f', st: st, d: d, cls: cls, src: src, note: note });
+    return [
+      { id: 'retry', title: 'Add retry with backoff to payment callback handler', project: 'ipp', stage: 2, blocked: false, blocker: '', owner: 'You',
+        action: 'Add the idempotency key check, then run the callback tests again. A third failure of this kind means replan.',
+        hist: [s(1, '2026-10-02', 'Plan agreed: retry transient failures only'), s(2, '2026-10-03'), s(3, '2026-10-05'),
+          f(3, '2026-10-05', 'impl', 'Test failed', 'The retried callback wrote the settlement row twice.'),
+          s(2, '2026-10-05'), s(3, '2026-10-06'),
+          f(3, '2026-10-06', 'impl', 'Test failed', 'The handler retried a business rejection.'),
+          s(2, '2026-10-06')] },
+      { id: 'reserve', title: 'Reserve wallet balance before the provider call', project: 'ipp', stage: 1, blocked: false, blocker: '', owner: 'You',
+        action: 'Update the plan: split reserve and confirm into two steps, record the decision, then implement.',
+        hist: [s(1, '2026-09-28'), s(2, '2026-10-01'), s(3, '2026-10-02'), s(4, '2026-10-05'),
+          f(4, '2026-10-05', 'plan', 'Review failed', 'The reservation is not released when the provider call times out. The plan assumed one transaction.'),
+          s(1, '2026-10-05')] },
+      { id: 'otp-expiry', title: 'Expire OTP codes after the agreed window', project: 'loadup', stage: 0, blocked: true, blocker: 'Waiting for the expiry value: five or ten minutes', owner: 'Product owner',
+        action: 'Get the expiry confirmed in writing, then replan.',
+        hist: [s(1, '2026-10-01'), s(2, '2026-10-02'), s(3, '2026-10-05'),
+          f(3, '2026-10-05', 'req', 'Test failed', 'The test expects five minutes, the written requirement says ten. The acceptance criteria conflict.'),
+          s(0, '2026-10-05')] },
+      { id: 'n1', title: 'Fix N+1 query on account listing', project: 'loadup', stage: 4, blocked: false, blocker: '', owner: 'Reviewer',
+        action: 'Waiting on the second review pass. Due today.',
+        hist: [s(1, '2026-09-30'), s(2, '2026-10-01'), s(3, '2026-10-02'), s(4, '2026-10-03'),
+          f(4, '2026-10-03', 'impl', 'Review failed', 'The prefetch missed accounts without a wallet.'),
+          s(2, '2026-10-05'), s(3, '2026-10-05'), s(4, '2026-10-05')] },
+      { id: 'otp-email', title: 'Investigate missing OTP email', project: 'loadup', stage: 2, blocked: false, blocker: '', owner: 'You',
+        action: 'Compare the relay delivery logs with the send log for the affected accounts.',
+        hist: [s(0, '2026-10-01'), s(1, '2026-10-01'), s(2, '2026-10-02')] },
+      { id: 'sms', title: 'Confirm rate limit with SMS provider', project: 'loadup', stage: 0, blocked: true, blocker: 'Waiting on the provider account manager', owner: 'Provider account manager',
+        action: 'Chase for the per-minute limit in writing. Due 5 Oct, overdue.',
+        hist: [s(0, '2026-09-30')] },
+      { id: 'loadtest', title: 'Load test wallet reservation path', project: 'ipp', stage: 3, blocked: true, blocker: 'Staging database refresh', owner: 'Infra',
+        action: 'Ask infra for the refresh date.',
+        hist: [s(1, '2026-10-01'), s(2, '2026-10-02'), s(3, '2026-10-05')] },
+      { id: 'runbook', title: 'Write runbook for settlement file rerun', project: 'ipp', stage: 1, blocked: false, blocker: '', owner: 'You',
+        action: 'Outline the rerun steps and the rollback, then get them checked by QA.',
+        hist: [s(0, '2026-10-02'), s(1, '2026-10-02')] },
+      { id: 'rotate', title: 'Rotate staging API credentials', project: 'loadup', stage: 1, blocked: false, blocker: '', owner: 'You',
+        action: 'Agree a rotation window with infra. Due 3 Oct, overdue.',
+        hist: [s(1, '2026-09-29')] },
+      { id: 'templates', title: 'Verify templates in Obsidian', project: 'second-brain', stage: 3, blocked: false, blocker: '', owner: 'You',
+        action: 'Insert each of the six templates in Obsidian and compare with the design.',
+        hist: [s(1, '2026-10-05'), s(2, '2026-10-05'), s(3, '2026-10-05')] },
+      { id: 'readme', title: 'Draft Phase 1 README run instructions', project: 'second-brain', stage: 2, blocked: false, blocker: '', owner: 'You',
+        action: 'Write run, stop, reindex and recover for the Compose stack.',
+        hist: [s(1, '2026-10-05'), s(2, '2026-10-05')] },
+      { id: 'dupes', title: 'Reproduce duplicate settlement rows', project: 'ipp', stage: 5, blocked: false, blocker: '', owner: 'You',
+        action: 'None.',
+        hist: [s(0, '2026-10-01'), s(1, '2026-10-01'), s(2, '2026-10-02'), s(3, '2026-10-04'), s(4, '2026-10-05'),
+          s(5, '2026-10-05', 'Reproduced on staging: a retried callback wrote the row twice.')] },
+      { id: 'docker', title: 'Enable Docker WSL integration', project: 'second-brain', stage: 5, blocked: false, blocker: '', owner: 'You',
+        action: 'None.',
+        hist: [s(1, '2026-10-01'), s(2, '2026-10-01'), s(3, '2026-10-02'), s(5, '2026-10-02', 'docker compose runs in WSL.')] }
+    ];
+  }
+
+  stages() { return ['Understanding', 'Planning', 'Implementation', 'Testing', 'Review', 'Complete']; }
+
+  causes() {
+    return {
+      impl: { label: 'Implementation issue', code: 'IMPLEMENTATION_FAILURE', key: 'implementation-failure', dest: 2,
+        action: 'Fix the implementation, then run the tests again.',
+        rule: 'The plan is still valid and the problem is local. Fix the implementation and test again; do not restart planning.' },
+      plan: { label: 'Design issue', code: 'PLAN_FAILURE', key: 'plan-failure', dest: 1,
+        action: 'Update the plan, record the decision, then implement.',
+        rule: 'The approach is invalid. Revisit requirements, constraints and options, update the plan, then implement. Do not keep patching.' },
+      req: { label: 'Requirement issue', code: 'REQUIREMENT_FAILURE', key: 'requirement-failure', dest: 0,
+        action: 'Clarify the requirement with its owner, then replan.',
+        rule: 'The requirement is unclear or in conflict. Stop and ask, clarify, then replan and implement.' }
+    };
+  }
+
+  fmt(d) {
+    const mo = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return mo[parseInt(d.slice(5, 7), 10) - 1] + ' ' + parseInt(d.slice(8, 10), 10);
+  }
+
+  projTitle(slug) {
+    return { loadup: 'LoadUp', ipp: 'IPP', 'second-brain': 'Second Brain' }[slug] || slug;
+  }
+
+  statusOf(it) {
+    if (it.blocked) return 'blocked';
+    return ['planned', 'planned', 'in-progress', 'in-progress', 'review', 'done'][it.stage];
+  }
+
+  derive(it) {
+    const ST = this.stages();
+    const C = this.causes();
+    const fails = it.hist.filter((e) => e.t === 'f');
+    const last = it.hist[it.hist.length - 1];
+    const before = it.hist[it.hist.length - 2];
+    const returned = !!(before && before.t === 'f' && last.t === 's');
+    const lastFail = fails.length ? fails[fails.length - 1] : null;
+    const counts = {};
+    fails.forEach((e) => { counts[e.cls] = (counts[e.cls] || 0) + 1; });
+    const sameMax = fails.length ? Math.max.apply(null, Object.keys(counts).map((k) => counts[k])) : 0;
+    const sameCls = lastFail ? lastFail.cls : '';
+    const sEntries = it.hist.filter((e) => e.t === 's');
+    const prev = sEntries.length > 1 ? ST[sEntries[sEntries.length - 2].st] : 'N/A';
+    const next = it.stage < 5 ? ST[it.stage + 1] : 'N/A';
+    return { fails: fails, rework: fails.length, returned: returned, lastFail: lastFail, sameMax: sameMax, prev: prev, next: next,
+      failText: returned ? lastFail.note : '', failWord: returned ? lastFail.src + ', ' + C[lastFail.cls].label.toLowerCase() : '',
+      stopped: sameMax >= 3, warned: sameMax === 2, sameCls: sameCls };
+  }
+
+  say(msg) {
+    this.setState({ toast: msg });
+    clearTimeout(this._t);
+    this._t = setTimeout(() => this.setState({ toast: '' }), 5000);
+  }
+
+  resetForm() { return { fMode: '', fResult: 'pass', fReason: '', fNote: '', fBlocker: '', fWaiting: 'Infra', fEvidence: '' }; }
+
+  doSubmit(id) {
+    const s = this.state;
+    const ST = this.stages();
+    const C = this.causes();
+    const it = s.items.find((x) => x.id === id);
+    const T = '2026-10-06';
+    const hist = it.hist.slice();
+    const path = '02-Work/Tasks/' + it.title + '.md';
+    const note = s.fNote.trim();
+    let stage = it.stage, blocked = it.blocked, blocker = it.blocker, owner = it.owner, action = it.action, msg = '';
+    const m = s.fMode;
+    const key = () => ST[stage].toLowerCase();
+    if (m === 'test' || m === 'review' || m === 'back') {
+      const pass = m !== 'back' && s.fResult === 'pass';
+      if (pass && m === 'test') {
+        if (stage < 3) hist.push({ t: 's', st: 3, d: T, note: '' });
+        hist.push({ t: 'p', st: 3, d: T, note: note });
+        hist.push({ t: 's', st: 4, d: T, note: '' });
+        stage = 4; owner = 'Reviewer'; action = 'Review the change against the review checklist.';
+        msg = 'Updated ' + path + ': stage review, status review. Tests recorded as passed.';
+      } else if (pass) {
+        hist.push({ t: 'p', st: 4, d: T, note: note });
+        owner = 'You'; action = 'Mark complete, with evidence.';
+        msg = 'Updated ' + path + ': review recorded as passed. Stage stays review.';
+      } else {
+        const c = C[s.fReason];
+        const failStage = m === 'test' ? 3 : (m === 'review' ? 4 : it.stage);
+        if (m === 'test' && stage < 3) hist.push({ t: 's', st: 3, d: T, note: '' });
+        const src = m === 'test' ? 'Test failed' : (m === 'review' ? 'Review failed' : 'Sent back');
+        const stop = hist.filter((e) => e.t === 'f' && e.cls === s.fReason).length + 1 >= 3;
+        const dest = stop ? 1 : c.dest;
+        hist.push({ t: 'f', st: failStage, d: T, cls: s.fReason, src: src, note: note || 'No detail recorded.' });
+        hist.push({ t: 's', st: dest, d: T, note: '' });
+        stage = dest; owner = 'You';
+        action = stop ? 'Stop patching. Analyse the root cause, review assumptions and requirements, then replan.' : (dest === 2 ? C.impl.action : (dest === 1 ? C.plan.action : C.req.action));
+        const rw = hist.filter((e) => e.t === 'f').length;
+        msg = 'Updated ' + path + ': stage ' + key() + ', rework ' + rw + ', failure ' + c.key + '.' + (stop ? ' Third failure of the same kind: the stop rule sent it to planning.' : '');
+      }
+    } else if (m === 'block') {
+      blocked = true; blocker = s.fBlocker.trim(); owner = s.fWaiting;
+      msg = 'Updated ' + path + ': status blocked, blocker "' + blocker + '", waiting on ' + owner + '.';
+    } else if (m === 'complete') {
+      hist.push({ t: 's', st: 5, d: T, note: s.fEvidence.trim() });
+      stage = 5; blocked = false; blocker = ''; owner = 'You'; action = 'None.';
+      msg = 'Updated ' + path + ': status done, stage complete. Evidence written into the note.';
+    }
+    const items = s.items.map((x) => x.id === id ? Object.assign({}, x, { stage: stage, blocked: blocked, blocker: blocker, owner: owner, action: action, hist: hist }) : x);
+    this.setState(Object.assign({ items: items }, this.resetForm()));
+    this.say(msg);
+  }
+
+  renderVals() {
+    const s = this.state;
+    const ST = this.stages();
+    const C = this.causes();
+    const SHORT = ['Understand', 'Plan', 'Implement', 'Test', 'Review', 'Complete'];
+    const WEEK = '2026-10-05';
+    const all = s.items;
+    const shown = all.filter((x) => s.filter === 'all' || x.project === s.filter);
+    const pick = (id) => () => this.setState(Object.assign({ sel: id }, this.resetForm()));
+
+    const filters = [['all', 'All'], ['loadup', 'LoadUp'], ['ipp', 'IPP'], ['second-brain', 'Second Brain']].map((p) => ({
+      label: p[1], n: all.filter((x) => p[0] === 'all' || x.project === p[0]).length, cls: s.filter === p[0] ? 'on' : '', pressed: s.filter === p[0],
+      pick: () => this.setState(Object.assign({ filter: p[0] }, this.resetForm()))
+    }));
+
+    const D = {};
+    shown.forEach((x) => { D[x.id] = this.derive(x); });
+
+    const strip = ST.map((name, i) => {
+      const inS = shown.filter((x) => x.stage === i);
+      const back = inS.filter((x) => D[x.id].returned).length;
+      const blk = inS.filter((x) => x.blocked).length;
+      return { name: name, n: inS.length, hasConn: i < 5, backText: back + ' sent back', backFg: back ? '#FF7D73' : '#A3A3B5', backBg: back ? '#3A2422' : '#1B1B24', blockText: blk + ' blocked', blockFg: blk ? '#FF7D73' : '#A3A3B5', blockBg: blk ? '#3A2422' : '#1B1B24' };
+    });
+
+    const descs = ['Requirements clear? If not, stop and ask.', 'Approach agreed, approval if needed.', 'The plan is valid; build and fix locally.', 'Failures are classified before any fix.', 'Must Fix findings go back, by cause.', 'Done only with evidence and no open Must Fix.'];
+    const groups = ST.map((name, i) => {
+      const rows = shown.filter((x) => x.stage === i).map((x) => {
+        const d = D[x.id];
+        return {
+          title: x.title, projectTitle: this.projTitle(x.project), stage: ST[x.stage], prev: d.prev, next: d.next,
+          returned: d.returned, failWord: d.failWord, failText: d.failText, blocked: x.blocked, blocker: x.blocker,
+          rework: d.rework, reworkNote: d.stopped ? 'Stop rule reached' : (d.warned ? 'Warning: 2 of the same kind' : (d.rework ? 'Rework' : 'No rework')),
+          reworkFg: d.rework >= 2 ? '#FF7D73' : (d.rework ? '#F3F3F8' : '#A3A3B5'),
+          action: x.action, owner: x.owner, cls: x.id === s.sel ? 'sel' : '', selected: x.id === s.sel, pick: pick(x.id)
+        };
+      });
+      return { name: name, n: rows.length, desc: descs[i], rows: rows, empty: rows.length === 0 };
+    });
+
+    const paths = {};
+    shown.forEach((x) => x.hist.forEach((e, k) => {
+      const nx = x.hist[k + 1];
+      if (e.t === 'f' && nx) { const key = e.st + '-' + nx.st; paths[key] = (paths[key] || 0) + 1; }
+    }));
+    const returns = Object.keys(paths).map((k) => { const a = k.split('-'); return { text: ST[a[0]] + ' to ' + ST[a[1]] + ', ' + paths[k], n: paths[k] }; }).sort((a, b) => b.n - a.n);
+
+    // Where is work stuck
+    const open = shown.filter((x) => x.stage < 5);
+    const waiting = open.filter((x) => x.blocked || x.owner !== 'You');
+    let topStage = -1, topN = 0;
+    ST.forEach((n, i) => {
+      const c = waiting.filter((x) => x.stage === i).length;
+      if (c > topN) { topN = c; topStage = i; }
+    });
+    const weekFails = [];
+    shown.forEach((x) => x.hist.forEach((e) => { if (e.t === 'f' && e.d >= WEEK) weekFails.push(e); }));
+    const tally = {};
+    weekFails.forEach((e) => { tally[e.cls] = (tally[e.cls] || 0) + 1; });
+    const topCls = Object.keys(tally).sort((a, b) => tally[b] - tally[a])[0];
+    const stuck = {
+      stageName: topStage >= 0 ? ST[topStage] : 'None',
+      stageText: topStage >= 0 ? topN + ' of ' + open.filter((x) => x.stage === topStage).length + ' items here wait on someone else or are blocked.' : 'Nothing is waiting on someone else.',
+      failName: topCls ? C[topCls].label : 'None',
+      failText: topCls ? tally[topCls] + ' of ' + weekFails.length + ' failures. ' + (weekFails.length - tally[topCls] ? 'The rest: ' + Object.keys(tally).filter((k) => k !== topCls).map((k) => tally[k] + ' ' + C[k].label.toLowerCase()).join(', ') + '.' : 'All of one kind.') : 'No failures recorded this week.',
+      waitN: waiting.length,
+      waiting: waiting.map((x) => ({ title: x.title, owner: x.owner, pick: pick(x.id) }))
+    };
+
+    // Selected item
+    const it = shown.find((x) => x.id === s.sel) || shown[0];
+    const d = D[it.id];
+    const trail = it.hist.map((e, i) => {
+      const cells = ST.map((n, c) => ({ cls: '', glyph: '' }));
+      const after = i > 0 && it.hist[i - 1].t === 'f';
+      let label = '', fg = '#F3F3F8', note = e.note || '';
+      if (e.t === 's') { cells[e.st] = { cls: after ? 'm-back' : 'm-fwd', glyph: after ? '\u2190' : '' }; label = after ? 'Back to ' + ST[e.st].toLowerCase() : ST[e.st]; fg = after ? '#FF7D73' : '#F3F3F8'; }
+      if (e.t === 'f') { cells[e.st] = { cls: 'm-fail', glyph: '\u00D7' }; label = e.src + ', ' + C[e.cls].label.toLowerCase(); fg = '#FF7D73'; }
+      if (e.t === 'p') { cells[e.st] = { cls: 'm-pass', glyph: '\u2713' }; label = e.st === 3 ? 'Tests passed' : 'Review passed'; fg = '#5ED39A'; }
+      return { date: this.fmt(e.d), cells: cells, label: label, fg: fg, note: note, hasNote: !!note, isNow: i === it.hist.length - 1 };
+    });
+    const lf = d.lastFail;
+    const sameLabel = d.sameCls ? C[d.sameCls].label.toLowerCase() : '';
+    const stop = d.stopped;
+    const warn = d.warned;
+    const mode = s.fMode;
+    const isResultForm = mode === 'test' || mode === 'review';
+    const isFail = s.fResult === 'fail';
+    const showReason = mode === 'back' || (isResultForm && isFail);
+    const reason = C[s.fReason];
+    const stageNow = it.stage;
+    const backBad = mode === 'back' && reason && reason.dest >= stageNow;
+    let submitDisabled = false;
+    if (showReason && !reason) submitDisabled = true;
+    if (backBad) submitDisabled = true;
+    if (mode === 'block' && !s.fBlocker.trim()) submitDisabled = true;
+    if (mode === 'complete' && !s.fEvidence.trim()) submitDisabled = true;
+    const titles = { test: 'Record test result', review: 'Record review result', back: 'Send back', block: 'Mark blocked', complete: 'Mark complete' };
+    const noComplete = !(stageNow === 4 && !it.blocked);
+    const cur = {
+      title: it.title, projectTitle: this.projTitle(it.project), trail: trail,
+      stage: ST[it.stage] + (it.blocked ? ', blocked' : ''), prev: d.prev, next: d.next,
+      failure: lf ? lf.src + ', ' + C[lf.cls].label.toLowerCase() + '. ' + lf.note : 'N/A, no failures recorded',
+      reworkText: d.rework + (d.rework === 1 ? ' failure so far' : ' failures so far'),
+      blockerText: it.blocked ? it.blocker : 'None', owner: it.owner, action: it.action, blocked: it.blocked, canBlock: !it.blocked && stageNow < 5,
+      hasRule: d.returned, ruleWord: d.returned ? d.failWord + ', classified as' : '', code: d.returned ? C[lf.cls].code : '', rule: d.returned ? C[lf.cls].rule : '',
+      hasStop: stop || warn, stopBg: stop ? '#3A2422' : '#3A3020', stopFg: stop ? '#FF7D73' : '#F5B85C',
+      stopWord: stop ? 'Stop rule reached' : 'Warning: two failures of the same kind',
+      stopText: stop ? 'Three failures of the same kind (' + sameLabel + '). Stop patching, analyse the root cause, review assumptions, requirements and architecture, then replan.' : 'Two failures of the same kind (' + sameLabel + '). Three failures of the same kind stop the loop and trigger a replan.',
+      noTest: !(stageNow === 2 || stageNow === 3), noReview: stageNow !== 4, noBack: !(stageNow >= 1 && stageNow < 5), noComplete: noComplete,
+      hint: stageNow === 5 ? 'Complete. Nothing left to record.' : (noComplete ? 'Record test result applies in Implementation or Testing, review result in Review. Mark complete needs the item in Review and not blocked.' : 'Mark complete will ask for evidence.'),
+      path: '02-Work/Tasks/' + it.title + '.md', fmStatus: this.statusOf(it), fmStage: ST[it.stage].toLowerCase(), fmRework: d.rework, fmFailure: lf ? C[lf.cls].key : 'none'
+    };
+
+    const open1 = (m, extra) => () => this.setState(Object.assign(this.resetForm(), { fMode: m }, extra || {}));
+    const val = (key) => (e) => this.setState({ [key]: e.target.value });
+    return {
+      filters: filters, strip: strip, returns: returns, hasReturns: returns.length > 0, noReturns: returns.length === 0, groups: groups, stuck: stuck, cur: cur,
+      openTest: open1('test'), openReview: open1('review'), openBack: open1('back'), openBlock: open1('block'), openComplete: open1('complete'),
+      clearBlock: () => {
+        const items = s.items.map((x) => x.id === it.id ? Object.assign({}, x, { blocked: false, blocker: '', owner: 'You' }) : x);
+        this.setState({ items: items });
+        this.say('Updated ' + cur.path + ': status ' + this.statusOf(Object.assign({}, it, { blocked: false })) + ', blocker cleared.');
+      },
+      formOpen: !!mode, formTitle: titles[mode] || '', isResultForm: isResultForm, isPass: !isFail, isFail: isFail,
+      passCls: isFail ? '' : 'on', failCls: isFail ? 'on' : '',
+      pickPass: () => this.setState({ fResult: 'pass', fReason: '' }), pickFail: () => this.setState({ fResult: 'fail' }),
+      showReason: showReason, fReason: s.fReason, setReason: val('fReason'),
+      destText: !reason ? 'Pick the cause. It decides which stage the item returns to.' : (backBad ? 'That cause returns to ' + ST[reason.dest] + ', which is not behind ' + ST[stageNow] + '. Pick another.' : 'Moves to ' + ST[reason.dest] + '. ' + reason.rule),
+      showNote: isResultForm || mode === 'back', fNote: s.fNote, setNote: val('fNote'),
+      isBlockForm: mode === 'block', fBlocker: s.fBlocker, setBlocker: val('fBlocker'), fWaiting: s.fWaiting, setWaiting: val('fWaiting'),
+      isCompleteForm: mode === 'complete', fEvidence: s.fEvidence, setEvidence: val('fEvidence'),
+      submitDisabled: submitDisabled, submitLabel: mode === 'back' ? 'Send back' : (mode === 'complete' ? 'Mark complete' : (mode === 'block' ? 'Mark blocked' : 'Record result')),
+      submit: () => this.doSubmit(it.id), closeForm: () => this.setState(this.resetForm()),
+      toast: s.toast, hasToast: !!s.toast
+    };
+  }
+}
+</script>
+</body>
+</html>

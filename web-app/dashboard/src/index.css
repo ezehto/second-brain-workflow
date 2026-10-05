@@ -1,0 +1,233 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/plus-jakarta-sans";
+@import "@fontsource/dm-mono/400.css";
+@import "@fontsource/dm-mono/500.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Theme v2 tokens (docs/design/theme.md). Dark only: there is no light theme.
+ * Each token is a Tailwind theme variable, so it is both a utility
+ * (bg-card, text-muted-foreground, bg-status-blocked) and a CSS variable.
+ * shadcn's semantic names are mapped onto these further down.
+ */
+@theme {
+  --font-sans: "Plus Jakarta Sans Variable", system-ui, sans-serif;
+  --font-mono: "DM Mono", ui-monospace, monospace;
+
+  --color-ground: #0f0f14;
+  --color-rail: #15151c;
+  --color-surface: #1b1b24;
+  --color-inset: #242430;
+  --color-line: #2f2f3d;
+  --color-ink: #f3f3f8;
+  --color-muted-ink: #a3a3b5;
+  --color-faint: #7d7d90;
+
+  --color-brand: #9b8cff;
+  --color-brand-hover: #bdb2ff;
+  --color-brand-fill: #6b58e6;
+  --color-brand-fill-hover: #7c6af0;
+  --color-brand-soft: #2a2550;
+  --color-brand-on-fill: #e4dfff;
+
+  --color-status-progress: #6ea8ff;
+  --color-status-blocked: #ff7d73;
+  --color-status-risk: #f5b85c;
+  --color-status-done: #5ed39a;
+  --color-status-review: #d2a6ff;
+  --color-status-planned: #a3a3b5;
+  --color-status-cancelled: #7d7d90;
+
+  --color-tint-progress: #1f2c44;
+  --color-tint-blocked: #3a2422;
+  --color-tint-risk: #3a3020;
+  --color-tint-done: #1e3329;
+
+  --radius-card: 1rem;
+  --radius-tile: 0.75rem;
+  --radius-btn: 0.625rem;
+
+  --breakpoint-rail: 52rem;
+}
+
+:root {
+  color-scheme: dark;
+  --radius: 0.625rem;
+
+  --background: var(--color-ground);
+  --foreground: var(--color-ink);
+  --card: var(--color-surface);
+  --card-foreground: var(--color-ink);
+  --popover: var(--color-surface);
+  --popover-foreground: var(--color-ink);
+  --primary: var(--color-brand-fill);
+  --primary-foreground: #ffffff;
+  --secondary: var(--color-inset);
+  --secondary-foreground: var(--color-ink);
+  --muted: var(--color-inset);
+  --muted-foreground: var(--color-muted-ink);
+  --accent: var(--color-inset);
+  --accent-foreground: var(--color-ink);
+  --destructive: var(--color-status-blocked);
+  --border: var(--color-line);
+  --input: var(--color-line);
+  --ring: var(--color-brand);
+  --chart-1: var(--color-brand);
+  --chart-2: var(--color-status-progress);
+  --chart-3: var(--color-status-done);
+  --chart-4: var(--color-status-risk);
+  --chart-5: var(--color-status-review);
+  --sidebar: var(--color-rail);
+  --sidebar-foreground: var(--color-ink);
+  --sidebar-primary: var(--color-brand-fill);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--color-inset);
+  --sidebar-accent-foreground: var(--color-ink);
+  --sidebar-border: var(--color-line);
+  --sidebar-ring: var(--color-brand);
+}
+
+@theme inline {
+  --font-heading: var(--font-sans);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+  }
+  body {
+    @apply bg-ground text-ink text-sm leading-normal antialiased;
+    margin: 0;
+  }
+  h1,
+  h2,
+  h3 {
+    margin: 0;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+  }
+  a {
+    color: var(--color-brand);
+  }
+  a:hover {
+    color: var(--color-brand-hover);
+  }
+}
+
+@layer components {
+  /* Page title on the dashboard: the date. */
+  .day {
+    font-size: clamp(24px, 3.2vw, 34px);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+  .page-title {
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
+  /* Literal vault text: paths, wikilink brackets, frontmatter values. */
+  .mono {
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+  .note {
+    font-size: 12px;
+    color: var(--color-muted-ink);
+  }
+  .linkbtn {
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    color: var(--color-ink);
+    font-weight: 600;
+    text-align: left;
+    text-decoration: none;
+  }
+  .linkbtn:hover {
+    color: var(--color-brand-hover);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  /* The dotted rail of the activity list. */
+  .rail-list {
+    position: relative;
+    padding-left: 22px;
+  }
+  .rail-list::before {
+    content: "";
+    position: absolute;
+    left: 5px;
+    top: 6px;
+    bottom: 6px;
+    width: 1px;
+    background: var(--color-line);
+  }
+  .rail-dot {
+    position: absolute;
+    left: -21px;
+    top: 7px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--color-brand);
+    box-shadow: 0 0 0 3px var(--color-surface);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

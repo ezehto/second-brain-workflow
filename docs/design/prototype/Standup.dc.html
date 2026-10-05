@@ -1,0 +1,721 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Second Brain standup</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<style>
+body{margin:0;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#F3F3F8;background:#0F0F14;font-size:14px;line-height:1.5}
+*{box-sizing:border-box}
+a{color:#9B8CFF}a:hover{color:#BDB2FF}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid #9B8CFF;outline-offset:2px}
+h1,h2,h3{margin:0;font-weight:700;letter-spacing:-0.01em}
+.day{font-size:clamp(24px,3.2vw,34px);font-weight:800;letter-spacing:-0.02em;line-height:1.15}
+.mono{font-family:'DM Mono',ui-monospace,monospace;font-size:12px}
+.num{font-variant-numeric:tabular-nums}
+.muted{color:#A3A3B5}
+.note{font-size:12px;color:#A3A3B5}
+.btn{min-height:38px;padding:0 14px;border:1px solid #2F2F3D;background:#242430;color:#F3F3F8;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;font-weight:600;white-space:nowrap;text-decoration:none}
+.btn:hover{background:#2F2F3D;color:#F3F3F8}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.primary{background:#6B58E6;border-color:#6B58E6;color:#FFFFFF}
+.btn.primary:hover{background:#7C6AF0;color:#FFFFFF}
+.btn.small{min-height:32px;padding:0 12px;font-size:13px}
+.linkbtn{background:none;border:0;padding:0;cursor:pointer;color:#F3F3F8;font-weight:600;text-align:left;text-decoration:none}
+.linkbtn:hover{color:#BDB2FF;text-decoration:underline;text-underline-offset:3px}
+.wl{color:#9B8CFF}
+.wl::before{content:"[[";font-family:'DM Mono',monospace;font-size:12px;font-weight:400;color:#7D7D90}
+.wl::after{content:"]]";font-family:'DM Mono',monospace;font-size:12px;font-weight:400;color:#7D7D90}
+.chip{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border:0 !important;border-radius:999px;background:#242430 !important;font-size:12px;font-weight:600;white-space:nowrap}
+.chip::before{content:"";flex:none;width:7px;height:7px;border-radius:50%;background:currentColor}
+.card{background:#1B1B24;border:1px solid #2F2F3D;border-radius:16px}
+.card-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px 12px}
+.card-head h2{font-size:16px}
+.card.accent{background:#6B58E6;border-color:#6B58E6;color:#FFFFFF}
+.card.accent .muted,.card.accent .note{color:#E4DFFF}
+.tile{display:flex;align-items:center;gap:14px;padding:16px 18px;background:#1B1B24;border:1px solid #2F2F3D;border-radius:16px;text-align:left;color:#F3F3F8;text-decoration:none}
+button.tile,a.tile{cursor:pointer}
+button.tile:hover,a.tile:hover{border-color:#6B58E6;color:#F3F3F8}
+.tile-v{font-size:26px;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}
+.tile-l{font-size:13px;color:#A3A3B5}
+.icon{flex:none;width:42px;height:42px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;background:#2A2550;color:#9B8CFF}
+.icon.sm{width:30px;height:30px;border-radius:9px}
+.icon svg{width:20px;height:20px}
+.row{display:grid;align-items:center;gap:12px;padding:11px 20px;border-top:1px solid #2F2F3D}
+.head{font-size:12px;font-weight:600;color:#A3A3B5;background:#242430;border-top:0}
+.scroll{overflow-x:auto}
+.empty{padding:20px;color:#A3A3B5}
+.field{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:600;color:#A3A3B5}
+.input{min-height:38px;padding:6px 12px;border:1px solid #2F2F3D;border-radius:10px;background:#242430;font-weight:400;font-size:14px;color:#F3F3F8}
+.input::placeholder{color:#7D7D90}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav-item{display:flex;align-items:center;gap:10px;min-height:40px;padding:0 12px;border:0;border-radius:10px;background:none;cursor:pointer;font-weight:600;color:#A3A3B5;text-align:left;text-decoration:none}
+.nav-item svg{flex:none;width:18px;height:18px}
+.nav-item:hover{background:#242430;color:#F3F3F8}
+.nav-item.on{background:#6B58E6;color:#FFFFFF}
+.nav-item .count{margin-left:auto}
+.count{font-size:12px;font-weight:700;padding:1px 8px;border-radius:999px;background:#242430;color:#F3F3F8;font-variant-numeric:tabular-nums}
+.seg{min-height:32px;padding:0 14px;border:0;background:none;color:#A3A3B5;border-radius:999px;cursor:pointer;font-size:13px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center}
+.seg:hover{background:#2F2F3D;color:#F3F3F8}
+.seg.on{background:#6B58E6;color:#FFFFFF}
+.segs{display:inline-flex;flex-wrap:wrap;gap:2px;padding:4px;background:#242430;border-radius:999px}
+.track{height:8px;border-radius:999px;background:#242430;overflow:hidden}
+.fill{height:8px;border-radius:999px;background:#9B8CFF}
+.rail-list{position:relative;padding-left:22px}
+.rail-list::before{content:"";position:absolute;left:5px;top:6px;bottom:6px;width:1px;background:#2F2F3D}
+.rail-dot{position:absolute;left:-21px;top:7px;width:9px;height:9px;border-radius:50%;background:#9B8CFF;box-shadow:0 0 0 3px #1B1B24}
+.line{display:flex;align-items:baseline;gap:8px;padding:3px 0}
+.box{flex:none;width:14px;height:14px;border:1.5px solid #A3A3B5;border-radius:4px;position:relative;top:2px}
+.box.done{background:#9B8CFF;border-color:#9B8CFF}
+.sec-h{font-size:12px;font-weight:600;color:#7D7D90;margin:0 0 4px}
+.md-h{font-size:15px;font-weight:700;margin:0 0 4px}
+.hash{font-family:'DM Mono',monospace;font-weight:400;font-size:13px;color:#7D7D90}
+@media (max-width:820px){.nav{flex-direction:row;flex-wrap:wrap}.nav-item{min-height:44px}.btn,.seg,.input{min-height:44px}}
+.wlt{color:#9B8CFF;font-weight:600}
+.wlt::before{content:"[[";font-family:'DM Mono',monospace;font-size:12px;font-weight:400;color:#7D7D90}
+.wlt::after{content:"]]";font-family:'DM Mono',monospace;font-size:12px;font-weight:400;color:#7D7D90}
+a.nav-item:hover{color:#F3F3F8}
+a.nav-item.on:hover{color:#FFFFFF}
+a.seg:hover{color:#F3F3F8}
+.box{top:0}
+.box.done{background:#5ED39A;border-color:#5ED39A}
+.boxbtn{flex:none;width:28px;height:28px;margin:-4px -4px -4px -6px;padding:0;border:0;background:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;border-radius:8px}
+.boxbtn:hover{background:#242430}
+.boxbtn:disabled{cursor:default;background:none}
+.kbd{font-family:'DM Mono',monospace;font-size:11px;padding:1px 6px;border:1px solid #2F2F3D;border-bottom-width:2px;border-radius:6px;background:#242430;color:#A3A3B5}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.inset{background:#242430;border-radius:12px}
+.sub{padding:0 0 6px;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
+.sub .sec-h{color:#A3A3B5}
+.btn.on-accent{background:#FFFFFF;border-color:#FFFFFF;color:#1B1B24}
+.btn.on-accent:hover{background:#EDEAFF;color:#1B1B24}
+.btn.ghost-accent{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.35);color:#FFFFFF}
+.btn.ghost-accent:hover{background:rgba(255,255,255,.26);color:#FFFFFF}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-direction: column">
+<div style="flex: 1; display: flex; flex-wrap: wrap; align-items: stretch">
+
+<nav aria-label="Main" style="flex: 1 0 232px; max-width: 100%; background: #15151C; border-right: 1px solid #2F2F3D; padding: 20px 14px; display: flex; flex-direction: column; gap: 18px">
+<div style="display: flex; flex-direction: column; gap: 4px; padding: 0 12px">
+<div style="display: flex; align-items: center; gap: 10px"><span style="width: 22px; height: 22px; border-radius: 7px; background: #6B58E6; display: inline-block"></span><span style="font-weight: 800; font-size: 17px">Second Brain</span></div>
+<div class="mono muted">D:\Second Brain</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div class="sec-h" style="padding: 0 12px">Today</div>
+<div class="nav">
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg><span>Dashboard</span></a>
+<a class="nav-item on" href="Standup.dc.html" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.7A8 8 0 1 1 21 12z"/></svg><span>Standup</span></a>
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1.5 3h5L16 13h5"/></svg><span>Inbox</span></a>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div class="sec-h" style="padding: 0 12px">Work</div>
+<div class="nav">
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg><span>Tasks</span></a>
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Projects</span></a>
+<a class="nav-item" href="Workflow.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="12" r="2.5"/><path d="M6 8.5v7"/><path d="M8.5 6H13a5 5 0 0 1 5 3.5"/></svg><span>Workflow</span></a>
+<a class="nav-item" href="Timeline.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Timeline</span></a>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div class="sec-h" style="padding: 0 12px">Knowledge</div>
+<div class="nav">
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h10"/></svg><span>Knowledge</span></a>
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18"/><path d="M12 6h7l-2 3 2 3h-7"/><path d="M12 13H5l2 2.5L5 18h7"/></svg><span>Decisions</span></a>
+<a class="nav-item" href="Upskilling.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg><span>Upskilling</span></a>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div class="sec-h" style="padding: 0 12px">System</div>
+<div class="nav">
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><span>Search</span></a>
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg><span>Index status</span></a>
+</div>
+</div>
+
+</nav>
+
+<div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; padding: 20px 28px 8px">
+<div style="flex: 1 1 240px; display: flex; flex-direction: column; gap: 2px">
+<h1 style="font-size: 24px; font-weight: 800">Standup</h1>
+<div class="muted">Say it aloud from top to bottom, and write it into today's daily note.</div>
+</div>
+<a class="input" href="Main.dc.html" style="flex: 1 1 220px; max-width: 360px; display: flex; align-items: center; gap: 8px; color: #A3A3B5; text-decoration: none; border-radius: 999px"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>Search the vault</a>
+<div class="segs"><span class="seg on">All projects</span><a class="seg" href="Project.dc.html">IPP</a></div>
+<span style="width: 36px; height: 36px; border-radius: 50%; background: #2A2550; color: #BDB2FF; display: inline-flex; align-items: center; justify-content: center; font-weight: 700" role="img" aria-label="raymark">R</span>
+</header>
+
+<main style="flex: 1; padding: 12px 28px 28px; display: flex; flex-direction: column; gap: 20px; max-width: 1400px; width: 100%">
+
+<div style="display: flex; flex-direction: column; gap: 4px">
+<h2 class="day">{{dayLong}}</h2>
+<div class="muted">Manila time. Tasks and their projects link through to their notes.</div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr)); gap: 16px">
+<sc-for list="{{tiles}}" as="t" hint-placeholder-count="4">
+<div class="tile">
+<span class="icon" style="background: {{t.bg}}; color: {{t.fg}}">
+<sc-if value="{{t.isPlan}}" hint-placeholder-val="{{true}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg></sc-if>
+<sc-if value="{{t.isCarry}}" hint-placeholder-val="{{false}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 0 1 13.7-5.7L20 8"/><path d="M20 4v4h-4"/><path d="M20 12a8 8 0 0 1-13.7 5.7L4 16"/><path d="M4 20v-4h4"/></svg></sc-if>
+<sc-if value="{{t.isBlock}}" hint-placeholder-val="{{false}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9.5 17h-19z"/><path d="M12 10v4"/><path d="M12 17.5v.01"/></svg></sc-if>
+<sc-if value="{{t.isFollow}}" hint-placeholder-val="{{false}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5"/></svg></sc-if>
+</span>
+<div style="display: flex; flex-direction: column"><span class="tile-v">{{t.v}}</span><span class="tile-l">{{t.label}}</span></div>
+</div>
+</sc-for>
+</div>
+
+<section class="card accent" style="padding: 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px">
+<div style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px"><span class="chip" style="color: {{stateFg}}">{{stateLabel}}</span><span class="mono">{{notePath}}</span></div>
+<sc-if value="{{hasNotice}}" hint-placeholder-val="{{true}}"><div style="color: #FFFFFF">{{noticeText}}</div></sc-if>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<sc-if value="{{canStart}}" hint-placeholder-val="{{true}}"><button class="btn on-accent" onClick="{{startStandup}}">Start standup</button></sc-if>
+<sc-if value="{{canFill}}" hint-placeholder-val="{{false}}"><button class="btn on-accent" onClick="{{startStandup}}">Fill with carry-forward</button></sc-if>
+<sc-if value="{{canCopy}}" hint-placeholder-val="{{false}}"><button class="btn ghost-accent" aria-expanded="{{showText}}" onClick="{{toggleText}}">{{copyLabel}}</button></sc-if>
+<sc-if value="{{isPast}}" hint-placeholder-val="{{false}}"><button class="btn on-accent" onClick="{{backToToday}}">Back to today</button></sc-if>
+</div>
+</section>
+
+<sc-if value="{{showText}}" hint-placeholder-val="{{false}}">
+<section class="card">
+<div class="card-head"><h2>Standup as plain text</h2><button class="btn small" onClick="{{toggleText}}">Close</button></div>
+<div style="padding: 0 20px 20px">
+<label class="field">Ready to paste into chat. Select all, then copy.<textarea class="input mono" style="min-height: 280px; width: 100%; font-size: 13px; line-height: 1.5" readOnly="{{true}}" value="{{plainText}}" onFocus="{{selectAll}}"></textarea></label>
+</div>
+</section>
+</sc-if>
+
+<div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+
+<div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 20px">
+<sc-for list="{{sections}}" as="sec" hint-placeholder-count="6">
+<section class="card" style="padding-bottom: 6px">
+<div class="card-head"><div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px"><h2>{{sec.title}}</h2><span class="hash" style="font-size: 12px">## {{sec.h}}</span></div></div>
+
+<sc-if value="{{sec.hasYesterday}}" hint-placeholder-val="{{false}}">
+<div class="inset" style="margin: 0 20px 12px; padding: 12px 14px">
+<div class="sub"><h3 class="sec-h">{{yesterdayTitle}}</h3><span class="note">Read-only view of Done in</span><span class="mono muted">{{yesterdayPath}}</span></div>
+<sc-for list="{{sec.yLines}}" as="y" hint-placeholder-count="2">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 5px 0">
+<span class="box done" aria-hidden="true"></span>
+<span style="flex: 1 1 260px; min-width: 0"><sc-if value="{{y.isTask}}" hint-placeholder-val="{{false}}"><span class="wlt">{{y.label}}</span></sc-if><sc-if value="{{y.isOther}}" hint-placeholder-val="{{true}}"><span>{{y.label}}</span></sc-if></span>
+<sc-if value="{{y.hasProject}}" hint-placeholder-val="{{false}}"><a href="Project.dc.html" style="font-size: 13px">{{y.projectTitle}}</a></sc-if>
+</div>
+</sc-for>
+<sc-if value="{{sec.noY}}" hint-placeholder-val="{{false}}"><div class="muted" style="padding: 5px 0">Nothing was listed under Done yesterday.</div></sc-if>
+</div>
+<div class="sub" style="padding: 0 20px 6px"><h3 class="sec-h">Done today</h3><span class="note">Empty at the start of the day. Nothing is assumed complete.</span></div>
+</sc-if>
+
+<sc-for list="{{sec.lines}}" as="l" hint-placeholder-count="3">
+<div style="border-top: 1px solid #2F2F3D">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 11px 20px">
+<sc-if value="{{l.hasBox}}" hint-placeholder-val="{{true}}"><button class="boxbtn" aria-pressed="{{l.pressed}}" aria-label="{{l.boxLabel}}" disabled="{{l.boxDisabled}}" onClick="{{l.toggle}}"><span class="box {{l.boxCls}}"></span></button></sc-if>
+<span style="flex: 1 1 260px; min-width: 0">
+<sc-if value="{{l.isLinked}}" hint-placeholder-val="{{false}}"><button class="linkbtn wl" aria-expanded="{{l.detailOpen}}" onClick="{{l.toggleDetail}}">{{l.label}}</button></sc-if>
+<sc-if value="{{l.isProject}}" hint-placeholder-val="{{false}}"><a class="wlt" href="Project.dc.html">{{l.label}}</a></sc-if>
+<sc-if value="{{l.isText}}" hint-placeholder-val="{{true}}"><span>{{l.label}}</span></sc-if>
+<sc-if value="{{l.hasTail}}" hint-placeholder-val="{{false}}"><span class="muted"> {{l.tail}}</span></sc-if>
+</span>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px">
+<sc-if value="{{l.carried}}" hint-placeholder-val="{{false}}"><span class="chip" style="color: {{l.carryFg}}">{{l.carryText}}</span></sc-if>
+<sc-if value="{{l.hasStatus}}" hint-placeholder-val="{{false}}"><span class="chip" style="color: {{l.fg}}">{{l.statusWord}}</span></sc-if>
+<sc-if value="{{l.hasProject}}" hint-placeholder-val="{{false}}"><a href="Project.dc.html" style="font-size: 13px">{{l.projectTitle}}</a></sc-if>
+<sc-if value="{{l.hasDue}}" hint-placeholder-val="{{false}}"><span class="num" style="font-size: 13px; font-weight: 500; color: {{l.dueFg}}">{{l.dueText}}</span></sc-if>
+<sc-if value="{{l.hasProjectStat}}" hint-placeholder-val="{{false}}"><span class="muted num" style="font-size: 13px">{{l.projectStat}}</span></sc-if>
+</div>
+</div>
+<sc-if value="{{l.detailOpen}}" hint-placeholder-val="{{false}}">
+<div class="inset" style="margin: 0 20px 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; flex-wrap: wrap; gap: 4px 20px"><sc-for list="{{l.meta}}" as="m" hint-placeholder-count="4"><span style="font-size: 13px"><span class="muted">{{m.k}}</span> {{m.v}}</span></sc-for></div>
+<div>{{l.body}}</div>
+<div class="mono muted">{{l.path}}</div>
+<div><button class="btn small" onClick="{{l.toggleDetail}}">Close detail</button></div>
+</div>
+</sc-if>
+</div>
+</sc-for>
+<sc-if value="{{sec.empty}}" hint-placeholder-val="{{false}}"><div class="empty" style="border-top: 1px solid #2F2F3D; padding: 14px 20px">{{sec.emptyText}}</div></sc-if>
+
+<sc-if value="{{sec.hasExamples}}" hint-placeholder-val="{{false}}">
+<div style="border-top: 1px solid #2F2F3D; padding: 12px 20px; display: flex; flex-direction: column; gap: 8px">
+<div class="sub" style="padding: 0"><h3 class="sec-h">Tickets and meetings</h3><span class="note">Examples of what would link here. Not written to the note.</span></div>
+<div class="inset" style="padding: 12px 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px"><span class="mono" style="min-width: 62px">LD-482</span><span style="flex: 1 1 240px">OTP delivery gap, moved to In Review</span><span class="chip" style="color: #6EA8FF">From Jira, Phase 4</span></div>
+<div class="inset" style="padding: 12px 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px"><span class="mono" style="min-width: 62px">10:30</span><span style="flex: 1 1 240px">UAT schedule sync with QA</span><span class="chip" style="color: #D2A6FF">From Calendar, Phase 4</span></div>
+</div>
+</sc-if>
+
+<sc-if value="{{sec.canAdd}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 12px 20px 14px; border-top: 1px solid #2F2F3D">
+<label style="flex: 1 1 240px; display: flex; position: relative"><span class="sr">{{sec.addLabel}}</span><input class="input" style="width: 100%; border-radius: 999px; padding-left: 16px" type="text" placeholder="{{sec.placeholder}}" value="{{sec.draft}}" onChange="{{sec.setDraft}}" onKeyDown="{{sec.onKey}}"></label>
+<span class="note" style="display: inline-flex; align-items: center; gap: 6px"><span class="kbd">Enter</span> to add</span>
+<button class="btn small" disabled="{{sec.addDisabled}}" onClick="{{sec.add}}">Add</button>
+</div>
+</sc-if>
+<sc-if value="{{sec.addLocked}}" hint-placeholder-val="{{false}}"><div class="muted" style="padding: 12px 20px 14px; border-top: 1px solid #2F2F3D; font-size: 13px">Start the standup to add lines here.</div></sc-if>
+</section>
+</sc-for>
+</div>
+
+<div style="flex: 1 1 320px; max-width: 420px; min-width: 0; display: flex; flex-direction: column; gap: 20px">
+<div class="note">{{sideNote}}</div>
+
+<section class="card" style="padding-bottom: 16px">
+<div class="card-head" style="padding-bottom: 4px"><h2>What keeps rolling over?</h2></div>
+<div class="note" style="padding: 0 20px 10px">In Today for 3 or more days</div>
+<div style="padding: 0 16px; display: flex; flex-direction: column; gap: 10px">
+<sc-for list="{{carryItems}}" as="c" hint-placeholder-count="1">
+<div class="inset" style="padding: 14px; display: flex; align-items: flex-start; gap: 12px">
+<span class="icon sm" style="background: #3A3020; color: #F5B85C"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 0 1 13.7-5.7L20 8"/><path d="M20 4v4h-4"/><path d="M20 12a8 8 0 0 1-13.7 5.7L4 16"/><path d="M4 20v-4h4"/></svg></span>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px"><span class="wlt">{{c.label}}</span><span class="muted" style="font-size: 13px"><a href="Project.dc.html">{{c.projectTitle}}</a>, since {{c.since}}, in {{c.standups}} standups</span></div>
+<span class="chip" style="color: #F5B85C">{{c.days}} days</span>
+</div>
+</sc-for>
+</div>
+<sc-if value="{{noCarry}}" hint-placeholder-val="{{false}}"><div class="empty" style="padding: 0 20px">Nothing has been in Today for 3 days.</div></sc-if>
+<div class="note" style="padding: 10px 20px 0">{{carryOthers}}</div>
+</section>
+
+<section class="card" style="padding-bottom: 16px">
+<div class="card-head" style="padding-bottom: 8px"><h2>Which blockers keep coming back?</h2></div>
+<div style="padding: 0 16px; display: flex; flex-direction: column; gap: 10px">
+<sc-for list="{{recurring}}" as="b" hint-placeholder-count="1">
+<div class="inset" style="padding: 14px; display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; align-items: flex-start; gap: 12px">
+<span class="icon sm" style="background: #3A2422; color: #FF7D73"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9.5 17h-19z"/><path d="M12 10v4"/><path d="M12 17.5v.01"/></svg></span>
+<span class="wlt" style="flex: 1; min-width: 0">{{b.label}}</span>
+<span class="chip" style="color: #FF7D73">{{b.days}} days</span>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px">
+<span style="display: inline-flex; gap: 4px" role="img" aria-label="{{b.stripLabel}}"><sc-for list="{{b.strip}}" as="d" hint-placeholder-count="4"><span title="{{d.label}}" style="width: 14px; height: 14px; border-radius: 4px; border: 1.5px solid #FF7D73; background: {{d.bg}}"></span></sc-for></span>
+<span class="note">{{b.on}}</span>
+</div>
+<span class="muted" style="font-size: 13px"><a href="Project.dc.html">{{b.projectTitle}}</a>. Blocked by: {{b.by}}</span>
+</div>
+</sc-for>
+</div>
+<sc-if value="{{noRecurring}}" hint-placeholder-val="{{false}}"><div class="empty" style="padding: 0 20px">No blocker has been listed on more than one day.</div></sc-if>
+<div class="note" style="padding: 10px 20px 0">{{recurringOthers}}</div>
+</section>
+
+<section class="card" style="padding-bottom: 16px">
+<div class="card-head" style="padding-bottom: 4px"><h2>Where did the work go?</h2></div>
+<div class="note" style="padding: 0 20px 10px">Lines under Done, {{windowText}}</div>
+<div style="padding: 0 20px; display: flex; flex-direction: column; gap: 12px">
+<sc-for list="{{byProject}}" as="b" hint-placeholder-count="3">
+<div style="display: grid; grid-template-columns: 104px minmax(0, 1fr) 20px; align-items: center; gap: 10px">
+<span style="font-size: 13px"><sc-if value="{{b.isProject}}" hint-placeholder-val="{{true}}"><a href="Project.dc.html">{{b.label}}</a></sc-if><sc-if value="{{b.noProject}}" hint-placeholder-val="{{false}}"><span class="muted">{{b.label}}</span></sc-if></span>
+<div class="track" style="height: 12px"><div class="fill" style="height: 12px; background: #5ED39A; width: {{b.w}}"></div></div>
+<span class="num" style="text-align: right; font-weight: 700">{{b.n}}</span>
+</div>
+</sc-for>
+<sc-if value="{{noByProject}}" hint-placeholder-val="{{false}}"><div class="muted">Nothing has been marked done yet.</div></sc-if>
+</div>
+</section>
+
+<section class="card" style="padding-bottom: 16px">
+<div class="card-head" style="padding-bottom: 8px"><h2>Which follow-ups are still open?</h2></div>
+<div style="padding: 0 16px; display: flex; flex-direction: column; gap: 10px">
+<sc-for list="{{followUps}}" as="f" hint-placeholder-count="1">
+<div class="inset" style="padding: 14px; display: flex; align-items: flex-start; gap: 12px">
+<span class="icon sm" style="background: #2A2550; color: #D2A6FF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5"/></svg></span>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span>{{f.label}}</span><span class="muted" style="font-size: 13px">{{f.since}}</span></div>
+<span class="chip" style="color: #A3A3B5">{{f.age}}</span>
+</div>
+</sc-for>
+</div>
+<sc-if value="{{noFollowUps}}" hint-placeholder-val="{{false}}"><div class="empty" style="padding: 0 20px">No unchecked follow-ups.</div></sc-if>
+</section>
+
+<section class="card" style="padding-bottom: 12px">
+<div class="card-head" style="padding-bottom: 8px"><h2>Past standups</h2><span class="note">Opens read-only</span></div>
+<div style="padding: 0 10px; display: flex; flex-direction: column; gap: 2px">
+<sc-for list="{{pastList}}" as="d" hint-placeholder-count="4">
+<button class="nav-item {{d.cls}}" style="justify-content: space-between" aria-current="{{d.current}}" onClick="{{d.pick}}"><span class="mono" style="font-size: 13px">{{d.date}}</span><span style="font-size: 12px">{{d.note}}</span></button>
+</sc-for>
+</div>
+</section>
+</div>
+
+</div>
+</main>
+</div>
+</div>
+
+<sc-if value="{{hasToast}}" hint-placeholder-val="{{false}}">
+<div role="status" style="position: fixed; right: 20px; bottom: 20px; max-width: 420px; padding: 10px 14px; background: #F3F3F8; color: #0F0F14; border-radius: 12px; font-size: 13px; font-weight: 500">{{toast}}</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"todayNote":{"editor":"enum","options":["missing","untouched","touched"],"default":"missing","section":"Standup scenario"},"$preview":{"width":1440,"height":1800}}'>
+class Component extends DCLogic {
+  state = {
+    day: '2026-10-06', standup: null, appended: [], checked: [], drafts: {}, detail: '', showText: false, toast: '',
+    tasks: [
+      { t: 'Investigate missing OTP email', p: 'loadup', s: 'in-progress', pr: 'high', due: '2026-10-06', d: 'Some sign-in OTP emails never arrive. Compare relay delivery logs with the send log for the affected accounts.' },
+      { t: 'Add retry with backoff to payment callback handler', p: 'ipp', s: 'in-progress', pr: 'high', due: '2026-10-07', d: 'Retry transient failures only. A business rejection must never be retried.' },
+      { t: 'Fix N+1 query on account listing', p: 'loadup', s: 'review', pr: 'medium', due: '2026-10-06', d: 'Account listing issues one query per row for the wallet balance. Prefetch it.' },
+      { t: 'Write runbook for settlement file rerun', p: 'ipp', s: 'planned', pr: 'medium', due: '2026-10-06', d: 'Steps to rerun a settlement file safely after a failed batch, including the rollback.' },
+      { t: 'Rotate staging API credentials', p: 'loadup', s: 'planned', pr: 'high', due: '2026-10-03', d: 'Staging credentials are past their rotation date.' },
+      { t: 'Confirm rate limit with SMS provider', p: 'loadup', s: 'blocked', pr: 'high', due: '2026-10-05', by: 'Waiting on the provider account manager', d: 'Need the per-minute limit in writing before the OTP fallback is designed.' },
+      { t: 'Load test wallet reservation path', p: 'ipp', s: 'blocked', pr: 'medium', due: '2026-10-09', by: 'Staging database refresh', d: 'Run the reservation path at expected peak and record timings.' },
+      { t: 'Verify templates in Obsidian', p: 'second-brain', s: 'planned', pr: 'medium', due: '2026-10-08', d: 'Open the vault in Obsidian and confirm the six templates insert as designed.' },
+      { t: 'Draft Phase 1 README run instructions', p: 'second-brain', s: 'planned', pr: 'low', due: '', d: 'Run, stop, reindex and recover instructions for the Compose stack.' },
+      { t: 'Add alert for callback queue depth', p: 'monitoring-dashboard', s: 'planned', pr: 'low', due: '2026-10-14', d: 'Alert when the callback queue stays above its normal depth.' },
+      { t: 'Reproduce duplicate settlement rows', p: 'ipp', s: 'done', pr: 'high', due: '2026-10-05', d: 'Find where duplicate rows enter the settlement file.' },
+      { t: 'Enable Docker WSL integration', p: 'second-brain', s: 'done', pr: 'medium', due: '2026-10-02', d: 'Turn on Docker Desktop WSL integration and verify docker compose in WSL.' },
+      { t: 'Clarify OTP expiry requirement', p: 'loadup-v2', s: 'inbox', pr: '', due: '', d: 'Written by hand in Obsidian. Is the expiry five or ten minutes?' },
+      { t: 'Migrate cron jobs to scheduler', p: 'monitoring-dashboard', s: 'cancelled', pr: 'low', due: '', d: 'No longer needed after the scheduler decision was reversed.' }
+    ],
+    decisions: [
+      { t: 'Keep OTP email on the existing SMTP relay', p: 'loadup', s: 'accepted', decided: '2026-10-02', dec: 'Stay on the current relay and add delivery logging. Revisit after the provider contract is signed.' },
+      { t: 'Use idempotency keys on payment callbacks', p: 'ipp', s: 'proposed', decided: '', dec: 'Every callback carries an idempotency key that the handler checks before writing.' },
+      { t: 'Poll the vault instead of file watching', p: 'second-brain', s: 'accepted', decided: '2026-10-05', dec: 'The indexer polls on an interval and compares size, time and hash.' },
+      { t: 'Settlement reruns by full file replace', p: 'ipp', s: 'superseded', decided: '2026-09-18', dec: 'A rerun replaces the whole file.' }
+    ]
+  };
+
+  names() { return ['Done', 'Today', 'Blockers', 'Decisions / Updates', 'Follow-ups', 'Related Tasks / Projects']; }
+
+  projectList() {
+    return [
+      { slug: 'loadup', title: 'LoadUp' }, { slug: 'ipp', title: 'IPP' },
+      { slug: 'second-brain', title: 'Second Brain' }, { slug: 'monitoring-dashboard', title: 'Monitoring Dashboard' }
+    ];
+  }
+
+  projTitle(slug) {
+    const p = this.projectList().find((x) => x.slug === slug);
+    return p ? p.title : slug + ' (unknown)';
+  }
+
+  fg(s) {
+    const map = { 'planned': '#A3A3B5', 'in-progress': '#6EA8FF', 'blocked': '#FF7D73', 'review': '#D2A6FF', 'done': '#5ED39A', 'cancelled': '#7D7D90', 'inbox': '#A3A3B5', 'accepted': '#5ED39A', 'proposed': '#A3A3B5', 'superseded': '#7D7D90' };
+    return map[s] || '#A3A3B5';
+  }
+
+  diff(a, b) {
+    const u = (d) => Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10));
+    return Math.round((u(b) - u(a)) / 86400000);
+  }
+
+  dname(d, mode) {
+    const wd = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const mo = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const w = wd[new Date(Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10))).getUTCDay()];
+    const m = mo[+d.slice(5, 7) - 1];
+    const n = +d.slice(8, 10);
+    if (mode === 'long') return w + ' ' + n + ' ' + m;
+    if (mode === 'short') return w.slice(0, 3) + ' ' + n + ' ' + m.slice(0, 3);
+    return m.slice(0, 3) + ' ' + n;
+  }
+
+  plural(n, w) { return n + ' ' + w + (n === 1 ? '' : 's'); }
+
+  dailies() {
+    return {
+      '2026-10-05': [
+        ['Done', ['- [x] [[Reproduce duplicate settlement rows]]', '- [x] Reviewed the callback logging merge request']],
+        ['Today', ['- [ ] [[Investigate missing OTP email]]', '- [ ] [[Fix N+1 query on account listing]]', '- [ ] Reply to QA about the UAT schedule']],
+        ['Blockers', ['- [[Confirm rate limit with SMS provider]] (blocked by: Waiting on the provider account manager)']],
+        ['Decisions / Updates', ['- [[Poll the vault instead of file watching]] accepted']],
+        ['Follow-ups', ['- [ ] Ask infra for the staging database refresh date']],
+        ['Related Tasks / Projects', ['- [[IPP]]', '- [[LoadUp]]']]
+      ],
+      '2026-10-02': [
+        ['Done', ['- [x] [[Enable Docker WSL integration]]']],
+        ['Today', ['- [ ] [[Investigate missing OTP email]]', '- [ ] [[Reproduce duplicate settlement rows]]']],
+        ['Blockers', []],
+        ['Decisions / Updates', ['- [[Keep OTP email on the existing SMTP relay]] accepted']],
+        ['Follow-ups', ['- [x] Send the relay log sample to the provider']],
+        ['Related Tasks / Projects', ['- [[IPP]]', '- [[LoadUp]]', '- [[Second Brain]]']]
+      ],
+      '2026-10-01': [
+        ['Done', []],
+        ['Today', ['- [ ] [[Investigate missing OTP email]]', '- [ ] Set up the new vault folders']],
+        ['Blockers', []],
+        ['Decisions / Updates', []],
+        ['Follow-ups', []],
+        ['Related Tasks / Projects', ['- [[LoadUp]]']]
+      ]
+    };
+  }
+
+  standupState() { return this.state.standup || this.props.todayNote || 'missing'; }
+
+  carry() {
+    const T = '2026-10-06';
+    const rank = { 'in-progress': 0, 'review': 1, 'planned': 2 };
+    const byDue = (a, b) => (a.due || '9999').localeCompare(b.due || '9999') || a.t.localeCompare(b.t);
+    const today = this.state.tasks.filter((x) => x.s === 'in-progress' || x.s === 'review' || (x.s === 'planned' && x.due && x.due <= T))
+      .sort((a, b) => rank[a.s] - rank[b.s] || byDue(a, b));
+    const blocked = this.state.tasks.filter((x) => x.s === 'blocked').sort(byDue);
+    return { today: today, blocked: blocked };
+  }
+
+  todaySections(force) {
+    const st = force || this.standupState();
+    const out = {};
+    this.names().forEach((n) => { out[n] = []; });
+    if (st === 'touched') out['Today'] = ['- [ ] Pair with QA on the OTP reproduction'];
+    if (st === 'missing' || st === 'filled') {
+      const c = this.carry();
+      out['Today'] = c.today.map((x) => '- [ ] [[' + x.t + ']]').concat(['- [ ] Reply to QA about the UAT schedule']);
+      out['Blockers'] = c.blocked.map((x) => '- [[' + x.t + ']]' + (x.by ? ' (blocked by: ' + x.by + ')' : ''));
+      out['Follow-ups'] = ['- [ ] Ask infra for the staging database refresh date'];
+      const slugs = [];
+      c.today.concat(c.blocked).forEach((x) => { if (slugs.indexOf(x.p) < 0 && this.projectList().some((p) => p.slug === x.p)) slugs.push(x.p); });
+      out['Related Tasks / Projects'] = slugs.map((s) => this.projTitle(s)).sort().map((t) => '- [[' + t + ']]');
+    }
+    this.state.appended.forEach((a) => { out[a.section].push(a.text); });
+    return this.names().map((n) => [n, out[n]]);
+  }
+
+  flip(raw) { return raw.replace(/^(\s*[-*+] )\[( |x|X)\]/, (m, a, b) => a + (b === ' ' ? '[x]' : '[ ]')); }
+
+  parse(raw) {
+    const m = /^\s*[-*+] \[(.)\] (.*)$/.exec(raw);
+    let box = null;
+    let rest;
+    if (m) { box = m[1] === ' ' ? 'o' : 'x'; rest = m[2]; } else { rest = raw.replace(/^\s*[-*+] /, ''); }
+    const out = { box: box, rest: rest, kind: 'text', title: '', tail: '', task: null, decision: null };
+    const w = /^\[\[([^\]]+)\]\](.*)$/.exec(rest);
+    if (!w) return out;
+    const name = w[1].toLowerCase();
+    const task = this.state.tasks.find((x) => x.t.toLowerCase() === name);
+    const dec = this.state.decisions.find((x) => x.t.toLowerCase() === name);
+    const proj = this.projectList().find((x) => x.title.toLowerCase() === name);
+    out.title = w[1];
+    out.tail = w[2].replace(/^\s*\(blocked by: (.*)\)\s*$/, 'Blocked by: $1').trim();
+    if (task) { out.kind = 'task'; out.task = task; } else if (dec) { out.kind = 'decision'; out.decision = dec; } else if (proj) { out.kind = 'project'; out.project = proj; }
+    return out;
+  }
+
+  say(msg) {
+    this.setState({ toast: msg });
+    clearTimeout(this._t);
+    this._t = setTimeout(() => this.setState({ toast: '' }), 4500);
+  }
+
+  renderVals() {
+    const s = this.state;
+    const T = '2026-10-06';
+    const names = this.names();
+    const st = this.standupState();
+    const dayIsToday = s.day === T;
+    const notePath = '01-Daily/2026/' + s.day + '.md';
+    const todayPath = '01-Daily/2026/' + T + '.md';
+
+    const orig = this.todaySections();
+    const shown = orig.map((x) => [x[0], x[1].map((r) => (s.checked.indexOf(x[0] + '|' + r) >= 0 ? this.flip(r) : r))]);
+    const map = this.dailies();
+    const statToday = st === 'untouched' ? this.todaySections('missing') : shown;
+    map[T] = statToday;
+    const dates = Object.keys(map).sort();
+    const prevDates = dates.filter((d) => d < T).reverse();
+    const P = prevDates[0];
+    const getSec = (date, name) => { const e = map[date].find((x) => x[0] === name); return e ? e[1] : []; };
+
+    const unchecked = (raw) => /^\s*[-*+] \[ \] /.test(raw);
+    const keyOf = (raw) => { const p = this.parse(raw); return p.kind === 'text' ? 'x:' + p.rest.replace(/\s+/g, ' ').trim() : 't:' + p.title.toLowerCase(); };
+    const runOf = (name, raw) => {
+      const k = keyOf(raw);
+      let n = 0; let since = T;
+      for (let i = 0; i < prevDates.length; i++) {
+        const hit = getSec(prevDates[i], name).some((r) => unchecked(r) && keyOf(r) === k);
+        if (!hit) break;
+        n++; since = prevDates[i];
+      }
+      return { n: n, since: since, days: n ? this.diff(since, T) : 0 };
+    };
+
+    const projectStat = (title) => {
+      const p = this.projectList().find((x) => x.title === title);
+      if (!p) return '';
+      const open = s.tasks.filter((x) => x.p === p.slug && x.s !== 'done' && x.s !== 'cancelled');
+      const nb = open.filter((x) => x.s === 'blocked').length;
+      return open.length + ' open' + (nb ? ', ' + nb + ' blocked' : '');
+    };
+
+    const mk = (raw, name, origRaw, readonly) => {
+      const p = this.parse(raw);
+      const key = name + '|' + origRaw;
+      const label = p.kind === 'text' ? p.rest : p.title;
+      const isLinked = p.kind === 'task' || p.kind === 'decision';
+      let projectTitle = ''; let status = ''; let dueText = ''; let dueFg = '#A3A3B5';
+      let meta = []; let body = ''; let path = '';
+      if (p.kind === 'task') {
+        const x = p.task;
+        projectTitle = this.projTitle(x.p); status = x.s; path = '02-Work/Tasks/' + x.t + '.md'; body = x.d;
+        if (x.due && x.s !== 'done' && x.s !== 'cancelled' && name !== 'Done') { dueText = 'Due ' + this.dname(x.due); if (x.due < T) { dueText += ', overdue'; dueFg = '#FF7D73'; } }
+        meta = [{ k: 'Status', v: x.s }, { k: 'Priority', v: x.pr || 'N/A' }, { k: 'Due', v: x.due ? this.dname(x.due) : 'N/A' }, { k: 'Project', v: projectTitle }];
+        if (x.by) meta.push({ k: 'Blocked by', v: x.by });
+      }
+      if (p.kind === 'decision') {
+        const x = p.decision;
+        projectTitle = this.projTitle(x.p); status = x.s; path = '05-Knowledge/Decisions/' + x.t + '.md'; body = x.dec;
+        meta = [{ k: 'Status', v: x.s }, { k: 'Decided', v: x.decided ? this.dname(x.decided) : 'N/A' }, { k: 'Project', v: projectTitle }];
+      }
+            let carried = false; let carryText = ''; let carryFg = '#A3A3B5';
+      if (!readonly && dayIsToday && (name === 'Today' || name === 'Follow-ups') && p.box) {
+        const r = runOf(name, origRaw);
+        if (r.n > 0) { carried = true; carryText = 'carried over, ' + this.plural(r.days, 'day'); carryFg = r.days >= 3 ? '#F5B85C' : '#A3A3B5'; }
+      }
+      const canToggle = !readonly && dayIsToday && st !== 'missing' && !!p.box;
+      const isX = p.box === 'x';
+      const open = s.detail === key;
+      const tailText = p.tail;
+      let plain = label + (projectTitle ? ' (' + projectTitle + ')' : '') + (tailText ? ', ' + tailText.charAt(0).toLowerCase() + tailText.slice(1) : '');
+      if (carried) plain += ', ' + carryText;
+      if (isX && name !== 'Done') plain += ', done';
+      return {
+        key: key, label: label, hasBox: !!p.box, boxCls: isX ? 'done' : '', pressed: isX, boxDisabled: !canToggle,
+        boxLabel: (isX ? 'Unmark ' : 'Mark done: ') + label,
+        toggle: () => {
+          const has = s.checked.indexOf(key) >= 0;
+          this.setState({ checked: has ? s.checked.filter((k) => k !== key) : s.checked.concat([key]) });
+          const noteMsg = p.kind === 'task' ? ' The task note is not changed; its status stays ' + p.task.s + '.' : '';
+          this.say((!isX ? 'Marked the box done in ' : 'Cleared the box in ') + todayPath + '.' + noteMsg);
+        },
+        isLinked: isLinked, isProject: p.kind === 'project', isText: p.kind === 'text' || (!isLinked && p.kind !== 'project'),
+        tail: tailText, hasTail: !!tailText,
+        hasProject: !!projectTitle, projectTitle: projectTitle, hasStatus: !!status, statusWord: status, fg: this.fg(status),
+        carried: carried, carryText: carryText, carryFg: carryFg,
+        hasDue: !!dueText, dueText: dueText, dueFg: dueFg,
+        hasProjectStat: p.kind === 'project', projectStat: p.kind === 'project' ? projectStat(p.title) : '',
+        detailOpen: open && isLinked, toggleDetail: () => this.setState({ detail: open ? '' : key }),
+        meta: meta, body: body, path: path, plain: plain, checked: isX, isFree: p.kind === 'text', pkind: p.kind, projectKey: p.kind === 'task' ? p.task.p : ''
+      };
+    };
+
+    const sections = names.map((n, i) => {
+      const lines = (dayIsToday ? shown[i][1] : getSec(s.day, n)).map((r, j) => mk(r, n, dayIsToday ? orig[i][1][j] : r, !dayIsToday));
+      const title = { 'Done': dayIsToday ? 'Yesterday / Done' : 'Done', 'Today': 'Today', 'Blockers': 'Blockers', 'Decisions / Updates': 'Decisions / Updates', 'Follow-ups': 'Follow-ups', 'Related Tasks / Projects': 'Related tasks and projects' }[n];
+      const ph = { 'Done': 'Reviewed the callback logging merge request', 'Today': 'Pair with QA on the OTP reproduction', 'Blockers': 'Waiting on staging database refresh', 'Decisions / Updates': 'Agreed to keep the OTP sender on the current relay', 'Follow-ups': 'Ask infra for the refresh date', 'Related Tasks / Projects': '[[IPP]]' }[n];
+      const emptyText = { 'Done': 'Nothing done yet today.', 'Today': 'Nothing planned.', 'Blockers': 'Nothing is blocked.', 'Decisions / Updates': 'No decisions or updates.', 'Follow-ups': 'No follow-ups.', 'Related Tasks / Projects': 'No related projects.' }[n];
+      const draft = s.drafts[n] || '';
+      const add = () => {
+        const t = (this.state.drafts[n] || '').trim();
+        if (!t) return;
+        const box = n === 'Today' || n === 'Follow-ups';
+        const pre = n === 'Done' ? '- [x] ' : box ? '- [ ] ' : '- ';
+        this.setState({ appended: this.state.appended.concat([{ section: n, text: pre + t }]), drafts: Object.assign({}, this.state.drafts, { [n]: '' }) });
+        this.say('Appended under ## ' + n + ' in ' + todayPath);
+      };
+      const hasY = dayIsToday && n === 'Done' && !!P;
+      const yLines = hasY ? getSec(P, 'Done').map((r) => mk(r, 'Done', r, true)) : [];
+      return {
+        h: n, title: title, lines: lines, empty: lines.length === 0, emptyText: emptyText,
+        hasYesterday: hasY, yLines: yLines.map((y) => ({ label: y.label, isTask: y.isLinked, isOther: !y.isLinked, hasProject: y.hasProject, projectTitle: y.projectTitle })), noY: hasY && yLines.length === 0,
+        hasExamples: dayIsToday && n === 'Related Tasks / Projects',
+        canAdd: dayIsToday && st !== 'missing', addLocked: dayIsToday && st === 'missing', addLabel: 'Add a line under ' + n, placeholder: ph, draft: draft,
+        setDraft: (e) => this.setState({ drafts: Object.assign({}, this.state.drafts, { [n]: e.target.value }) }),
+        onKey: (e) => { if (e.key === 'Enter') add(); }, add: add, addDisabled: !draft.trim(), _yPlain: yLines.map((y) => y.plain)
+      };
+    });
+
+    // side column data, from the daily notes
+    const windowDates = dates.slice(-5);
+    const todayRaw = statToday[1][1];
+    const carryItems = [];
+    let shortRuns = 0;
+    if (dayIsToday) {
+      todayRaw.forEach((raw) => {
+        if (!unchecked(raw)) return;
+        const r = runOf('Today', raw);
+        const p = this.parse(raw);
+        if (r.days >= 3) carryItems.push({ label: p.kind === 'text' ? p.rest : p.title, projectTitle: p.task ? this.projTitle(p.task.p) : 'No project', since: this.dname(r.since), standups: r.n + 1, days: r.days });
+        else if (r.n > 0) shortRuns++;
+      });
+    }
+    const blockerDays = {};
+    dates.forEach((d) => { getSec(d, 'Blockers').forEach((r) => { const p = this.parse(r); if (p.kind !== 'task') return; (blockerDays[p.title] = blockerDays[p.title] || []).push(d); }); });
+    const recurring = Object.keys(blockerDays).filter((k) => blockerDays[k].length >= 2).map((k) => {
+      const t = this.state.tasks.find((x) => x.t === k);
+      const ds = blockerDays[k];
+      return {
+        label: k, days: ds.length, projectTitle: this.projTitle(t.p), by: t.by || 'N/A', on: 'Listed on ' + ds.map((d) => this.dname(d)).join(', '),
+        stripLabel: 'Listed on ' + ds.length + ' of the last ' + windowDates.length + ' standups',
+        strip: windowDates.map((d) => ({ label: this.dname(d) + (ds.indexOf(d) >= 0 ? ', blocked' : ', not listed'), bg: ds.indexOf(d) >= 0 ? '#FF7D73' : '#242430' }))
+      };
+    }).sort((a, b) => b.days - a.days || a.label.localeCompare(b.label));
+    const onceN = Object.keys(blockerDays).filter((k) => blockerDays[k].length === 1).length;
+
+    const doneCount = {};
+    windowDates.forEach((d) => { getSec(d, 'Done').forEach((r) => { const p = this.parse(r); const k = p.task ? this.projTitle(p.task.p) : 'No project'; doneCount[k] = (doneCount[k] || 0) + 1; }); });
+    const doneKeys = Object.keys(doneCount).sort((a, b) => doneCount[b] - doneCount[a] || a.localeCompare(b));
+    const maxDone = doneKeys.length ? doneCount[doneKeys[0]] : 1;
+    const byProject = doneKeys.map((k) => ({ label: k, n: doneCount[k], w: Math.round(doneCount[k] / maxDone * 100) + '%', isProject: k !== 'No project', noProject: k === 'No project' }));
+
+    const followUps = statToday[4][1].filter(unchecked).map((raw) => {
+      const r = runOf('Follow-ups', raw);
+      const p = this.parse(raw);
+      return { label: p.kind === 'text' ? p.rest : p.title, age: r.n ? this.plural(r.days, 'day') : 'today', since: r.n ? 'Open since ' + this.dname(r.since) : 'Added today', days: r.days };
+    }).sort((a, b) => b.days - a.days);
+
+    const pastDates = [T].concat(prevDates);
+    const pastList = pastDates.map((d) => {
+      const dn = getSec(d, 'Done').length; const tn = getSec(d, 'Today').length;
+      return { date: d, cls: s.day === d ? 'on' : '', current: s.day === d ? 'page' : 'false', note: d === T ? (st === 'missing' ? 'today, not started' : 'today') : dn + ' done, ' + tn + ' planned', pick: () => this.setState({ day: d, detail: '', showText: false }) };
+    });
+
+    // plain text
+    let plainText = '';
+    if (dayIsToday) {
+      const L = ['Standup, ' + this.dname(T, 'long') + ' 2026', ''];
+      const block = (head, arr) => { L.push(head); (arr.length ? arr : ['None']).forEach((x) => L.push('- ' + x)); L.push(''); };
+      if (P) block('Yesterday (' + this.dname(P, 'short') + '), done', sections[0]._yPlain);
+      block('Done today', sections[0].lines.map((l) => l.plain));
+      block('Today', sections[1].lines.map((l) => l.plain));
+      block('Blockers', sections[2].lines.map((l) => l.plain));
+      block('Decisions / updates', sections[3].lines.map((l) => l.plain));
+      block('Follow-ups', sections[4].lines.map((l) => l.plain));
+      L.push('Related: ' + (sections[5].lines.length ? sections[5].lines.map((l) => l.label).join(', ') : 'none'));
+      plainText = L.join('\n');
+    }
+
+    const stLabel = !dayIsToday ? 'read-only, past note' : { missing: 'not started', untouched: 'untouched', filled: 'started', touched: 'edited by hand' }[st];
+    const stFg = !dayIsToday ? '#A3A3B5' : { missing: '#A3A3B5', untouched: '#A3A3B5', filled: '#5ED39A', touched: '#6EA8FF' }[st];
+    const notice = !dayIsToday ? 'Read-only. This is ' + notePath + ' as it stands in the vault.' : { missing: 'Preview. The note does not exist yet. Starting the standup creates ' + todayPath + ' from the daily template with these items carried forward.', untouched: 'Obsidian already created this note from the template and nothing has been typed in it, so it can be filled with carry-forward.', touched: 'This note has been edited by hand, so it is shown as written. Nothing is regenerated or merged.', filled: '' }[st];
+    const canCopy = dayIsToday && st !== 'missing';
+
+    return {
+      dayLong: this.dname(s.day, 'long'), notePath: notePath, stateLabel: stLabel, stateFg: stFg,
+      canStart: dayIsToday && st === 'missing', canFill: dayIsToday && st === 'untouched', canCopy: canCopy, isPast: !dayIsToday,
+      startStandup: () => { this.setState({ standup: 'filled' }); this.say(st === 'missing' ? 'Created ' + todayPath + ' with carry-forward' : 'Filled ' + todayPath + ' in place'); },
+      showText: s.showText && canCopy, copyLabel: s.showText ? 'Hide text' : 'Copy as text',
+      toggleText: () => { this.setState({ showText: !s.showText }); },
+      selectAll: (e) => { e.target.select(); }, plainText: plainText,
+      backToToday: () => this.setState({ day: T, detail: '' }),
+      hasNotice: !!notice, noticeText: notice,
+      sections: sections, yesterdayTitle: P ? 'Yesterday, ' + this.dname(P, 'long') : '', yesterdayPath: P ? '01-Daily/2026/' + P + '.md' : '',
+      carryItems: carryItems, noCarry: carryItems.length === 0, carryOthers: shortRuns ? this.plural(shortRuns, 'other item') + ' carried over for less than 3 days.' : '',
+      recurring: recurring, noRecurring: recurring.length === 0, recurringOthers: onceN ? this.plural(onceN, 'other blocker') + ' listed on one day only.' : '',
+      windowText: 'last ' + windowDates.length + ' standups (5 once another day is written)', byProject: byProject, noByProject: byProject.length === 0,
+      followUps: followUps, noFollowUps: followUps.length === 0, pastList: pastList,
+      tiles: [
+        { label: 'Planned today', v: sections[1].lines.length, bg: '#1F2C44', fg: '#6EA8FF', k: 'plan' },
+        { label: 'Carried over', v: sections[1].lines.filter((l) => l.carried).length, bg: '#3A3020', fg: '#F5B85C', k: 'carry' },
+        { label: 'Blockers', v: sections[2].lines.length, bg: '#3A2422', fg: '#FF7D73', k: 'block' },
+        { label: 'Open follow-ups', v: sections[4].lines.filter((l) => !l.checked).length, bg: '#2A2550', fg: '#D2A6FF', k: 'follow' }
+      ].map((x) => ({ label: x.label, v: x.v, bg: x.bg, fg: x.fg, isPlan: x.k === 'plan', isCarry: x.k === 'carry', isBlock: x.k === 'block', isFollow: x.k === 'follow' })),
+      sideNote: st === 'untouched' && dayIsToday ? 'Today\u2019s note is empty. The cards below show what carry-forward would add, read from the older notes.' : 'Read from the daily notes themselves, so these are possible in Phase 1.',
+      toast: s.toast, hasToast: !!s.toast
+    };
+  }
+}
+</script>
+</body>
+</html>

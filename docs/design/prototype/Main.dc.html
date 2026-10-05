@@ -1,0 +1,1149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Second Brain dashboard</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<style>
+body{margin:0;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#F3F3F8;background:#0F0F14;font-size:14px;line-height:1.5}
+*{box-sizing:border-box}
+a{color:#9B8CFF}a:hover{color:#BDB2FF}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid #9B8CFF;outline-offset:2px}
+h1,h2,h3{margin:0;font-weight:700;letter-spacing:-0.01em}
+.day{font-size:clamp(24px,3.2vw,34px);font-weight:800;letter-spacing:-0.02em;line-height:1.15}
+.mono{font-family:'DM Mono',ui-monospace,monospace;font-size:12px}
+.num{font-variant-numeric:tabular-nums}
+.muted{color:#A3A3B5}
+.note{font-size:12px;color:#A3A3B5}
+.btn{min-height:38px;padding:0 14px;border:1px solid #2F2F3D;background:#242430;color:#F3F3F8;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;font-weight:600;white-space:nowrap;text-decoration:none}
+.btn:hover{background:#2F2F3D;color:#F3F3F8}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.primary{background:#6B58E6;border-color:#6B58E6;color:#FFFFFF}
+.btn.primary:hover{background:#7C6AF0;color:#FFFFFF}
+.btn.small{min-height:32px;padding:0 12px;font-size:13px}
+.linkbtn{background:none;border:0;padding:0;cursor:pointer;color:#F3F3F8;font-weight:600;text-align:left;text-decoration:none}
+.linkbtn:hover{color:#BDB2FF;text-decoration:underline;text-underline-offset:3px}
+.wl{color:#9B8CFF}
+.wl::before{content:"[[";font-family:'DM Mono',monospace;font-size:12px;font-weight:400;color:#7D7D90}
+.wl::after{content:"]]";font-family:'DM Mono',monospace;font-size:12px;font-weight:400;color:#7D7D90}
+.chip{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border:0 !important;border-radius:999px;background:#242430 !important;font-size:12px;font-weight:600;white-space:nowrap}
+.chip::before{content:"";flex:none;width:7px;height:7px;border-radius:50%;background:currentColor}
+.card{background:#1B1B24;border:1px solid #2F2F3D;border-radius:16px;overflow:hidden}
+.card-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px 12px}
+.card-head h2{font-size:16px}
+.card.accent{background:#6B58E6;border-color:#6B58E6;color:#FFFFFF}
+.card.accent .muted,.card.accent .note{color:#E4DFFF}
+.tile{display:flex;align-items:center;gap:14px;padding:16px 18px;background:#1B1B24;border:1px solid #2F2F3D;border-radius:16px;text-align:left;color:#F3F3F8;text-decoration:none}
+button.tile,a.tile{cursor:pointer}
+button.tile:hover,a.tile:hover{border-color:#6B58E6;color:#F3F3F8}
+.tile-v{font-size:26px;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}
+.tile-l{font-size:13px;color:#A3A3B5}
+.icon{flex:none;width:42px;height:42px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;background:#2A2550;color:#9B8CFF}
+.icon.sm{width:30px;height:30px;border-radius:9px}
+.icon svg{width:20px;height:20px}
+.row{display:grid;align-items:center;gap:12px;padding:11px 20px;border-top:1px solid #2F2F3D}
+.head{font-size:12px;font-weight:600;color:#A3A3B5;background:#242430;border-top:0}
+.scroll{overflow-x:auto}
+.empty{padding:20px;color:#A3A3B5}
+.field{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:600;color:#A3A3B5}
+.input{min-height:38px;padding:6px 12px;border:1px solid #2F2F3D;border-radius:10px;background:#242430;font-weight:400;font-size:14px;color:#F3F3F8}
+.input::placeholder{color:#7D7D90}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav-item{display:flex;align-items:center;gap:10px;min-height:40px;padding:0 12px;border:0;border-radius:10px;background:none;cursor:pointer;font-weight:600;color:#A3A3B5;text-align:left;text-decoration:none}
+.nav-item svg{flex:none;width:18px;height:18px}
+.nav-item:hover{background:#242430;color:#F3F3F8}
+.nav-item.on{background:#6B58E6;color:#FFFFFF}
+.nav-item .count{margin-left:auto}
+.count{font-size:12px;font-weight:700;padding:1px 8px;border-radius:999px;background:#242430;color:#F3F3F8;font-variant-numeric:tabular-nums}
+.seg{min-height:32px;padding:0 14px;border:0;background:none;color:#A3A3B5;border-radius:999px;cursor:pointer;font-size:13px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center}
+.seg:hover{background:#2F2F3D;color:#F3F3F8}
+.seg.on{background:#6B58E6;color:#FFFFFF}
+.segs{display:inline-flex;flex-wrap:wrap;gap:2px;padding:4px;background:#242430;border-radius:999px}
+.track{height:8px;border-radius:999px;background:#242430;overflow:hidden}
+.fill{height:8px;border-radius:999px;background:#9B8CFF}
+.rail-list{position:relative;padding-left:22px}
+.rail-list::before{content:"";position:absolute;left:5px;top:6px;bottom:6px;width:1px;background:#2F2F3D}
+.rail-dot{position:absolute;left:-21px;top:7px;width:9px;height:9px;border-radius:50%;background:#9B8CFF;box-shadow:0 0 0 3px #1B1B24}
+.line{display:flex;align-items:baseline;gap:8px;padding:3px 0}
+.box{flex:none;width:14px;height:14px;border:1.5px solid #A3A3B5;border-radius:4px;position:relative;top:2px}
+.box.done{background:#9B8CFF;border-color:#9B8CFF}
+.sec-h{font-size:12px;font-weight:600;color:#7D7D90;margin:0 0 4px}
+.md-h{font-size:15px;font-weight:700;margin:0 0 4px}
+.hash{font-family:'DM Mono',monospace;font-weight:400;font-size:13px;color:#7D7D90}
+a.linkbtn{display:inline;font-weight:600}
+.pt{font-size:24px;font-weight:800;letter-spacing:-0.02em;line-height:1.2}
+.inset{background:#242430;border-radius:12px}
+.item{display:flex;align-items:flex-start;gap:12px;padding:14px;background:#242430;border-radius:12px}
+.ico{flex:none;width:18px;height:18px}
+@media (max-width:820px){.nav{flex-direction:row;flex-wrap:wrap}.nav-item{min-height:44px}.btn,.seg,.input{min-height:44px}}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-direction: column">
+
+<sc-if value="{{showLogin}}" hint-placeholder-val="{{false}}">
+<div style="flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px">
+<div class="card" style="width: 100%; max-width: 380px; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<h1 style="font-size: 18px">Second Brain</h1>
+<div class="muted">Sign in to the local dashboard. One account, session login.</div>
+</div>
+<label class="field">Username<input class="input" type="text" autocomplete="username" value="raymark" readonly></label>
+<label class="field">Password<input class="input" type="password" autocomplete="current-password" value="samplepassword" readonly></label>
+<button class="btn primary" style="justify-content: center" onClick="{{signIn}}">Sign in</button>
+<div class="muted" style="font-size: 13px">Runs on this machine only, at localhost:5173.</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{showApp}}" hint-placeholder-val="{{true}}">
+<div style="flex: 1; display: flex; flex-wrap: wrap; align-items: stretch">
+
+<nav aria-label="Main" style="flex: 1 0 240px; background: #15151C; border-right: 1px solid #2F2F3D; padding: 20px 14px; display: flex; flex-direction: column; gap: 18px">
+<div style="display: flex; flex-direction: column; gap: 4px; padding: 0 12px">
+<div style="display: flex; align-items: center; gap: 10px"><span style="width: 22px; height: 22px; border-radius: 7px; background: #6B58E6"></span><span style="font-size: 17px; font-weight: 800">Second Brain</span></div>
+<div class="mono muted">D:\Second Brain</div>
+</div>
+<sc-for list="{{navGroups}}" as="g" hint-placeholder-count="4">
+<div>
+<div class="sec-h" style="padding: 0 12px">{{g.label}}</div>
+<div class="nav">
+<sc-for list="{{g.items}}" as="n" hint-placeholder-count="3">
+<sc-if value="{{n.isBtn}}" hint-placeholder-val="{{true}}"><button class="nav-item {{n.cls}}" onClick="{{n.go}}"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{n.d}}"/></svg><span>{{n.label}}</span><sc-if value="{{n.hasCount}}" hint-placeholder-val="{{false}}"><span class="count">{{n.count}}</span></sc-if></button></sc-if>
+<sc-if value="{{n.isLink}}" hint-placeholder-val="{{false}}"><a class="nav-item" href="{{n.href}}"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{n.d}}"/></svg><span>{{n.label}}</span></a></sc-if>
+</sc-for>
+</div>
+</div>
+</sc-for>
+</nav>
+
+<div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+
+<header style="display: flex; flex-direction: column; gap: 16px; padding: 20px 28px 8px">
+<div style="display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px">
+<div style="flex: 1 1 240px; min-width: 0"><h1 class="{{titleCls}}">{{pageTitle}}</h1><div class="muted">{{pageSub}}</div></div>
+<label style="flex: 2 1 240px; max-width: 380px; display: flex; position: relative; align-items: center"><span style="position: absolute; left: 12px; display: flex; color: #A3A3B5"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.5 11a6.5 6.5 0 1 0-13 0 6.5 6.5 0 0 0 13 0zM16 16l4.5 4.5"/></svg></span><input class="input" style="width: 100%; padding-left: 38px" type="search" placeholder="Search the vault" aria-label="Search the vault" value="{{query}}" onChange="{{onQuery}}"></label>
+<div class="segs" role="group" aria-label="Context"><span class="seg on" aria-current="true" style="cursor: default">All projects</span><a class="seg" href="Project.dc.html">IPP</a></div>
+<button class="btn small" onClick="{{goIndex}}"><span class="num">Indexed {{lastPass}}</span><span class="count" style="background: #3A2422; color: #FF7D73">{{problemCount}}</span></button>
+<div style="display: flex; align-items: center; gap: 10px"><span style="width: 36px; height: 36px; border-radius: 50%; background: #2A2550; color: #BDB2FF; display: inline-flex; align-items: center; justify-content: center; font-weight: 700" aria-hidden="true">R</span><span class="muted">raymark</span><button class="btn small" onClick="{{signOut}}">Log out</button></div>
+</div>
+<div role="toolbar" aria-label="Quick actions" style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+<button class="btn small" onClick="{{qaTask}}"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Task</button>
+<button class="btn small" onClick="{{qaFollowup}}"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Follow-up</button>
+<button class="btn small" onClick="{{qaDecision}}"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Decision</button>
+<button class="btn small" onClick="{{qaLesson}}"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Note</button>
+<button class="btn small" onClick="{{qaCapture}}"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Capture</button>
+<div style="flex: 1"></div>
+<a class="btn small primary" href="Standup.dc.html">Start standup</a>
+</div>
+</header>
+
+<main style="flex: 1; padding: 12px 28px 28px; display: flex; flex-direction: column; gap: 20px; max-width: 1360px; width: 100%">
+
+<sc-if value="{{isDashboard}}" hint-placeholder-val="{{true}}">
+<div style="display: flex; flex-direction: column; gap: 20px">
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr)); gap: 16px">
+<sc-for list="{{metrics}}" as="m" hint-placeholder-count="5">
+<button class="tile" onClick="{{m.go}}">
+<span class="icon" style="background: {{m.bg}}; color: {{m.fg}}"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{m.d}}"/></svg></span>
+<span style="display: flex; flex-direction: column"><span class="tile-v">{{m.value}}</span><span class="tile-l">{{m.hint}}</span></span>
+</button>
+</sc-for>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+<section class="card accent" style="flex: 2 1 480px; min-width: 0">
+<div class="card-head"><h2>Today's focus</h2><button class="btn small" style="background: rgba(255, 255, 255, 0.16); border-color: transparent; color: #FFFFFF" onClick="{{goTasks}}">All tasks</button></div>
+<sc-for list="{{focus}}" as="f" hint-placeholder-count="5">
+<div class="row" style="grid-template-columns: 26px minmax(0, 1fr) auto; border-top-color: rgba(255, 255, 255, 0.2)">
+<span class="num" style="width: 24px; height: 24px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px">{{f.n}}</span>
+<div style="display: flex; flex-direction: column; gap: 1px; min-width: 0">
+<button class="linkbtn" style="color: #FFFFFF" onClick="{{f.open}}">{{f.title}}</button>
+<span style="font-size: 13px"><span style="font-weight: 600">{{f.reason}}.</span> <a class="linkbtn" style="font-weight: 400; color: #E4DFFF; text-decoration: underline" href="Project.dc.html">{{f.projectTitle}}</a></span>
+</div>
+<span class="chip" style="color: {{f.fg}}">{{f.status}}</span>
+</div>
+</sc-for>
+<sc-if value="{{noFocus}}" hint-placeholder-val="{{false}}"><div class="empty" style="color: #E4DFFF">Nothing is overdue, blocked, due today or in review.</div></sc-if>
+<div class="note" style="padding: 12px 20px 16px; border-top: 1px solid rgba(255, 255, 255, 0.2)">Chosen by a fixed rule, not by an AI: overdue first, then blocked, then due today, then in review. Within a group, high priority first, then the earliest due date. Five at most.</div>
+</section>
+<section class="card" style="flex: 1 1 340px; min-width: 0">
+<div class="card-head"><h2>Needs attention</h2></div>
+<sc-for list="{{attention}}" as="a" hint-placeholder-count="5">
+<div class="row" style="grid-template-columns: minmax(0, 1fr); gap: 6px; align-items: start">
+<div style="display: flex; align-items: baseline; gap: 10px">
+<span class="num" style="font-size: 20px; font-weight: 800; color: {{a.fg}}">{{a.count}}</span>
+<sc-if value="{{a.hasGo}}" hint-placeholder-val="{{true}}"><button class="linkbtn" onClick="{{a.go}}">{{a.label}}</button></sc-if>
+<sc-if value="{{a.noGo}}" hint-placeholder-val="{{false}}"><span style="font-weight: 600">{{a.label}}</span></sc-if>
+</div>
+<div style="display: flex; flex-direction: column; gap: 3px; min-width: 0">
+<sc-for list="{{a.items}}" as="i" hint-placeholder-count="2"><span><button class="linkbtn" style="font-weight: 500" onClick="{{i.open}}">{{i.title}}</button> <span class="muted" style="font-size: 13px">{{i.note}}</span></span></sc-for>
+<sc-if value="{{a.noItems}}" hint-placeholder-val="{{false}}"><span class="muted">{{a.emptyText}}</span></sc-if>
+</div>
+</div>
+</sc-for>
+</section>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); gap: 20px; align-items: start">
+<section class="card">
+<div class="card-head"><h2>Tasks by status</h2><span class="note">{{taskTotal}} task notes</span></div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 20px; padding: 4px 20px 20px">
+<div role="img" aria-label="Tasks by status, {{taskTotal}} task notes" style="position: relative; flex: none; width: 140px; height: 140px; border-radius: 50%; background: {{donutBg}}">
+<div style="position: absolute; inset: 20px; border-radius: 50%; background: #1B1B24; display: flex; flex-direction: column; align-items: center; justify-content: center"><span class="num" style="font-size: 26px; font-weight: 800; line-height: 1">{{taskTotal}}</span><span class="note">tasks</span></div>
+</div>
+<div style="flex: 1 1 140px; display: flex; flex-direction: column; gap: 6px">
+<sc-for list="{{statusSegs}}" as="s" hint-placeholder-count="6"><div style="display: flex; align-items: center; gap: 8px; font-size: 13px"><span style="flex: none; width: 9px; height: 9px; border-radius: 50%; background: {{s.fg}}"></span><span style="flex: 1">{{s.status}}</span><span class="num" style="font-weight: 700">{{s.n}}</span></div></sc-for>
+</div>
+</div>
+</section>
+<section class="card">
+<div class="card-head"><h2>Active projects</h2><button class="btn small" onClick="{{goProjects}}">All projects</button></div>
+<sc-for list="{{activeProjects}}" as="p" hint-placeholder-count="3">
+<div class="row" style="grid-template-columns: minmax(0, 1fr); gap: 8px">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px">
+<a class="linkbtn" href="Project.dc.html">{{p.title}}</a>
+<span class="chip" style="color: {{p.healthFg}}">{{p.health}}</span>
+</div>
+<div class="muted" style="font-size: 13px">{{p.healthReason}}</div>
+<div style="display: flex; align-items: center; gap: 12px"><div class="track" style="flex: 1"><div class="fill" style="width: {{p.progW}}"></div></div><span class="num muted" style="font-size: 13px; flex: none">{{p.doneText}}</span></div>
+</div>
+</sc-for>
+<div class="note" style="padding: 12px 20px 16px; border-top: 1px solid #2F2F3D">Health is a rule, not a score. Blocked: at least one blocked task. At risk: at least one overdue open task. On track: open tasks, none blocked or overdue. Unknown: no tasks.</div>
+</section>
+<div style="display: flex; flex-direction: column; gap: 20px; min-width: 0">
+<section class="card">
+<div class="card-head"><h2>Today's meetings</h2><span class="note">From Calendar, Phase 4. Sample data</span></div>
+<sc-for list="{{meetings}}" as="m" hint-placeholder-count="3">
+<div class="row" style="grid-template-columns: 56px minmax(0, 1fr) auto">
+<span class="mono num" style="background: #2A2550; color: #BDB2FF; border-radius: 8px; padding: 2px 8px; text-align: center">{{m.time}}</span>
+<span>{{m.title}}</span>
+<span class="muted" style="font-size: 13px">{{m.length}}</span>
+</div>
+</sc-for>
+</section>
+<section class="card">
+<div class="card-head"><h2>Today's standup</h2><a class="btn small" href="Standup.dc.html">Open standup</a></div>
+<div style="padding: 0 20px 18px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px"><span class="mono">01-Daily/2026/2026-10-06.md</span><span class="chip" style="color: {{standupChip.fg}}">{{standupLabel}}</span></div>
+<div class="muted">{{standupSummary}}</div>
+</div>
+</section>
+</div>
+</div>
+
+<section class="card">
+<div class="card-head"><h2>Where work sits across projects</h2><div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px"><span class="note">Needs a workflow stage on each task, not in the plan yet</span><a class="btn small" href="Workflow.dc.html">Open workflow</a></div></div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; padding: 0 20px 16px">
+<sc-for list="{{stages}}" as="g" hint-placeholder-count="6">
+<div class="inset" style="padding: 12px 14px; display: flex; flex-direction: column">
+<span class="num" style="font-size: 24px; font-weight: 800; line-height: 1.2; color: {{g.fg}}">{{g.n}}</span>
+<span style="font-size: 13px; font-weight: 600">{{g.label}}</span>
+</div>
+</sc-for>
+</div>
+<div style="padding: 0 20px 18px"><span><span style="font-weight: 700; color: #FF7D73">{{reworkCount}} in rework.</span> <button class="linkbtn" style="font-weight: 500" onClick="{{reworkOpen}}">{{reworkTitle}}</button> <span class="muted">{{reworkWhy}}</span></span></div>
+</section>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); gap: 20px; align-items: start">
+<section class="card">
+<div class="card-head"><h2>Recent activity</h2><div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px"><span class="note">Vault only until Phase 4</span><a class="btn small" href="Timeline.dc.html">Open timeline</a></div></div>
+<div class="rail-list" style="margin: 0 20px 14px">
+<sc-for list="{{recent}}" as="r" hint-placeholder-count="7">
+<div style="position: relative; padding: 4px 0 10px">
+<span class="rail-dot"></span>
+<div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px"><span class="num muted" style="font-size: 12px">{{r.when}}</span><span class="mono muted">{{r.type}}, vault</span></div>
+<button class="linkbtn" onClick="{{r.open}}">{{r.title}}</button>
+</div>
+</sc-for>
+</div>
+</section>
+<section class="card">
+<div class="card-head"><h2>How you are improving</h2><a class="btn small" href="Upskilling.dc.html">Open upskilling</a></div>
+<div style="padding: 0 20px 20px; display: flex; flex-direction: column; gap: 12px">
+<div class="item"><span class="icon sm"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM5 17a3 3 0 0 1 3-3h10"/></svg></span><div style="display: flex; flex-direction: column; min-width: 0"><span style="font-weight: 600">Learning</span><span>Idempotency and retries for payment callbacks. Next: write the failing test for the duplicate settlement row.</span><span class="note">From the upskilling notes, Phase 3. Sample data</span></div></div>
+<div class="item"><span class="icon sm"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20V11M12 20V5M19 20v-7"/></svg></span><div style="display: flex; flex-direction: column; min-width: 0"><span style="font-weight: 600">Claude usage</span><span><strong>Estimated:</strong> 3 sessions and about 180k tokens today.</span><span class="note">From Claude Code session logs, Phase 5</span></div></div>
+</div>
+</section>
+<section class="card">
+<div class="card-head"><h2>Integrations</h2><span class="note">Where the data would come from</span></div>
+<div class="row" style="grid-template-columns: 30px minmax(0, 1fr) auto"><span class="icon sm"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 6h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4V8a2 2 0 0 1 2-2zM10 6v12"/></svg></span><div style="display: flex; flex-direction: column"><span style="font-weight: 600">Jira</span><span class="note">Tickets and status changes</span></div><span class="chip" style="color: #A3A3B5">Not connected, Phase 4</span></div>
+<div class="row" style="grid-template-columns: 30px minmax(0, 1fr) auto"><span class="icon sm"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 6a2.5 2.5 0 1 0-5 0 2.5 2.5 0 0 0 5 0zM8.5 18a2.5 2.5 0 1 0-5 0 2.5 2.5 0 0 0 5 0zM20.5 8a2.5 2.5 0 1 0-5 0 2.5 2.5 0 0 0 5 0zM6 8.5v7M18 10.5c0 4-6 3-11 6.5"/></svg></span><div style="display: flex; flex-direction: column"><span style="font-weight: 600">GitLab</span><span class="note">Commits and merge requests</span></div><span class="chip" style="color: #A3A3B5">Not connected, Phase 4</span></div>
+<div class="row" style="grid-template-columns: 30px minmax(0, 1fr) auto"><span class="icon sm"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 5h12a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3zM8 3v4M16 3v4M3 10h18"/></svg></span><div style="display: flex; flex-direction: column"><span style="font-weight: 600">Calendar</span><span class="note">Meetings and times</span></div><span class="chip" style="color: #A3A3B5">Not connected, Phase 4</span></div>
+</section>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{isTasks}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; flex-direction: column; gap: 20px">
+<section class="card" style="padding: 16px 20px; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px">
+<label class="field">Status<select class="input" value="{{fStatus}}" onChange="{{setFStatus}}"><option value="open">All open</option><option value="all">All</option><option value="inbox">inbox</option><option value="planned">planned</option><option value="in-progress">in-progress</option><option value="blocked">blocked</option><option value="review">review</option><option value="done">done</option><option value="cancelled">cancelled</option></select></label>
+<label class="field">Project<select class="input" value="{{fProject}}" onChange="{{setFProject}}"><option value="all">All projects</option><option value="loadup">LoadUp</option><option value="ipp">IPP</option><option value="second-brain">Second Brain</option><option value="monitoring-dashboard">Monitoring Dashboard</option></select></label>
+<label class="field">Priority<select class="input" value="{{fPriority}}" onChange="{{setFPriority}}"><option value="all">Any</option><option value="high">high</option><option value="medium">medium</option><option value="low">low</option></select></label>
+<label style="display: flex; align-items: center; gap: 8px; min-height: 38px"><input type="checkbox" style="accent-color: #6B58E6; width: 16px; height: 16px" checked="{{fOverdue}}" onChange="{{toggleOverdue}}">Overdue only</label>
+<div style="flex: 1"></div>
+<sc-if value="{{isList}}" hint-placeholder-val="{{true}}"><div style="display: flex; align-items: center; gap: 8px" role="group" aria-label="Group by"><span class="muted" style="font-size: 13px; font-weight: 600">Group by</span><div class="segs"><sc-for list="{{groupOpts}}" as="g" hint-placeholder-count="4"><button class="seg {{g.cls}}" onClick="{{g.pick}}">{{g.label}}</button></sc-for></div></div></sc-if>
+<div class="segs"><button class="seg {{listCls}}" onClick="{{viewList}}">List</button><button class="seg {{boardCls}}" onClick="{{viewBoard}}">Board</button></div>
+<button class="btn primary" onClick="{{qaTask}}">Create task</button>
+</section>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 20px; align-items: start">
+<section class="card">
+<div class="card-head"><h2>Tasks by status</h2><span class="note">{{taskTotal}} task notes in 02-Work/Tasks</span></div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 20px; padding: 4px 20px 20px">
+<div role="img" aria-label="Tasks by status, {{taskTotal}} task notes" style="position: relative; flex: none; width: 130px; height: 130px; border-radius: 50%; background: {{donutBg}}">
+<div style="position: absolute; inset: 18px; border-radius: 50%; background: #1B1B24; display: flex; flex-direction: column; align-items: center; justify-content: center"><span class="num" style="font-size: 24px; font-weight: 800; line-height: 1">{{taskTotal}}</span><span class="note">tasks</span></div>
+</div>
+<div style="flex: 1 1 130px; display: flex; flex-direction: column; gap: 6px">
+<sc-for list="{{statusSegs}}" as="s" hint-placeholder-count="6"><div style="display: flex; align-items: center; gap: 8px; font-size: 13px"><span style="flex: none; width: 9px; height: 9px; border-radius: 50%; background: {{s.fg}}"></span><span style="flex: 1">{{s.status}}</span><span class="num" style="font-weight: 700">{{s.n}}</span></div></sc-for>
+</div>
+</div>
+</section>
+<section class="card">
+<div class="card-head"><h2>Open tasks by project</h2></div>
+<div style="padding: 0 20px 20px; display: flex; flex-direction: column; gap: 10px">
+<sc-for list="{{byProject}}" as="b" hint-placeholder-count="4">
+<div style="display: grid; grid-template-columns: 120px minmax(0, 1fr) 24px; align-items: center; gap: 10px">
+<span style="font-size: 13px">{{b.label}}</span>
+<div class="track"><div class="fill" style="width: {{b.w}}"></div></div>
+<span class="num" style="text-align: right; font-weight: 600">{{b.n}}</span>
+</div>
+</sc-for>
+</div>
+</section>
+<section class="card">
+<div class="card-head"><h2>Open tasks by priority</h2></div>
+<div style="padding: 0 20px 20px; display: flex; flex-direction: column; gap: 10px">
+<sc-for list="{{byPriority}}" as="b" hint-placeholder-count="4">
+<div style="display: grid; grid-template-columns: 120px minmax(0, 1fr) 24px; align-items: center; gap: 10px">
+<span style="font-size: 13px">{{b.label}}</span>
+<div class="track"><div class="fill" style="width: {{b.w}}; background: #6EA8FF"></div></div>
+<span class="num" style="text-align: right; font-weight: 600">{{b.n}}</span>
+</div>
+</sc-for>
+</div>
+</section>
+</div>
+<div class="note">No completion trend yet: the vault records no completion date in Phase 1, so there is nothing to plot.</div>
+<sc-if value="{{isList}}" hint-placeholder-val="{{true}}">
+<section class="card">
+<div class="scroll"><div style="min-width: 760px">
+<div class="row head" style="grid-template-columns: 110px minmax(0, 1fr) 150px 80px 90px"><span>Status</span><span>Task</span><span>Project</span><span>Priority</span><span>Due</span></div>
+<sc-for list="{{taskGroups}}" as="g" hint-placeholder-count="2">
+<div>
+<sc-if value="{{g.showHead}}" hint-placeholder-val="{{false}}"><div style="display: flex; justify-content: space-between; gap: 12px; padding: 8px 20px; background: #242430; border-top: 1px solid #2F2F3D; font-weight: 700"><span>{{g.label}}</span><span class="muted num">{{g.n}}</span></div></sc-if>
+<sc-for list="{{g.tasks}}" as="t" hint-placeholder-count="4">
+<div class="row" style="grid-template-columns: 110px minmax(0, 1fr) 150px 80px 90px">
+<span><span class="chip" style="color: {{t.fg}}">{{t.status}}</span></span>
+<button class="linkbtn" onClick="{{t.open}}">{{t.title}}</button>
+<a class="linkbtn" style="font-weight: 400; color: #A3A3B5" href="Project.dc.html">{{t.projectTitle}}</a>
+<span>{{t.priorityText}}</span>
+<span style="font-weight: 500; color: {{t.dueFg}}">{{t.dueText}}</span>
+</div>
+</sc-for>
+</div>
+</sc-for>
+</div></div>
+<sc-if value="{{noFiltered}}" hint-placeholder-val="{{false}}"><div class="empty">No tasks match these filters.</div></sc-if>
+</section>
+</sc-if>
+<sc-if value="{{isBoard}}" hint-placeholder-val="{{false}}">
+<div class="scroll">
+<div style="display: grid; grid-template-columns: repeat(7, minmax(200px, 1fr)); gap: 12px; min-width: 1480px; align-items: start">
+<sc-for list="{{columns}}" as="col" hint-placeholder-count="7">
+<section class="inset" style="border-radius: 16px; border: 1px solid #2F2F3D; padding: 12px; display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; justify-content: space-between; align-items: center"><span class="chip" style="color: {{col.fg}}">{{col.status}}</span><span class="muted num" style="font-weight: 600">{{col.n}}</span></div>
+<sc-for list="{{col.cards}}" as="t" hint-placeholder-count="2">
+<div class="card" style="border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 6px">
+<button class="linkbtn" onClick="{{t.open}}">{{t.title}}</button>
+<div style="display: flex; justify-content: space-between; gap: 8px; font-size: 12px"><span class="muted">{{t.projectTitle}}</span><span style="font-weight: 600; color: {{t.dueFg}}">{{t.dueText}}</span></div>
+</div>
+</sc-for>
+</section>
+</sc-for>
+</div>
+</div>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{isProjects}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; flex-direction: column; gap: 16px">
+<section class="card">
+<div class="scroll"><div style="min-width: 840px">
+<div class="row head" style="grid-template-columns: minmax(0, 1fr) 80px 230px 60px 70px 110px"><span>Project</span><span>Status</span><span>Health</span><span>Open</span><span>Blocked</span><span>Last changed</span></div>
+<sc-for list="{{projects}}" as="p" hint-placeholder-count="4">
+<div class="row" style="grid-template-columns: minmax(0, 1fr) 80px 230px 60px 70px 110px; align-items: start">
+<div style="display: flex; flex-direction: column"><a class="linkbtn" href="Project.dc.html">{{p.title}}</a><span class="muted" style="font-size: 13px">{{p.goal}}</span><button class="linkbtn" style="font-weight: 400; font-size: 13px" onClick="{{p.openNote}}">Open project note</button></div>
+<span><span class="chip" style="background: {{p.bg}}; color: {{p.fg}}; border-color: {{p.bd}}">{{p.status}}</span></span>
+<div style="display: flex; flex-direction: column"><span class="chip" style="color: {{p.healthFg}}">{{p.health}}</span><span class="muted" style="font-size: 13px">{{p.healthReason}}</span></div>
+<span>{{p.openCount}}</span>
+<span style="font-weight: 500; color: {{p.blockedFg}}">{{p.blockedN}}</span>
+<span class="num muted">{{p.modified}}</span>
+</div>
+</sc-for>
+</div></div>
+</section>
+<div class="note">Health is a rule, not a score. Blocked: at least one blocked task. At risk: at least one overdue open task. On track: open tasks, none blocked or overdue. Completed: status done. Unknown, insufficient data: no tasks.</div>
+</div>
+</sc-if>
+
+
+<sc-if value="{{isInbox}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; flex-direction: column; gap: 16px">
+<section class="card" style="padding: 12px 16px; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px">
+<label class="field" style="flex: 1 1 320px">Quick capture<input class="input" type="text" placeholder="todo: ask infra about the staging database refresh" value="{{fText}}" onChange="{{setFText}}"></label>
+<button class="btn primary" disabled="{{captureDisabled}}" onClick="{{inlineCapture}}">Capture</button>
+</section>
+<section class="card">
+<div class="card-head"><h2>Awaiting triage</h2><span class="count">{{inboxCount}}</span></div>
+<sc-for list="{{inbox}}" as="c" hint-placeholder-count="4">
+<div style="padding: 12px 16px; border-bottom: 1px solid #2F2F3D; display: flex; flex-wrap: wrap; align-items: center; gap: 12px">
+<div style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span>{{c.text}}</span>
+<span class="muted" style="font-size: 13px">Captured {{c.created}}, {{c.origin}}</span>
+</div>
+<sc-if value="{{c.open}}" hint-placeholder-val="{{true}}">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+<select class="input" aria-label="Classification" value="{{c.cls}}" onChange="{{c.setCls}}"><option value="">Choose classification</option><option value="task">task</option><option value="problem">problem</option><option value="decision">decision</option><option value="learning-topic">learning-topic</option><option value="note">note</option><option value="project">project</option><option value="ticket">ticket</option><option value="architecture-idea">architecture-idea</option><option value="question">question</option><option value="thought">thought</option></select>
+<button class="btn primary small" disabled="{{c.actDisabled}}" onClick="{{c.act}}">{{c.actLabel}}</button>
+<button class="btn small" onClick="{{c.dismiss}}">Dismiss</button>
+</div>
+</sc-if>
+<sc-if value="{{c.kept}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+<span class="chip" style="background: #242430; color: #A3A3B5; border-color: #2F2F3D">{{c.cls}}</span>
+<span class="muted" style="font-size: 13px">Kept in inbox until its phase exists</span>
+<button class="btn small" onClick="{{c.dismiss}}">Dismiss</button>
+</div>
+</sc-if>
+</div>
+</sc-for>
+<sc-if value="{{noInbox}}" hint-placeholder-val="{{false}}"><div class="empty">Inbox is empty.</div></sc-if>
+</section>
+<sc-if value="{{hasTriaged}}" hint-placeholder-val="{{false}}">
+<section class="card">
+<div class="card-head"><h2>Handled in this session</h2></div>
+<sc-for list="{{triaged}}" as="c" hint-placeholder-count="1">
+<div class="row" style="grid-template-columns: 90px minmax(0, 1fr)">
+<span><span class="chip" style="background: {{c.bg}}; color: {{c.fg}}; border-color: {{c.bd}}">{{c.status}}</span></span>
+<div style="display: flex; flex-direction: column"><span>{{c.text}}</span><span class="mono muted">{{c.result}}</span></div>
+</div>
+</sc-for>
+</section>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{isKnowledge}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 12px"><span class="muted">Lessons in 05-Knowledge/Lessons</span><button class="btn primary" onClick="{{qaLesson}}">Add knowledge</button></div>
+<section class="card">
+<div class="scroll"><div style="min-width: 620px">
+<div class="row head" style="grid-template-columns: minmax(0, 1fr) 150px 180px 130px"><span>Lesson</span><span>Project</span><span>Tags</span><span>Last changed</span></div>
+<sc-for list="{{lessons}}" as="l" hint-placeholder-count="3">
+<div class="row" style="grid-template-columns: minmax(0, 1fr) 150px 180px 130px">
+<button class="linkbtn" onClick="{{l.open}}">{{l.title}}</button>
+<span class="muted">{{l.projectTitle}}</span>
+<span class="muted">{{l.tagText}}</span>
+<span class="num muted">{{l.modified}}</span>
+</div>
+</sc-for>
+</div></div>
+</section>
+</div>
+</sc-if>
+
+<sc-if value="{{isDecisions}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px">
+<div style="display: flex; flex-wrap: wrap; gap: 4px"><sc-for list="{{dFilters}}" as="f" hint-placeholder-count="5"><button class="seg {{f.cls}}" onClick="{{f.pick}}">{{f.label}}</button></sc-for></div>
+<button class="btn primary" onClick="{{qaDecision}}">Record decision</button>
+</div>
+<section class="card">
+<div class="scroll"><div style="min-width: 620px">
+<div class="row head" style="grid-template-columns: 110px minmax(0, 1fr) 150px 110px"><span>Status</span><span>Decision</span><span>Project</span><span>Decided</span></div>
+<sc-for list="{{decisions}}" as="d" hint-placeholder-count="4">
+<div class="row" style="grid-template-columns: 110px minmax(0, 1fr) 150px 110px">
+<span><span class="chip" style="background: {{d.bg}}; color: {{d.fg}}; border-color: {{d.bd}}">{{d.status}}</span></span>
+<button class="linkbtn" onClick="{{d.open}}">{{d.title}}</button>
+<span class="muted">{{d.projectTitle}}</span>
+<span class="num muted">{{d.decidedText}}</span>
+</div>
+</sc-for>
+</div></div>
+<sc-if value="{{noDecisions}}" hint-placeholder-val="{{false}}"><div class="empty">No decisions with this status.</div></sc-if>
+</section>
+</div>
+</sc-if>
+
+<sc-if value="{{isSearch}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; flex-direction: column; gap: 16px">
+<div class="muted">{{searchSummary}}</div>
+<sc-if value="{{hasResults}}" hint-placeholder-val="{{false}}">
+<section class="card">
+<sc-for list="{{results}}" as="r" hint-placeholder-count="4">
+<div style="padding: 12px 16px; border-bottom: 1px solid #2F2F3D; display: flex; flex-direction: column; gap: 4px">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px"><span class="chip" style="background: #242430; color: #A3A3B5; border-color: #2F2F3D">{{r.type}}</span><button class="linkbtn" onClick="{{r.open}}">{{r.title}}</button><span class="chip" style="background: #1B1B24; color: #A3A3B5; border-color: #2F2F3D">source: vault</span></div>
+<div class="muted">{{r.snippet}}</div>
+<div class="mono muted">{{r.path}}</div>
+</div>
+</sc-for>
+</section>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{isIndex}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; flex-direction: column; gap: 16px">
+<section class="card" style="padding: 14px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 24px">
+<div style="display: flex; flex-direction: column"><span class="muted" style="font-size: 12px; font-weight: 600">Last pass</span><span class="num" style="font-size: 15px; font-weight: 600">2026-10-06 {{lastPass}}</span></div>
+<div style="display: flex; flex-direction: column"><span class="muted" style="font-size: 12px; font-weight: 600">Duration</span><span class="num" style="font-size: 15px; font-weight: 600">0.8 s</span></div>
+<div style="display: flex; flex-direction: column"><span class="muted" style="font-size: 12px; font-weight: 600">Notes indexed</span><span class="num" style="font-size: 15px; font-weight: 600">{{noteTotal}}</span></div>
+<div style="display: flex; flex-direction: column"><span class="muted" style="font-size: 12px; font-weight: 600">Problems</span><span style="font-weight: 600; color: #FF7D73">{{problemCount}}</span></div>
+<div style="flex: 1"></div>
+<button class="btn primary" disabled="{{refreshing}}" onClick="{{refresh}}">{{refreshLabel}}</button>
+</section>
+<sc-if value="{{refreshed}}" hint-placeholder-val="{{false}}"><div class="card" style="padding: 12px 16px; background: #1E3329; border-color: #2F2F3D; color: #5ED39A">Pass finished in 0.7 s: {{noteTotal}} notes scanned, 0 added, 0 changed, 0 removed.</div></sc-if>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(400px, 100%), 1fr)); gap: 20px; align-items: start">
+<section class="card">
+<div class="card-head"><h2>Notes by type</h2></div>
+<div style="padding: 12px 16px; display: flex; flex-direction: column; gap: 8px">
+<sc-for list="{{typeBars}}" as="b" hint-placeholder-count="7">
+<div style="display: grid; grid-template-columns: 80px minmax(0, 1fr) 32px; align-items: center; gap: 10px">
+<span class="mono">{{b.type}}</span>
+<div style="height: 10px; background: #242430; border-radius: 2px"><div style="height: 10px; border-radius: 2px; background: #A3A3B5; width: {{b.w}}"></div></div>
+<span style="text-align: right; font-weight: 500">{{b.n}}</span>
+</div>
+</sc-for>
+</div>
+</section>
+<section class="card">
+<div class="card-head"><h2>Problems by category</h2></div>
+<sc-for list="{{problems}}" as="p" hint-placeholder-count="8">
+<div style="padding: 10px 16px; border-bottom: 1px solid #2F2F3D; display: flex; flex-direction: column; gap: 4px">
+<div style="display: flex; justify-content: space-between; gap: 12px"><span style="font-weight: 600">{{p.label}}</span><span style="font-weight: 600; color: {{p.fg}}">{{p.countText}}</span></div>
+<sc-for list="{{p.items}}" as="i" hint-placeholder-count="1">
+<div style="display: flex; flex-direction: column">
+<sc-if value="{{i.canOpen}}" hint-placeholder-val="{{false}}"><button class="linkbtn mono" onClick="{{i.open}}">{{i.path}}</button></sc-if>
+<sc-if value="{{i.noOpen}}" hint-placeholder-val="{{true}}"><span class="mono">{{i.path}}</span></sc-if>
+<span class="muted" style="font-size: 13px">{{i.detail}}</span>
+</div>
+</sc-for>
+</div>
+</sc-for>
+</section>
+</div>
+</div>
+</sc-if>
+
+</main>
+</div>
+</div>
+
+<sc-if value="{{readerOpen}}" hint-placeholder-val="{{false}}">
+<div style="position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); display: flex; justify-content: flex-end">
+<aside aria-label="Note" style="width: 100%; max-width: 560px; height: 100%; overflow-y: auto; background: #1B1B24; border-left: 1px solid #2F2F3D; padding: 20px; display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; align-items: flex-start; gap: 12px">
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center"><span class="mono muted">{{rd.type}}</span><sc-if value="{{rd.hasStatus}}" hint-placeholder-val="{{true}}"><span class="chip" style="background: {{rd.bg}}; color: {{rd.fg}}; border-color: {{rd.bd}}">{{rd.status}}</span></sc-if></div>
+<h2 style="font-size: 18px">{{rd.title}}</h2>
+<div class="mono muted" style="overflow-wrap: anywhere">{{rd.path}}</div>
+</div>
+<button class="btn small" onClick="{{closeReader}}">Close</button>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; padding: 12px; background: #242430; border-radius: 12px">
+<sc-for list="{{rd.meta}}" as="m" hint-placeholder-count="6">
+<div style="display: flex; flex-direction: column"><span class="muted" style="font-size: 12px; font-weight: 600">{{m.k}}</span><span>{{m.v}}</span></div>
+</sc-for>
+</div>
+<sc-if value="{{rd.hasStatus}}" hint-placeholder-val="{{true}}">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span class="sec-h">Change status</span>
+<div style="display: flex; flex-wrap: wrap; gap: 4px"><sc-for list="{{rd.opts}}" as="o" hint-placeholder-count="7"><button class="seg {{o.cls}}" onClick="{{o.pick}}">{{o.label}}</button></sc-for></div>
+</div>
+</sc-if>
+<sc-if value="{{askEvidence}}" hint-placeholder-val="{{false}}">
+<div class="card" style="padding: 12px; display: flex; flex-direction: column; gap: 10px; border-color: #2F2F3D">
+<span style="font-weight: 600">Mark this task done?</span>
+<label class="field">Evidence (optional, appended under Notes)<textarea class="input" rows="3" placeholder="Merged in MR 412; verified on staging" value="{{evidence}}" onChange="{{setEvidence}}"></textarea></label>
+<div style="display: flex; gap: 8px"><button class="btn primary small" onClick="{{confirmDone}}">Mark done</button><button class="btn small" onClick="{{cancelDone}}">Cancel</button></div>
+</div>
+</sc-if>
+<sc-for list="{{rd.sections}}" as="sec" hint-placeholder-count="3">
+<div>
+<h3 class="md-h"><span class="hash">##</span> {{sec.h}}</h3>
+<sc-for list="{{sec.lines}}" as="l" hint-placeholder-count="1">
+<div class="line">
+<sc-if value="{{l.boxOpen}}" hint-placeholder-val="{{false}}"><span class="box"></span></sc-if>
+<sc-if value="{{l.boxDone}}" hint-placeholder-val="{{false}}"><span class="box done"></span></sc-if>
+<sc-if value="{{l.isLink}}" hint-placeholder-val="{{false}}"><span><button class="linkbtn wl" onClick="{{l.open}}">{{l.label}}</button><span class="muted">{{l.tail}}</span></span></sc-if>
+<sc-if value="{{l.isText}}" hint-placeholder-val="{{true}}"><span>{{l.text}}</span></sc-if>
+</div>
+</sc-for>
+<sc-if value="{{sec.empty}}" hint-placeholder-val="{{false}}"><div class="muted">Empty</div></sc-if>
+</div>
+</sc-for>
+<div>
+<h3 class="md-h">Backlinks</h3>
+<sc-for list="{{rd.backlinks}}" as="b" hint-placeholder-count="1"><div class="line"><button class="linkbtn" onClick="{{b.open}}">{{b.title}}</button><span class="mono muted">{{b.path}}</span></div></sc-for>
+<sc-if value="{{rd.noBacklinks}}" hint-placeholder-val="{{false}}"><div class="muted">None</div></sc-if>
+</div>
+</aside>
+</div>
+</sc-if>
+
+<sc-if value="{{modalOpen}}" hint-placeholder-val="{{false}}">
+<div style="position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center; padding: 16px">
+<div class="card" style="width: 100%; max-width: 480px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+<h2 style="font-size: 16px">{{modalTitle}}</h2>
+<sc-if value="{{modalIsCapture}}" hint-placeholder-val="{{false}}">
+<label class="field">Thought<textarea class="input" rows="4" placeholder="Anything. It lands in 00-Inbox and is sorted at triage." value="{{fText}}" onChange="{{setFText}}"></textarea></label>
+</sc-if>
+<sc-if value="{{modalIsFollow}}" hint-placeholder-val="{{false}}">
+<label class="field">Follow-up<input class="input" type="text" placeholder="Ask infra for the staging database refresh date" value="{{fText}}" onChange="{{setFText}}"></label>
+</sc-if>
+<sc-if value="{{modalIsNote}}" hint-placeholder-val="{{true}}">
+<div style="display: flex; flex-direction: column; gap: 14px">
+<label class="field">Title (becomes the file name)<input class="input" type="text" value="{{fTitle}}" onChange="{{setFTitle}}"></label>
+<label class="field">Project<select class="input" value="{{fProj}}" onChange="{{setFProj}}"><option value="loadup">LoadUp</option><option value="ipp">IPP</option><option value="second-brain">Second Brain</option><option value="monitoring-dashboard">Monitoring Dashboard</option></select></label>
+</div>
+</sc-if>
+<sc-if value="{{modalIsTask}}" hint-placeholder-val="{{false}}">
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+<label class="field">Priority<select class="input" value="{{fPrio}}" onChange="{{setFPrio}}"><option value="high">high</option><option value="medium">medium</option><option value="low">low</option></select></label>
+<label class="field">Due<input class="input" type="date" value="{{fDue}}" onChange="{{setFDue}}"></label>
+</div>
+</sc-if>
+<sc-if value="{{hasFormErr}}" hint-placeholder-val="{{false}}"><div style="color: #FF7D73; font-weight: 500">{{formErr}}</div></sc-if>
+<div class="mono muted">{{modalTarget}}</div>
+<div style="display: flex; justify-content: flex-end; gap: 8px"><button class="btn" onClick="{{closeModal}}">Cancel</button><button class="btn primary" disabled="{{modalDisabled}}" onClick="{{submitModal}}">{{modalAction}}</button></div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{hasToast}}" hint-placeholder-val="{{false}}">
+<div role="status" style="position: fixed; right: 20px; bottom: 20px; max-width: 420px; padding: 10px 14px; background: #F3F3F8; color: #0F0F14; border-radius: 12px; font-size: 13px; font-weight: 500">{{toast}}</div>
+</sc-if>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"todayNote":{"editor":"enum","options":["missing","untouched","touched"],"default":"missing","section":"Standup scenario"},"$preview":{"width":1440,"height":1900}}'>
+class Component extends DCLogic {
+  state = {
+    authed: true, page: 'dashboard', taskView: 'list', groupBy: 'none',
+    fStatus: 'open', fProject: 'all', fPriority: 'all', fOverdue: false,
+    dStatus: 'all', query: '', open: null,
+    modal: null, fTitle: '', fText: '', fProj: 'loadup', fPrio: 'medium', fDue: '', formErr: '',
+    askEvidence: false, evidence: '',
+    standup: null, appended: [],
+    refreshing: false, refreshed: false, lastPass: '14:39:52', toast: '',
+    tasks: [
+      { t: 'Investigate missing OTP email', p: 'loadup', s: 'in-progress', pr: 'high', due: '2026-10-06', c: '2026-10-01', m: '2026-10-06 11:20', d: 'Some sign-in OTP emails never arrive. Compare relay delivery logs with the send log for the affected accounts.' },
+      { t: 'Add retry with backoff to payment callback handler', p: 'ipp', s: 'in-progress', pr: 'high', due: '2026-10-07', c: '2026-10-02', m: '2026-10-06 13:05', d: 'Retry transient failures only. A business rejection must never be retried.' },
+      { t: 'Fix N+1 query on account listing', p: 'loadup', s: 'review', pr: 'medium', due: '2026-10-06', c: '2026-09-30', m: '2026-10-05 17:42', d: 'Account listing issues one query per row for the wallet balance. Prefetch it.' },
+      { t: 'Write runbook for settlement file rerun', p: 'ipp', s: 'planned', pr: 'medium', due: '2026-10-06', c: '2026-10-02', m: '2026-10-02 16:10', d: 'Steps to rerun a settlement file safely after a failed batch, including the rollback.' },
+      { t: 'Rotate staging API credentials', p: 'loadup', s: 'planned', pr: 'high', due: '2026-10-03', c: '2026-09-29', m: '2026-09-29 10:02', d: 'Staging credentials are past their rotation date.' },
+      { t: 'Confirm rate limit with SMS provider', p: 'loadup', s: 'blocked', pr: 'high', due: '2026-10-05', by: 'Waiting on the provider account manager', c: '2026-09-30', m: '2026-10-05 09:15', d: 'Need the per-minute limit in writing before the OTP fallback is designed.' },
+      { t: 'Load test wallet reservation path', p: 'ipp', s: 'blocked', pr: 'medium', due: '2026-10-09', by: 'Staging database refresh', c: '2026-10-01', m: '2026-10-05 14:30', d: 'Run the reservation path at expected peak and record timings.' },
+      { t: 'Verify templates in Obsidian', p: 'second-brain', s: 'planned', pr: 'medium', due: '2026-10-08', c: '2026-10-05', m: '2026-10-05 18:20', d: 'Open the vault in Obsidian and confirm the six templates insert as designed.' },
+      { t: 'Draft Phase 1 README run instructions', p: 'second-brain', s: 'planned', pr: 'low', due: '', c: '2026-10-05', m: '2026-10-05 18:25', d: 'Run, stop, reindex and recover instructions for the Compose stack.' },
+      { t: 'Add alert for callback queue depth', p: 'monitoring-dashboard', s: 'planned', pr: 'low', due: '2026-10-14', c: '2026-09-25', m: '2026-09-25 15:00', d: 'Alert when the callback queue stays above its normal depth.' },
+      { t: 'Reproduce duplicate settlement rows', p: 'ipp', s: 'done', pr: 'high', due: '2026-10-05', c: '2026-10-01', m: '2026-10-05 16:48', d: 'Find where duplicate rows enter the settlement file.', notes: ['Reproduced on staging: a retried callback wrote the row twice.'] },
+      { t: 'Enable Docker WSL integration', p: 'second-brain', s: 'done', pr: 'medium', due: '2026-10-02', c: '2026-10-01', m: '2026-10-02 09:30', d: 'Turn on Docker Desktop WSL integration and verify docker compose in WSL.' },
+      { t: 'Clarify OTP expiry requirement', p: 'loadup-v2', s: 'inbox', pr: '', due: '', c: '2026-10-06', m: '2026-10-06 08:55', noId: true, d: 'Written by hand in Obsidian. Is the expiry five or ten minutes?' },
+      { t: 'Migrate cron jobs to scheduler', p: 'monitoring-dashboard', s: 'cancelled', pr: 'low', due: '', c: '2026-09-20', m: '2026-09-28 11:00', d: 'No longer needed after the scheduler decision was reversed.' }
+    ],
+    captures: [
+      { k: 1, text: 'todo: renew the staging TLS certificate before the 20th', created: '09:12', cls: 'task', origin: 'classified by /triage (stated its own kind)', st: 'inbox' },
+      { k: 2, text: 'decided to keep the OTP sender on the existing relay until the provider contract is signed', created: '10:40', cls: 'decision', origin: 'classified by /triage (stated its own kind)', st: 'inbox' },
+      { k: 3, text: 'Idempotency keys on the callback handler would have prevented the duplicate rows', created: '11:58', cls: '', origin: 'not classified yet', st: 'inbox' },
+      { k: 4, text: 'Should the standup list show week numbers?', created: '13:26', cls: '', origin: 'not classified yet', st: 'inbox' }
+    ],
+    decisions: [
+      { t: 'Keep OTP email on the existing SMTP relay', p: 'loadup', s: 'accepted', decided: '2026-10-02', c: '2026-10-01', m: '2026-10-02 15:10', ctx: 'OTP emails went missing for some sign-ins on 30 September. The provider migration is not contracted yet.', dec: 'Stay on the current relay and add delivery logging. Revisit after the provider contract is signed.', con: 'Delivery logs are checked daily until the root cause is confirmed.' },
+      { t: 'Use idempotency keys on payment callbacks', p: 'ipp', s: 'proposed', decided: '', c: '2026-10-05', m: '2026-10-05 17:05', ctx: 'A retried callback wrote a settlement row twice.', dec: 'Every callback carries an idempotency key that the handler checks before writing.', con: 'Needs a key store with an expiry.', links: ['[[Callback handler]]'] },
+      { t: 'Poll the vault instead of file watching', p: 'second-brain', s: 'accepted', decided: '2026-10-05', c: '2026-10-05', m: '2026-10-05 12:00', ctx: 'File change events are unreliable on the D: mount inside WSL.', dec: 'The indexer polls on an interval and compares size, time and hash.', con: 'A change shows in the dashboard after the next pass, not instantly. Refresh index runs a pass on demand.' },
+      { t: 'Settlement reruns by full file replace', p: 'ipp', s: 'superseded', decided: '2026-09-18', c: '2026-09-18', m: '2026-10-05 17:06', ctx: 'Partial reruns left files inconsistent.', dec: 'A rerun replaces the whole file.', con: 'Superseded once idempotency keys were proposed.' }
+    ],
+    lessons: [
+      { t: 'Check the provider status page before debugging delivery', p: 'loadup', s: 'active', tags: ['email', 'incident'], c: '2026-10-01', m: '2026-10-01 18:00', ctx: 'Two hours went into our own logs during a provider-side delay.', what: 'The provider had an open incident the whole time.', lesson: 'Rule out the provider first; it takes a minute.', apply: 'Add the status page link to the OTP task template notes.' },
+      { t: 'A retry on a business rejection duplicates the send', p: 'ipp', s: 'active', tags: ['payments', 'retries'], c: '2026-10-05', m: '2026-10-05 16:55', ctx: 'Duplicate settlement rows traced to a retried callback.', what: 'The handler retried on every non-200 response.', lesson: 'Retry only transient failures. Classify the failure before adding a retry.', apply: 'See the settlement rerun steps.', links: ['[[Runbook]]'] },
+      { t: 'Measure the mount before building on it', p: 'second-brain', s: 'active', tags: ['docker', 'wsl'], c: '2026-10-03', m: '2026-10-03 14:20', ctx: 'The vault sits on a Windows drive mounted into WSL and Docker.', what: 'A short spike measured scan time and rename behaviour first.', lesson: 'A one-hour measurement is cheaper than a design built on an assumption.', apply: 'Spike any new storage or mount path before the design depends on it.' }
+    ]
+  };
+
+  projectList() {
+    return [
+      { slug: 'loadup', title: 'LoadUp', status: 'active', goal: 'Prepaid load top-up service: OTP sign-in and account listing work.', m: '2026-10-06 11:20' },
+      { slug: 'ipp', title: 'IPP', status: 'active', goal: 'Payment processing: callbacks, settlement files and wallet reservation.', m: '2026-10-06 13:05' },
+      { slug: 'second-brain', title: 'Second Brain', status: 'active', goal: 'This system: vault, Claude Code commands and the dashboard.', m: '2026-10-05 18:25' },
+      { slug: 'monitoring-dashboard', title: 'Monitoring Dashboard', status: 'paused', goal: 'Alerts and queue visibility for the payment services.', m: '2026-09-28 11:00' }
+    ];
+  }
+
+  chip(s) {
+    const blue = { bg: '#242430', fg: '#6EA8FF', bd: '#2F2F3D' };
+    const plain = { bg: '#1B1B24', fg: '#A3A3B5', bd: '#2F2F3D' };
+    const grey = { bg: '#242430', fg: '#A3A3B5', bd: '#2F2F3D' };
+    const green = { bg: '#1E3329', fg: '#5ED39A', bd: '#2F2F3D' };
+    const map = {
+      'inbox': { bg: '#242430', fg: '#A3A3B5', bd: '#2F2F3D' }, 'planned': plain, 'in-progress': blue,
+      'blocked': { bg: '#3A2422', fg: '#FF7D73', bd: '#2F2F3D' }, 'review': { bg: '#242430', fg: '#D2A6FF', bd: '#2F2F3D' },
+      'done': green, 'cancelled': grey, 'active': blue, 'paused': plain, 'archived': grey,
+      'proposed': plain, 'accepted': green, 'superseded': grey, 'rejected': grey, 'triaged': green, 'dismissed': grey
+    };
+    return map[s] || plain;
+  }
+
+  fmt(d) {
+    if (!d) return 'N/A';
+    const mo = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return mo[parseInt(d.slice(5, 7), 10) - 1] + ' ' + parseInt(d.slice(8, 10), 10);
+  }
+
+  projTitle(slug) {
+    const p = this.projectList().find((x) => x.slug === slug);
+    return p ? p.title : slug + ' (unknown)';
+  }
+
+  dailies() {
+    return {
+      '2026-10-05': [
+        ['Done', ['- [x] [[Reproduce duplicate settlement rows]]', '- [x] Reviewed the callback logging merge request']],
+        ['Today', ['- [ ] [[Investigate missing OTP email]]', '- [ ] [[Fix N+1 query on account listing]]', '- [ ] Reply to QA about the UAT schedule']],
+        ['Blockers', ['- [[Confirm rate limit with SMS provider]] (blocked by: Waiting on the provider account manager)']],
+        ['Decisions / Updates', ['- [[Poll the vault instead of file watching]] accepted']],
+        ['Follow-ups', ['- [ ] Ask infra for the staging database refresh date']],
+        ['Related Tasks / Projects', ['- [[IPP]]', '- [[LoadUp]]']]
+      ],
+      '2026-10-02': [
+        ['Done', ['- [x] [[Enable Docker WSL integration]]']],
+        ['Today', ['- [ ] [[Investigate missing OTP email]]', '- [ ] [[Reproduce duplicate settlement rows]]']],
+        ['Blockers', []],
+        ['Decisions / Updates', ['- [[Keep OTP email on the existing SMTP relay]] accepted']],
+        ['Follow-ups', ['- [x] Send the relay log sample to the provider']],
+        ['Related Tasks / Projects', ['- [[IPP]]', '- [[LoadUp]]', '- [[Second Brain]]']]
+      ],
+      '2026-10-01': [
+        ['Done', []],
+        ['Today', ['- [ ] [[Investigate missing OTP email]]', '- [ ] Set up the new vault folders']],
+        ['Blockers', []],
+        ['Decisions / Updates', []],
+        ['Follow-ups', []],
+        ['Related Tasks / Projects', ['- [[LoadUp]]']]
+      ]
+    };
+  }
+
+  standupState() { return this.state.standup || this.props.todayNote || 'missing'; }
+
+  carry() {
+    const T = '2026-10-06';
+    const rank = { 'in-progress': 0, 'review': 1, 'planned': 2 };
+    const byDue = (a, b) => (a.due || '9999').localeCompare(b.due || '9999') || a.t.localeCompare(b.t);
+    const today = this.state.tasks.filter((x) => x.s === 'in-progress' || x.s === 'review' || (x.s === 'planned' && x.due && x.due <= T))
+      .sort((a, b) => rank[a.s] - rank[b.s] || byDue(a, b));
+    const blocked = this.state.tasks.filter((x) => x.s === 'blocked').sort(byDue);
+    return { today, blocked };
+  }
+
+  todaySections() {
+    const st = this.standupState();
+    const names = ['Done', 'Today', 'Blockers', 'Decisions / Updates', 'Follow-ups', 'Related Tasks / Projects'];
+    const out = {};
+    names.forEach((n) => { out[n] = []; });
+    if (st === 'touched') out['Today'] = ['- [ ] Pair with QA on the OTP reproduction'];
+    if (st === 'missing' || st === 'filled') {
+      const c = this.carry();
+      out['Today'] = c.today.map((x) => '- [ ] [[' + x.t + ']]').concat(['- [ ] Reply to QA about the UAT schedule']);
+      out['Blockers'] = c.blocked.map((x) => '- [[' + x.t + ']]' + (x.by ? ' (blocked by: ' + x.by + ')' : ''));
+      out['Follow-ups'] = ['- [ ] Ask infra for the staging database refresh date'];
+      const slugs = [];
+      c.today.concat(c.blocked).forEach((x) => { if (slugs.indexOf(x.p) < 0 && this.projectList().some((p) => p.slug === x.p)) slugs.push(x.p); });
+      out['Related Tasks / Projects'] = slugs.map((s) => this.projTitle(s)).sort().map((t) => '- [[' + t + ']]');
+    }
+    this.state.appended.forEach((a) => { out[a.section].push(a.text); });
+    return names.map((n) => [n, out[n]]);
+  }
+
+  allNotes() {
+    const s = this.state;
+    const notes = [];
+    s.tasks.forEach((x) => notes.push({
+      path: '02-Work/Tasks/' + x.t + '.md', type: 'task', title: x.t, status: x.s, priority: x.pr, project: x.p, due: x.due, created: x.c, modified: x.m, noId: x.noId, kind: 'tasks',
+      sections: [['Description', [x.d]], ['Notes', x.notes || []], ['Links', ['- [[' + this.projTitle(x.p).replace(' (unknown)', '') + ']]']]]
+    }));
+    this.projectList().forEach((p) => notes.push({
+      path: '02-Work/Projects/' + p.title + '.md', type: 'project', title: p.title, status: p.status, project: '', created: '2026-09-15', modified: p.m, kind: 'project',
+      sections: [['Goal', [p.goal]], ['Scope', []], ['Notes', []], ['Links', []]]
+    }));
+    s.decisions.forEach((x) => notes.push({
+      path: '05-Knowledge/Decisions/' + x.t + '.md', type: 'decision', title: x.t, status: x.s, project: x.p, decided: x.decided, created: x.c, modified: x.m, kind: 'decisions',
+      sections: [['Context', x.ctx ? [x.ctx] : []], ['Options considered', []], ['Decision', x.dec ? [x.dec] : []], ['Consequences', x.con ? [x.con] : []], ['Links', ['- [[' + this.projTitle(x.p) + ']]'].concat((x.links || []).map((l) => '- ' + l))]]
+    }));
+    s.lessons.forEach((x) => notes.push({
+      path: '05-Knowledge/Lessons/' + x.t + '.md', type: 'lesson', title: x.t, status: x.s, project: x.p, tags: x.tags, created: x.c, modified: x.m, kind: 'lessons',
+      sections: [['Context', x.ctx ? [x.ctx] : []], ['What happened', x.what ? [x.what] : []], ['Lesson', x.lesson ? [x.lesson] : []], ['Apply next time', x.apply ? [x.apply] : []], ['Links', ['- [[' + this.projTitle(x.p) + ']]'].concat((x.links || []).map((l) => '- ' + l))]]
+    }));
+    const d = this.dailies();
+    Object.keys(d).forEach((date) => notes.push({ path: '01-Daily/2026/' + date + '.md', type: 'daily', title: date, status: '', project: '', created: date, modified: date + ' 17:50', kind: 'daily', sections: d[date] }));
+    if (this.standupState() !== 'missing') notes.push({ path: '01-Daily/2026/2026-10-06.md', type: 'daily', title: '2026-10-06', status: '', project: '', created: '2026-10-06', modified: '2026-10-06 14:41', kind: 'daily', sections: this.todaySections() });
+    return notes;
+  }
+
+  ln(raw, notes) {
+    let box = null;
+    let rest = raw;
+    const m = /^[-*+] \[(.)\] (.*)$/.exec(raw);
+    if (m) { box = m[1] === ' ' ? 'o' : 'x'; rest = m[2]; } else { rest = raw.replace(/^- /, ''); }
+    const w = /^\[\[([^\]]+)\]\](.*)$/.exec(rest);
+    let isLink = false; let label = rest; let tail = ''; let open = null; let text = rest;
+    if (w) {
+      const hit = notes.find((n) => n.title.toLowerCase() === w[1].toLowerCase());
+      if (hit) { isLink = true; label = w[1]; tail = w[2]; open = () => this.openNote(hit.path); }
+      else if (w[1] === 'Runbook') { text = w[1] + w[2] + '  (ambiguous: 2 notes share this name)'; }
+      else { text = w[1] + w[2] + '  (unresolved link)'; }
+    }
+    return { boxOpen: box === 'o', boxDone: box === 'x', isLink: isLink, isText: !isLink, label: label, tail: tail, open: open, text: text };
+  }
+
+  secs(sections, notes) {
+    return sections.map((s) => { const lines = s[1].map((r) => this.ln(r, notes)); return { h: s[0], lines: lines, empty: lines.length === 0 }; });
+  }
+
+  openNote(path) { this.setState({ open: path, askEvidence: false, evidence: '' }); }
+
+  say(msg) {
+    this.setState({ toast: msg });
+    clearTimeout(this._t);
+    this._t = setTimeout(() => this.setState({ toast: '' }), 4000);
+  }
+
+  setStatus(note, status, evidence) {
+    const upd = (arr) => arr.map((x) => {
+      if (x.t !== note.title) return x;
+      const y = Object.assign({}, x, { s: status, m: '2026-10-06 14:41' });
+      if (evidence) y.notes = (x.notes || []).concat([evidence]);
+      if (note.type === 'decision' && status === 'accepted') y.decided = '2026-10-06';
+      return y;
+    });
+    const patch = { askEvidence: false, evidence: '' };
+    if (note.kind === 'tasks') patch.tasks = upd(this.state.tasks);
+    if (note.kind === 'decisions') patch.decisions = upd(this.state.decisions);
+    if (note.kind === 'lessons') patch.lessons = upd(this.state.lessons);
+    this.setState(patch);
+    this.say('Set status: ' + status + ' in ' + note.path);
+  }
+
+  openModal(kind) { this.setState({ modal: kind, fTitle: '', fText: '', fDue: '', fPrio: 'medium', formErr: '' }); }
+
+  addCapture() {
+    const s = this.state;
+    const text = s.fText.trim();
+    if (!text) return;
+    const k = s.captures.length + 1;
+    this.setState({ captures: s.captures.concat([{ k: k, text: text, created: '14:41', cls: '', origin: 'not classified yet', st: 'inbox' }]), fText: '', modal: null });
+    this.say('Capture saved as a Markdown note in 00-Inbox/');
+  }
+
+  createNote(kind, title, proj, extra) {
+    const s = this.state;
+    const folder = kind === 'task' ? '02-Work/Tasks' : kind === 'decision' ? '05-Knowledge/Decisions' : '05-Knowledge/Lessons';
+    const arr = kind === 'task' ? s.tasks : kind === 'decision' ? s.decisions : s.lessons;
+    if (arr.some((x) => x.t.toLowerCase() === title.toLowerCase())) return 'A note with this name already exists in ' + folder + '. Nothing was written.';
+    const base = { t: title, p: proj, c: '2026-10-06', m: '2026-10-06 14:41' };
+    if (kind === 'task') this.setState({ tasks: s.tasks.concat([Object.assign(base, { s: 'planned', pr: 'medium', due: '', d: '' }, extra || {})]) });
+    if (kind === 'decision') this.setState({ decisions: s.decisions.concat([Object.assign(base, { s: 'proposed', decided: '' }, extra || {})]) });
+    if (kind === 'lesson') this.setState({ lessons: s.lessons.concat([Object.assign(base, { s: 'active', tags: [] }, extra || {})]) });
+    this.say('Created ' + folder + '/' + title + '.md from the ' + kind + ' template');
+    return '';
+  }
+
+  triage(c) {
+    const target = { 'task': 'task', 'problem': 'task', 'decision': 'decision', 'learning-topic': 'lesson', 'note': 'lesson', 'project': 'project' }[c.cls];
+    const set = (patch) => this.setState({ captures: this.state.captures.map((x) => x.k === c.k ? Object.assign({}, x, patch) : x) });
+    if (!target) { set({ kept: true }); this.say('Wrote classification: ' + c.cls + '. The capture stays in 00-Inbox.'); return; }
+    let title = c.text.replace(/^(todo|task|decision|decided to)[: ]\s*/i, '');
+    title = title.charAt(0).toUpperCase() + title.slice(1);
+    if (title.length > 70) title = title.slice(0, 70).trim();
+    if (target === 'project') { set({ st: 'triaged', result: 'triaged_to: [[' + title + ']] (project note)' }); this.say('Created 02-Work/Projects/' + title + '.md, then marked the capture triaged'); return; }
+    const err = this.createNote(target, title, 'loadup', target === 'task' ? { d: c.text } : target === 'decision' ? { dec: c.text } : { lesson: c.text });
+    if (err) { this.say(err); return; }
+    set({ st: 'triaged', result: 'triaged_to: [[' + title + ']] (' + target + ' note)' });
+  }
+
+  renderVals() {
+    const s = this.state;
+    const T = '2026-10-06';
+    const notes = this.allNotes();
+    const go = (page, extra) => () => this.setState(Object.assign({ page: page, open: null }, extra || {}));
+    const inbox = s.captures.filter((c) => c.st === 'inbox');
+    const st = this.standupState();
+
+    const decorate = (x) => {
+      const c = this.chip(x.s);
+      const overdue = !!x.due && x.due < T && x.s !== 'done' && x.s !== 'cancelled';
+      return {
+        title: x.t, status: x.s, bg: c.bg, fg: c.fg, bd: c.bd, projectTitle: this.projTitle(x.p), project: x.p,
+        priorityText: x.pr || 'N/A', priority: x.pr, due: x.due, dueText: this.fmt(x.due), dueFg: overdue ? '#FF7D73' : '#F3F3F8', overdue: overdue,
+        blockedBy: x.by || 'N/A', open: () => this.openNote('02-Work/Tasks/' + x.t + '.md')
+      };
+    };
+    const tasks = s.tasks.map(decorate);
+    const carry = this.carry();
+    const todayTasks = carry.today.map(decorate);
+    const blockedTasks = carry.blocked.map(decorate);
+    const overdueTasks = tasks.filter((t) => t.overdue);
+    const isOpen = (t) => t.status !== 'done' && t.status !== 'cancelled';
+    const daysLate = (d) => Math.round((Date.parse(T) - Date.parse(d)) / 86400000);
+    const prRank = { high: 0, medium: 1, low: 2 };
+    const focus = tasks.filter((t) => isOpen(t) && t.status !== 'inbox').map((t) => {
+      const g = t.overdue ? 0 : t.status === 'blocked' ? 1 : t.due === T ? 2 : t.status === 'review' ? 3 : 9;
+      let reason = 'In review';
+      if (g === 0) reason = 'Overdue ' + daysLate(t.due) + (daysLate(t.due) === 1 ? ' day' : ' days') + (t.status === 'blocked' ? ', blocked: ' + t.blockedBy : '');
+      if (g === 1) reason = 'Blocked: ' + t.blockedBy;
+      if (g === 2) reason = 'Due today' + (t.status === 'review' ? ', in review' : t.status === 'in-progress' ? ', in progress' : '');
+      return Object.assign({}, t, { g: g, reason: reason, reasonFg: '#FFFFFF' });
+    }).filter((t) => t.g < 9)
+      .sort((a, b) => a.g - b.g || (prRank[a.priority] === undefined ? 3 : prRank[a.priority]) - (prRank[b.priority] === undefined ? 3 : prRank[b.priority]) || (a.due || '9999').localeCompare(b.due || '9999'))
+      .slice(0, 5).map((t, i) => Object.assign({}, t, { n: i + 1 }));
+    const attnRow = (label, list, noteOf, fg, goTo, emptyText) => ({
+      label: label, count: list.length, fg: list.length ? fg : '#A3A3B5', go: goTo, hasGo: !!goTo, noGo: !goTo,
+      items: list.map((t) => ({ title: t.title, note: noteOf(t), open: t.open })), noItems: list.length === 0, emptyText: emptyText
+    });
+    const attention = [
+      attnRow('Blocked', blockedTasks, (t) => 'blocked: ' + t.blockedBy, '#FF7D73', go('tasks', { fStatus: 'blocked', fProject: 'all', fPriority: 'all', fOverdue: false }), 'Nothing is blocked.'),
+      attnRow('Overdue', overdueTasks, (t) => 'due ' + t.dueText, '#FF7D73', go('tasks', { fStatus: 'open', fProject: 'all', fPriority: 'all', fOverdue: true }), 'Nothing is overdue.'),
+      attnRow('High priority', tasks.filter((t) => isOpen(t) && t.priority === 'high'), (t) => t.status, '#F3F3F8', go('tasks', { fStatus: 'open', fProject: 'all', fPriority: 'high', fOverdue: false }), 'No open high-priority tasks.'),
+      attnRow('In review', tasks.filter((t) => t.status === 'review'), (t) => t.projectTitle, '#D2A6FF', go('tasks', { fStatus: 'review', fProject: 'all', fPriority: 'all', fOverdue: false }), 'Nothing waiting for review.'),
+      { label: 'Critical incidents', count: 'N/A', fg: '#A3A3B5', go: null, hasGo: false, noGo: true, items: [], noItems: true, emptyText: 'Incidents are not tracked yet. Phase 2.' }
+    ];
+    const meetings = [
+      { time: '09:30', title: 'Daily standup with the team', length: '15 min' },
+      { time: '11:00', title: 'UAT schedule with QA', length: '30 min' },
+      { time: '15:00', title: 'Staging database refresh with infra', length: '30 min' }
+    ];
+    const stageFg = { 'Review': '#D2A6FF', 'Implementation': '#6EA8FF', 'Complete': '#5ED39A' };
+    const stages = [['Understanding', 2], ['Planning', 3], ['Implementation', 3], ['Testing', 2], ['Review', 1], ['Complete', 2]].map((x) => ({ label: x[0], fg: stageFg[x[0]] || '#F3F3F8', n: x[1] }));
+    const reworkTask = tasks.find((t) => t.title === 'Add retry with backoff to payment callback handler');
+
+    const problemItems = [
+      { label: 'Parse errors', items: [{ path: '05-Knowledge/Lessons/Untitled.md', detail: 'Frontmatter: mapping values are not allowed here (line 3). Indexed as type note.' }] },
+      { label: 'Missing ids', items: [{ path: '02-Work/Tasks/Clarify OTP expiry requirement.md', detail: 'Created by hand in Obsidian without the template.' }, { path: '02-Work/Projects/IPP kickoff notes.md', detail: 'No frontmatter.' }] },
+      { label: 'Duplicate ids', items: [{ path: '05-Knowledge/Lessons/Untitled.md', detail: 'Shares id 20261003142000 with Measure the mount before building on it.md (made with "Make a copy").' }] },
+      { label: 'Ambiguous links', items: [{ path: '05-Knowledge/Lessons/A retry on a business rejection duplicates the send.md', detail: '[[Runbook]] matches 2 notes.' }] },
+      { label: 'Unknown project slugs', items: [{ path: '02-Work/Tasks/Clarify OTP expiry requirement.md', detail: 'project: loadup-v2 matches no project note.' }] },
+      { label: 'Duplicate project slugs', items: [] },
+      { label: 'Unknown statuses', items: [{ path: '02-Work/Projects/IPP kickoff notes 1.md', detail: 'status: wip is not in the vocabulary for its type.' }] },
+      { label: 'Invalid dates', items: [{ path: '02-Work/Tasks/Draft Phase 1 README run instructions.md', detail: 'due: next friday cannot be read as a date. The task is not carried into standups.' }] }
+    ];
+    let problemCount = 0;
+    const problems = problemItems.map((p) => {
+      problemCount += p.items.length;
+      return {
+        label: p.label, countText: p.items.length ? String(p.items.length) : 'None', fg: p.items.length ? '#FF7D73' : '#A3A3B5',
+        items: p.items.map((i) => { const hit = notes.find((n) => n.path === i.path); return { path: i.path, detail: i.detail, canOpen: !!hit, noOpen: !hit, open: hit ? () => this.openNote(i.path) : null }; })
+      };
+    });
+
+    const R = (x, y, w, h, r) => 'M' + (x + r) + ' ' + y + 'h' + (w - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 ' + r + ' ' + r + 'v' + (h - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 -' + r + ' ' + r + 'h-' + (w - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 -' + r + ' -' + r + 'v-' + (h - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 ' + r + ' -' + r + 'z';
+    const C = (cx, cy, r) => 'M' + (cx - r) + ' ' + cy + 'a' + r + ' ' + r + ' 0 1 0 ' + (2 * r) + ' 0a' + r + ' ' + r + ' 0 1 0 -' + (2 * r) + ' 0';
+    const Ell = (cx, cy, rx, ry) => 'M' + (cx - rx) + ' ' + cy + 'a' + rx + ' ' + ry + ' 0 1 0 ' + (2 * rx) + ' 0a' + rx + ' ' + ry + ' 0 1 0 -' + (2 * rx) + ' 0';
+    const icons = {
+      dashboard: R(3, 3, 7, 9, 1.5) + R(14, 3, 7, 5, 1.5) + R(14, 12, 7, 9, 1.5) + R(3, 16, 7, 5, 1.5),
+      standup: 'M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.7A8 8 0 1 1 21 12z',
+      inbox: 'M3 13l3-8h12l3 8v6H3zM3 13h5l1.5 3h5L16 13h5',
+      tasks: R(4, 4, 16, 16, 3) + 'M8.5 12l2.5 2.5 4.5-5',
+      projects: 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+      workflow: C(6, 6, 2.5) + C(6, 18, 2.5) + C(18, 12, 2.5) + 'M6 8.5v7M8.5 6H13a5 5 0 0 1 5 3.5',
+      timeline: C(12, 12, 9) + 'M12 7v5l3 2',
+      knowledge: 'M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM5 17a3 3 0 0 1 3-3h10',
+      decisions: 'M12 3v18M12 6h7l-2 3 2 3h-7M12 13H5l2 2.5L5 18h7',
+      upskilling: 'M3 17l6-6 4 4 8-8M15 7h6v6',
+      search: C(11, 11, 6.5) + 'M16 16l4.5 4.5',
+      index: Ell(12, 6, 7, 3) + 'M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6'
+    };
+    const mainItem = (label, page, count) => ({ label: label, d: icons[page], cls: s.page === page ? 'on' : '', go: go(page), hasCount: count > 0, count: count, isBtn: true, isLink: false, href: '' });
+    const linkItem = (label, key, href) => ({ label: label, d: icons[key], cls: '', go: null, hasCount: false, count: 0, isBtn: false, isLink: true, href: href });
+    const navGroups = [
+      { label: 'Today', items: [mainItem('Dashboard', 'dashboard', 0), linkItem('Standup', 'standup', 'Standup.dc.html'), mainItem('Inbox', 'inbox', inbox.length)] },
+      { label: 'Work', items: [mainItem('Tasks', 'tasks', 0), mainItem('Projects', 'projects', 0), linkItem('Workflow', 'workflow', 'Workflow.dc.html'), linkItem('Timeline', 'timeline', 'Timeline.dc.html')] },
+      { label: 'Knowledge', items: [mainItem('Knowledge', 'knowledge', 0), mainItem('Decisions', 'decisions', 0), linkItem('Upskilling', 'upskilling', 'Upskilling.dc.html')] },
+      { label: 'System', items: [mainItem('Search', 'search', 0), mainItem('Index status', 'index', problemCount)] }
+    ];
+
+    const tileOf = (bg, fg, d) => ({ bg: bg, fg: fg, d: d });
+    const metrics = [
+      Object.assign({ value: todayTasks.length, hint: 'For today', go: go('tasks', { fStatus: 'open', fProject: 'all', fPriority: 'all', fOverdue: false }) }, tileOf('#2A2550', '#9B8CFF', R(3, 5, 18, 16, 3) + 'M8 3v4M16 3v4M3 10h18')),
+      Object.assign({ value: tasks.filter((x) => x.status === 'in-progress').length, hint: 'In progress', go: go('tasks', { fStatus: 'in-progress', fProject: 'all', fPriority: 'all', fOverdue: false }) }, tileOf('#1F2C44', '#6EA8FF', C(12, 12, 9) + 'M12 7v5l3 2')),
+      Object.assign({ value: blockedTasks.length, hint: 'Blocked', go: go('tasks', { fStatus: 'blocked', fProject: 'all', fPriority: 'all', fOverdue: false }) }, tileOf('#3A2422', '#FF7D73', C(12, 12, 9) + 'M5.6 5.6l12.8 12.8')),
+      Object.assign({ value: overdueTasks.length, hint: 'Overdue', go: go('tasks', { fStatus: 'open', fProject: 'all', fPriority: 'all', fOverdue: true }) }, tileOf('#3A2422', '#FF7D73', 'M5 21V4M5 4h11l-2 4 2 4H5')),
+      Object.assign({ value: inbox.length, hint: 'In the inbox', go: go('inbox') }, tileOf('#2F2F3D', '#A3A3B5', icons.inbox))
+    ];
+
+    const recentOf = (list) => list.slice().sort((a, b) => b.modified.localeCompare(a.modified) || a.path.localeCompare(b.path))
+      .map((n) => ({ type: n.type, title: n.title, when: n.modified.slice(0, 10) === T ? n.modified.slice(11) : this.fmt(n.modified), open: () => this.openNote(n.path) }));
+
+    const statuses = ['inbox', 'planned', 'in-progress', 'blocked', 'review', 'done', 'cancelled'];
+    const segColor = { 'inbox': '#7D7D90', 'planned': '#A3A3B5', 'in-progress': '#6EA8FF', 'blocked': '#FF7D73', 'review': '#D2A6FF', 'done': '#5ED39A', 'cancelled': '#4A4A5C' };
+    const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+    const projects = this.projectList().map((p) => {
+      const c = this.chip(p.status);
+      const mine = tasks.filter((t) => t.project === p.slug);
+      const open = mine.filter(isOpen);
+      const nb = open.filter((t) => t.status === 'blocked').length;
+      const no = open.filter((t) => t.overdue).length;
+      let h = { label: 'Unknown, insufficient data', fg: '#A3A3B5', why: mine.length ? 'No open tasks' : 'No tasks' };
+      if (p.status === 'done') h = { label: 'Completed', fg: '#5ED39A', why: 'Status is done' };
+      else if (nb) h = { label: 'Blocked', fg: '#FF7D73', why: plural(nb, 'blocked task') };
+      else if (no) h = { label: 'At risk', fg: '#F5B85C', why: plural(no, 'overdue open task') };
+      else if (open.length) h = { label: 'On track', fg: '#5ED39A', why: open.length + ' open, none blocked or overdue' };
+      return {
+        slug: p.slug, title: p.title, goal: p.goal, status: p.status, bg: c.bg, fg: c.fg, bd: c.bd, modified: p.m.slice(0, 10),
+        openCount: open.length, blockedN: nb, blockedFg: nb ? '#FF7D73' : '#A3A3B5',
+        health: h.label, healthFg: h.fg, healthReason: h.why, progW: (mine.filter((x) => x.status !== 'cancelled').length ? Math.round(mine.filter((x) => x.status === 'done').length / mine.filter((x) => x.status !== 'cancelled').length * 100) : 0) + '%', doneText: mine.filter((x) => x.status === 'done').length + ' of ' + mine.filter((x) => x.status !== 'cancelled').length + ' done',
+        openNote: () => this.openNote('02-Work/Projects/' + p.title + '.md')
+      };
+    });
+    const decorateD = (x) => { const c = this.chip(x.s); return { title: x.t, status: x.s, bg: c.bg, fg: c.fg, bd: c.bd, project: x.p, projectTitle: this.projTitle(x.p), decidedText: x.decided || 'N/A', open: () => this.openNote('05-Knowledge/Decisions/' + x.t + '.md') }; };
+    const allDecisions = s.decisions.map(decorateD);
+    const decisions = allDecisions.filter((d) => s.dStatus === 'all' || d.status === s.dStatus);
+    const filteredTasks = tasks.filter((t) =>
+      (s.fStatus === 'all' || (s.fStatus === 'open' ? (t.status !== 'done' && t.status !== 'cancelled') : t.status === s.fStatus)) &&
+      (s.fProject === 'all' || t.project === s.fProject) && (s.fPriority === 'all' || t.priority === s.fPriority) && (!s.fOverdue || t.overdue)
+    ).sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999') || a.title.localeCompare(b.title));
+    const statusSegs = statuses.map((x) => ({ status: x, n: tasks.filter((t) => t.status === x).length, fg: segColor[x] })).filter((x) => x.n > 0);
+    const groupKey = { none: () => '', status: (t) => t.status, project: (t) => t.projectTitle, priority: (t) => t.priorityText }[s.groupBy];
+    const groupOrder = { none: [''], status: statuses, project: this.projectList().map((p) => p.title), priority: ['high', 'medium', 'low', 'N/A'] }[s.groupBy];
+    const groupKeys = filteredTasks.map(groupKey).filter((k, i, a) => a.indexOf(k) === i)
+      .sort((a, b) => { const ia = groupOrder.indexOf(a); const ib = groupOrder.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b); });
+    const taskGroups = groupKeys.map((k) => { const ts = filteredTasks.filter((t) => groupKey(t) === k); return { label: k, n: ts.length, tasks: ts, showHead: s.groupBy !== 'none' }; });
+    const groupOpts = [['none', 'None'], ['status', 'Status'], ['project', 'Project'], ['priority', 'Priority']].map((g) => ({ label: g[1], cls: s.groupBy === g[0] ? 'on' : '', pick: () => this.setState({ groupBy: g[0] }) }));
+    const openTasks = tasks.filter(isOpen);
+    const bars = (pairs) => { const mx = Math.max.apply(null, [1].concat(pairs.map((p) => p[1]))); return pairs.map((p) => ({ label: p[0], n: p[1], w: Math.round((p[1] / mx) * 100) + '%' })); };
+    const projTitles = openTasks.map((t) => t.projectTitle).filter((k, i, a) => a.indexOf(k) === i);
+    const byProject = bars(projTitles.map((k) => [k, openTasks.filter((t) => t.projectTitle === k).length]));
+    const byPriority = bars(['high', 'medium', 'low', 'N/A'].map((k) => [k, openTasks.filter((t) => t.priorityText === k).length]));
+    let acc = 0;
+    const donutBg = 'conic-gradient(' + statusSegs.map((x) => { const from = acc; acc += x.n / tasks.length * 100; return x.fg + ' ' + from.toFixed(2) + '% ' + acc.toFixed(2) + '%'; }).join(', ') + ')';
+    const columns = statuses.map((x) => { const c = this.chip(x); const cards = filteredTasks.filter((t) => t.status === x); return { status: x, bg: c.bg, fg: c.fg, bd: c.bd, cards: cards, n: cards.length }; });
+
+    const stLabel = { missing: 'not started', untouched: 'untouched', filled: 'started', touched: 'edited by hand' }[st];
+    const stChip = this.chip(st === 'filled' ? 'done' : st === 'touched' ? 'in-progress' : 'planned');
+    const stSummary = { missing: 'Not started. ' + todayTasks.length + ' tasks and ' + blockedTasks.length + ' blockers would be carried forward.', untouched: 'Created by Obsidian, still empty. It can be filled with carry-forward.', touched: 'Edited by hand. Shown as written.', filled: todayTasks.length + ' tasks under Today, ' + blockedTasks.length + ' under Blockers.' }[st];
+
+    const targetOf = { 'task': 'task', 'problem': 'task', 'decision': 'decision', 'learning-topic': 'lesson', 'note': 'lesson', 'project': 'project' };
+    const inboxRows = inbox.map((c) => ({
+      text: c.text, created: c.created, origin: c.origin, cls: c.cls, kept: !!c.kept, open: !c.kept,
+      setCls: (e) => this.setState({ captures: this.state.captures.map((x) => x.k === c.k ? Object.assign({}, x, { cls: e.target.value }) : x) }),
+      actDisabled: !c.cls, actLabel: !c.cls ? 'Choose a classification' : targetOf[c.cls] ? 'Create ' + targetOf[c.cls] + ' note' : 'Keep in inbox',
+      act: () => this.triage(c),
+      dismiss: () => { this.setState({ captures: this.state.captures.map((x) => x.k === c.k ? Object.assign({}, x, { st: 'dismissed', result: 'status: dismissed. The note stays in 00-Inbox.' }) : x) }); this.say('Set status: dismissed. Nothing is deleted.'); }
+    }));
+    const triaged = s.captures.filter((c) => c.st !== 'inbox').map((c) => { const ch = this.chip(c.st); return { text: c.text, status: c.st, result: c.result, bg: ch.bg, fg: ch.fg, bd: ch.bd }; });
+
+    const lessons = s.lessons.map((x) => ({ title: x.t, projectTitle: this.projTitle(x.p), tagText: (x.tags || []).join(', ') || 'N/A', modified: x.m.slice(0, 10), open: () => this.openNote('05-Knowledge/Lessons/' + x.t + '.md') }));
+
+    const q = s.query.trim().toLowerCase();
+    const results = !q ? [] : notes.map((n) => {
+      const body = n.sections.map((x) => x[1].join(' ')).join(' ');
+      const inTitle = n.title.toLowerCase().indexOf(q) >= 0;
+      const at = body.toLowerCase().indexOf(q);
+      if (!inTitle && at < 0) return null;
+      const from = Math.max(0, at - 50);
+      return { type: n.type, title: n.title, path: n.path, snippet: at >= 0 ? (from > 0 ? '... ' : '') + body.slice(from, at + 110) : body.slice(0, 140) || 'Title match', open: () => this.openNote(n.path), rank: inTitle ? 0 : 1 };
+    }).filter(Boolean).sort((a, b) => a.rank - b.rank || a.path.localeCompare(b.path));
+
+    const typeOrder = ['task', 'project', 'daily', 'decision', 'lesson', 'capture', 'note'];
+    const typeN = { capture: s.captures.length, note: 3 };
+    notes.forEach((n) => { typeN[n.type] = (typeN[n.type] || 0) + 1; });
+    const maxN = Math.max.apply(null, typeOrder.map((t) => typeN[t] || 0));
+    const typeBars = typeOrder.map((t) => ({ type: t, n: typeN[t] || 0, w: Math.round(((typeN[t] || 0) / maxN) * 100) + '%' }));
+    const noteTotal = typeOrder.reduce((a, t) => a + (typeN[t] || 0), 0);
+
+    const on = notes.find((n) => n.path === s.open) || null;
+    let rd = { meta: [], opts: [], sections: [], backlinks: [] };
+    if (on) {
+      const c = this.chip(on.status);
+      const vocab = { task: statuses, project: [], decision: ['proposed', 'accepted', 'superseded', 'rejected'], lesson: ['active', 'archived'] }[on.type] || [];
+      const meta = [];
+      if (on.type === 'task') { meta.push({ k: 'Priority', v: on.priority || 'N/A' }); meta.push({ k: 'Due', v: on.due || 'N/A' }); }
+      if (on.type === 'decision') meta.push({ k: 'Decided', v: on.decided || 'N/A' });
+      if (on.project) meta.push({ k: 'Project', v: this.projTitle(on.project) });
+      if (on.tags) meta.push({ k: 'Tags', v: on.tags.join(', ') || 'N/A' });
+      meta.push({ k: 'Created', v: on.created });
+      meta.push({ k: 'Last changed', v: on.modified });
+      meta.push({ k: 'Id', v: on.noId ? 'N/A' : on.created.replace(/-/g, '') + '093000' });
+      const back = notes.filter((n) => n.path !== on.path && n.sections.some((x) => x[1].some((l) => l.indexOf('[[' + on.title + ']]') >= 0)));
+      rd = {
+        type: on.type, title: on.title, path: on.path, status: on.status, hasStatus: vocab.length > 0, bg: c.bg, fg: c.fg, bd: c.bd, meta: meta,
+        opts: vocab.map((v) => ({ label: v, cls: v === on.status ? 'on' : '', pick: () => { if (v === on.status) return; if (on.type === 'task' && v === 'done') this.setState({ askEvidence: true }); else this.setStatus(on, v, ''); } })),
+        sections: this.secs(on.sections, notes),
+        backlinks: back.map((n) => ({ title: n.title, path: n.path, open: () => this.openNote(n.path) })), noBacklinks: back.length === 0
+      };
+    }
+
+    const kind = s.modal;
+    const modalFolder = { task: '02-Work/Tasks/', decision: '05-Knowledge/Decisions/', lesson: '05-Knowledge/Lessons/' }[kind];
+    const titles = { dashboard: 'Tuesday 6 October', tasks: 'Tasks', projects: 'Projects', inbox: 'Inbox', knowledge: 'Knowledge', decisions: 'Decisions', search: 'Search', index: 'Index status' };
+    const val = (key) => (e) => this.setState({ [key]: e.target.value });
+
+    return {
+      showLogin: !s.authed, showApp: s.authed, signIn: () => this.setState({ authed: true }), signOut: () => this.setState({ authed: false, open: null, modal: null }),
+      navGroups: navGroups, pageTitle: titles[s.page], titleCls: s.page === 'dashboard' ? 'day' : 'pt', pageSub: s.page === 'dashboard' ? 'Read from your vault at ' + s.lastPass + ', Manila time.' : { tasks: 'Every task note in 02-Work/Tasks, filtered and grouped.', projects: 'Health comes from a stated rule, not a score.', inbox: 'Captures waiting to be sorted.', knowledge: 'Lessons from 05-Knowledge/Lessons.', decisions: 'Decisions recorded in 05-Knowledge/Decisions.', search: 'Results come from the vault index.', index: 'What the indexer read on its last pass.' }[s.page],
+      query: s.query, onQuery: (e) => this.setState({ query: e.target.value, page: 'search', open: null }),
+      lastPass: s.lastPass, problemCount: problemCount,
+      goIndex: go('index'), goTasks: go('tasks'), goProjects: go('projects'),
+      isDashboard: s.page === 'dashboard', isTasks: s.page === 'tasks', isProjects: s.page === 'projects', isInbox: s.page === 'inbox', isKnowledge: s.page === 'knowledge', isDecisions: s.page === 'decisions', isSearch: s.page === 'search', isIndex: s.page === 'index',
+      qaCapture: () => this.openModal('capture'), qaTask: () => this.openModal('task'), qaDecision: () => this.openModal('decision'), qaLesson: () => this.openModal('lesson'), qaFollowup: () => this.openModal('followup'),
+      metrics: metrics, focus: focus, noFocus: focus.length === 0, attention: attention, meetings: meetings, stages: stages,
+      reworkCount: reworkTask ? 3 : 0, reworkTitle: reworkTask ? reworkTask.title : 'N/A', reworkOpen: reworkTask ? reworkTask.open : null, reworkWhy: 'Two test failures of the same kind, back in implementation. Rework count 2. Two items are blocked.',
+      recent: recentOf(notes).slice(0, 7).map((r) => Object.assign({ source: 'vault' }, r)),
+      standupChip: stChip, standupLabel: stLabel, standupSummary: stSummary, activeProjects: projects.filter((p) => p.status === 'active'), inboxCount: inbox.length,
+      fStatus: s.fStatus, fProject: s.fProject, fPriority: s.fPriority, fOverdue: s.fOverdue,
+      setFStatus: val('fStatus'), setFProject: val('fProject'), setFPriority: val('fPriority'), toggleOverdue: () => this.setState({ fOverdue: !s.fOverdue }),
+      listCls: s.taskView === 'list' ? 'on' : '', boardCls: s.taskView === 'board' ? 'on' : '', viewList: () => this.setState({ taskView: 'list' }), viewBoard: () => this.setState({ taskView: 'board' }),
+      isList: s.taskView === 'list', isBoard: s.taskView === 'board', taskTotal: tasks.length, statusSegs: statusSegs, donutBg: donutBg, filteredTasks: filteredTasks, noFiltered: filteredTasks.length === 0, columns: columns,
+      groupOpts: groupOpts, taskGroups: taskGroups, byProject: byProject, byPriority: byPriority,
+      projects: projects,
+      inbox: inboxRows, noInbox: inboxRows.length === 0, triaged: triaged, hasTriaged: triaged.length > 0,
+      fText: s.fText, setFText: val('fText'), captureDisabled: !s.fText.trim(), inlineCapture: () => this.addCapture(),
+      lessons: lessons, decisions: decisions, noDecisions: decisions.length === 0,
+      dFilters: ['all', 'proposed', 'accepted', 'superseded', 'rejected'].map((f) => ({ label: f, cls: s.dStatus === f ? 'on' : '', pick: () => this.setState({ dStatus: f }) })),
+      results: results, hasResults: results.length > 0, searchSummary: !q ? 'Type in the search box above. Results come from the vault index.' : results.length + ' results for "' + s.query.trim() + '" in the vault',
+      refreshing: s.refreshing, refreshed: s.refreshed, refreshLabel: s.refreshing ? 'Refreshing' : 'Refresh index',
+      refresh: () => { this.setState({ refreshing: true, refreshed: false }); setTimeout(() => this.setState({ refreshing: false, refreshed: true, lastPass: '14:41:07' }), 900); },
+      typeBars: typeBars, noteTotal: noteTotal, problems: problems,
+      readerOpen: !!on, rd: rd, closeReader: () => this.setState({ open: null, askEvidence: false }),
+      askEvidence: s.askEvidence && !!on, evidence: s.evidence, setEvidence: val('evidence'), cancelDone: () => this.setState({ askEvidence: false, evidence: '' }), confirmDone: () => this.setStatus(on, 'done', s.evidence.trim()),
+      modalOpen: !!kind, modalIsCapture: kind === 'capture', modalIsFollow: kind === 'followup', modalIsNote: kind === 'task' || kind === 'decision' || kind === 'lesson', modalIsTask: kind === 'task',
+      modalTitle: { capture: 'Capture', task: 'Create task', decision: 'Record decision', lesson: 'Add note', followup: 'Add follow-up' }[kind] || '',
+      modalAction: { capture: 'Capture', task: 'Create task', decision: 'Record decision', lesson: 'Create lesson', followup: 'Add follow-up' }[kind] || '',
+      modalTarget: kind === 'capture' ? 'Writes a capture note to 00-Inbox/' : kind === 'followup' ? 'Appends a - [ ] line under Follow-ups in 01-Daily/2026/2026-10-06.md' : 'Writes ' + modalFolder + (s.fTitle.trim() || '<title>') + '.md',
+      modalDisabled: kind === 'capture' || kind === 'followup' ? !s.fText.trim() : !s.fTitle.trim(),
+      fTitle: s.fTitle, fProj: s.fProj, fPrio: s.fPrio, fDue: s.fDue, setFTitle: val('fTitle'), setFProj: val('fProj'), setFPrio: val('fPrio'), setFDue: val('fDue'),
+      formErr: s.formErr, hasFormErr: !!s.formErr, closeModal: () => this.setState({ modal: null }),
+      submitModal: () => {
+        if (kind === 'capture') { this.addCapture(); return; }
+        if (kind === 'followup') {
+          const text = s.fText.trim();
+          this.setState({ appended: s.appended.concat([{ section: 'Follow-ups', text: '- [ ] ' + text }]), standup: st === 'missing' || st === 'untouched' ? 'touched' : st, fText: '', modal: null });
+          this.say((st === 'missing' ? 'Created 01-Daily/2026/2026-10-06.md from the daily template, then appended' : 'Appended') + ' "- [ ] ' + text + '" under Follow-ups in 01-Daily/2026/2026-10-06.md');
+          return;
+        }
+        const err = this.createNote(kind, s.fTitle.trim(), s.fProj, kind === 'task' ? { pr: s.fPrio, due: s.fDue } : null);
+        if (err) this.setState({ formErr: err }); else this.setState({ modal: null });
+      },
+      toast: s.toast, hasToast: !!s.toast
+    };
+  }
+}
+</script>
+</body>
+</html>

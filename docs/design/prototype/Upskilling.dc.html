@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Engineering upskilling</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<style>
+body{margin:0;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#F3F3F8;background:#0F0F14;font-size:14px;line-height:1.5}
+*{box-sizing:border-box}
+a{color:#9B8CFF}a:hover{color:#BDB2FF}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid #9B8CFF;outline-offset:2px}
+h1,h2,h3{margin:0;font-weight:700;letter-spacing:-0.01em}
+.day{font-size:clamp(24px,3.2vw,34px);font-weight:800;letter-spacing:-0.02em;line-height:1.15}
+.mono{font-family:'DM Mono',ui-monospace,monospace;font-size:12px}
+.num{font-variant-numeric:tabular-nums}
+.muted{color:#A3A3B5}
+.note{font-size:12px;color:#A3A3B5}
+.btn{min-height:38px;padding:0 14px;border:1px solid #2F2F3D;background:#242430;color:#F3F3F8;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;font-weight:600;white-space:nowrap;text-decoration:none}
+.btn:hover{background:#2F2F3D;color:#F3F3F8}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.primary{background:#6B58E6;border-color:#6B58E6;color:#FFFFFF}
+.btn.primary:hover{background:#7C6AF0;color:#FFFFFF}
+.btn.small{min-height:32px;padding:0 12px;font-size:13px}
+.btn svg{width:16px;height:16px;flex:none}
+.linkbtn{background:none;border:0;padding:0;cursor:pointer;color:#F3F3F8;font-weight:600;text-align:left;text-decoration:none}
+.linkbtn:hover{color:#BDB2FF;text-decoration:underline;text-underline-offset:3px}
+.wl{color:#9B8CFF}
+.wl::before{content:"[[";font-family:'DM Mono',monospace;font-size:12px;font-weight:400;color:#7D7D90}
+.wl::after{content:"]]";font-family:'DM Mono',monospace;font-size:12px;font-weight:400;color:#7D7D90}
+.chip{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border:0 !important;border-radius:999px;background:#242430 !important;font-size:12px;font-weight:600;white-space:nowrap}
+.chip::before{content:"";flex:none;width:7px;height:7px;border-radius:50%;background:currentColor}
+.card{background:#1B1B24;border:1px solid #2F2F3D;border-radius:16px}
+.card-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px 12px}
+.card-head h2{font-size:16px}
+.card.accent{background:#6B58E6;border-color:#6B58E6;color:#FFFFFF}
+.card.accent .muted,.card.accent .note{color:#E4DFFF}
+.tile{display:flex;align-items:center;gap:14px;padding:16px 18px;background:#1B1B24;border:1px solid #2F2F3D;border-radius:16px;text-align:left;color:#F3F3F8;text-decoration:none}
+.tile-v{font-size:26px;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}
+.tile-l{font-size:13px;color:#A3A3B5}
+.icon{flex:none;width:42px;height:42px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;background:#2A2550;color:#9B8CFF}
+.icon.sm{width:30px;height:30px;border-radius:9px}
+.icon svg{width:20px;height:20px}
+.icon.sm svg{width:16px;height:16px}
+.row{display:grid;align-items:center;gap:12px;padding:11px 20px;border-top:1px solid #2F2F3D}
+.head{font-size:12px;font-weight:600;color:#A3A3B5;background:#242430;border-top:0}
+.scroll{overflow-x:auto}
+.empty{padding:20px;color:#A3A3B5}
+.input{min-height:38px;padding:6px 12px;border:1px solid #2F2F3D;border-radius:10px;background:#242430;font-weight:400;font-size:14px;color:#F3F3F8}
+a.input{display:flex;align-items:center;gap:8px;text-decoration:none;color:#A3A3B5}
+a.input svg{width:16px;height:16px;flex:none}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav-item{display:flex;align-items:center;gap:10px;min-height:40px;padding:0 12px;border:0;border-radius:10px;background:none;cursor:pointer;font-weight:600;color:#A3A3B5;text-align:left;text-decoration:none}
+.nav-item svg{flex:none;width:18px;height:18px}
+.nav-item:hover{background:#242430;color:#F3F3F8}
+.nav-item.on{background:#6B58E6;color:#FFFFFF}
+.nav-item.on:hover{background:#6B58E6;color:#FFFFFF}
+.seg{min-height:32px;padding:0 14px;border:0;background:none;color:#A3A3B5;border-radius:999px;cursor:pointer;font-size:13px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center}
+.seg:hover{background:#2F2F3D;color:#F3F3F8}
+.seg.on{background:#6B58E6;color:#FFFFFF}
+.segs{display:inline-flex;flex-wrap:wrap;gap:2px;padding:4px;background:#242430;border-radius:999px}
+.track{height:8px;border-radius:999px;background:#242430;overflow:hidden}
+.fill{height:8px;border-radius:999px;background:#9B8CFF}
+.sec-h{font-size:12px;font-weight:600;color:#7D7D90;margin:0 0 4px}
+.sec-t{font-size:13px;font-weight:600;color:#A3A3B5}
+.check{display:flex;align-items:flex-start;gap:10px;width:100%;padding:9px 0;background:none;border:0;border-top:1px solid rgba(255,255,255,.22);cursor:pointer;text-align:left;color:#FFFFFF}
+.check:hover{background:rgba(255,255,255,.08)}
+.box{flex:none;width:16px;height:16px;border:1.5px solid #FFFFFF;border-radius:5px;position:relative;top:2px}
+.box.done{background:#FFFFFF}
+.box.done::after{content:"";position:absolute;left:4px;top:0;width:4px;height:9px;border:solid #6B58E6;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.skillbtn{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;min-height:46px;padding:6px 20px;border:0;border-top:1px solid #2F2F3D;background:none;cursor:pointer;text-align:left;font-weight:600;color:#F3F3F8}
+.skillbtn:hover{background:#242430}
+.skillbtn.on{background:#2A2550}
+.wk{display:flex;flex-direction:column;align-items:center;gap:1px;padding:8px 2px;border:1px solid #2F2F3D;border-radius:10px;background:#242430;min-width:0}
+.wk.cur{border:2px solid #9B8CFF}
+.wk-n{font-weight:800;font-size:16px}
+.wk-s{font-size:11.5px;font-weight:600;white-space:nowrap}
+.item{background:#242430;border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.node{background:#242430;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px;min-width:0;flex:1 1 0}
+.node.has{border:2px solid #9B8CFF}
+.node.none{border:2px dashed #2F2F3D}
+.conn{flex:none;width:14px;height:2px;background:#7D7D90;align-self:center}
+.sw{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
+@media (max-width:820px){.nav{flex-direction:row;flex-wrap:wrap}.nav-item{min-height:44px}.btn,.seg,.input{min-height:44px}}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; align-items: stretch">
+
+<nav aria-label="Main" style="flex: 1 0 230px; max-width: 100%; background: #15151C; border-right: 1px solid #2F2F3D; padding: 20px 14px; display: flex; flex-direction: column; gap: 18px">
+<div style="display: flex; flex-direction: column; gap: 2px; padding: 0 12px">
+<div style="display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 17px"><span style="width: 22px; height: 22px; border-radius: 7px; background: #6B58E6; display: inline-block"></span>Second Brain</div>
+<div class="mono muted">D:\Second Brain</div>
+</div>
+<div><div class="sec-h" style="padding: 0 12px">Today</div><div class="nav">
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Dashboard</a>
+<a class="nav-item" href="Standup.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.7A8 8 0 1 1 21 12z"/></svg>Standup</a>
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1.5 3h5L16 13h5"/></svg>Inbox</a>
+</div></div>
+<div><div class="sec-h" style="padding: 0 12px">Work</div><div class="nav">
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>Tasks</a>
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Projects</a>
+<a class="nav-item" href="Workflow.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="12" r="2.5"/><path d="M6 8.5v7"/><path d="M8.5 6H13a5 5 0 0 1 5 3.5"/></svg>Workflow</a>
+<a class="nav-item" href="Timeline.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Timeline</a>
+</div></div>
+<div><div class="sec-h" style="padding: 0 12px">Knowledge</div><div class="nav">
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h10"/></svg>Knowledge</a>
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18"/><path d="M12 6h7l-2 3 2 3h-7"/><path d="M12 13H5l2 2.5L5 18h7"/></svg>Decisions</a>
+<a class="nav-item on" href="Upskilling.dc.html" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>Upskilling</a>
+</div></div>
+<div><div class="sec-h" style="padding: 0 12px">System</div><div class="nav">
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>Search</a>
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg>Index status</a>
+</div></div>
+</nav>
+
+<div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; padding: 20px 28px 8px">
+<div style="flex: 1 1 320px; display: flex; flex-direction: column; gap: 2px">
+<h1 style="font-size: 24px; font-weight: 800">Upskilling</h1>
+<div class="muted">Learning tied to your real work. Phase 3 data, read from 06-Upskilling. Skill levels are the words in your skills matrix.</div>
+</div>
+<a class="input" style="flex: 1 1 200px; max-width: 320px" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>Search the vault</a>
+<div class="segs" role="group" aria-label="Project context"><span class="seg on" aria-current="true">All projects</span><a class="seg" href="Project.dc.html">IPP</a></div>
+<span title="raymark" aria-label="raymark" style="width: 36px; height: 36px; border-radius: 50%; background: #2A2550; color: #9B8CFF; font-weight: 700; display: inline-flex; align-items: center; justify-content: center">R</span>
+</header>
+
+<main style="flex: 1; padding: 12px 28px 28px; display: flex; flex-direction: column; gap: 20px; max-width: 1360px; width: 100%">
+
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<button class="btn primary" onClick="{{qaLearning}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Learning topic</button>
+<button class="btn" onClick="{{qaPractice}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Practice note</button>
+<button class="btn" onClick="{{qaGap}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Skill gap</button>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr)); gap: 16px">
+<div class="tile"><span class="icon" style="background: #2A2550; color: #9B8CFF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M8 3v4M16 3v4M4 10h16"/></svg></span><span><div class="tile-v">{{curWeek}} of {{totalWeeks}}</div><div class="tile-l">Roadmap week</div></span></div>
+<div class="tile"><span class="icon" style="background: #3A2422; color: #FF7D73"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4"/><path d="M5 5h12l-2 4 2 4H5"/></svg></span><span><div class="tile-v">{{gapCount}}</div><div class="tile-l">Skills with a gap exposed by work</div></span></div>
+<div class="tile"><span class="icon" style="background: #2F2540; color: #D2A6FF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20l4-1 11-11-3-3L5 16z"/><path d="M14 7l3 3"/></svg></span><span><div class="tile-v">{{practiceWeek}}</div><div class="tile-l">Practice notes this week</div></span></div>
+<div class="tile"><span class="icon" style="background: #1E3329; color: #5ED39A"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span><div class="tile-v">{{appliedWeek}}</div><div class="tile-l">Applied to projects this week</div></span></div>
+</div>
+
+<section class="card accent" aria-label="Current roadmap week">
+<div style="padding: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr)); gap: 24px; align-items: start">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div class="note">Where am I in the 4-month roadmap? Tracked by week in 06-Upskilling/Roadmap</div>
+<div class="muted">{{weekDates}}</div>
+<div class="day num">Week {{curWeek}} of {{totalWeeks}}</div>
+<div style="font-size: 18px; font-weight: 700">{{curTheme}}</div>
+<div class="muted">Next week: {{nextTheme}}</div>
+<div style="margin-top: 8px; display: flex; flex-direction: column; gap: 6px">
+<div class="num" style="font-weight: 700">{{doneCount}} of {{checkTotal}} done</div>
+<div style="height: 8px; border-radius: 999px; background: rgba(255,255,255,.25); overflow: hidden"><div style="height: 8px; border-radius: 999px; background: #FFFFFF; width: {{progW}}"></div></div>
+</div>
+</div>
+<div style="min-width: 0">
+<div style="padding-bottom: 6px; font-weight: 700">This week's checklist</div>
+<sc-for list="{{checks}}" as="c" hint-placeholder-count="5">
+<button class="check" aria-pressed="{{c.done}}" onClick="{{c.toggle}}">
+<span class="box {{c.cls}}"></span>
+<span style="display: flex; flex-direction: column; min-width: 0"><span style="font-weight: 500">{{c.t}}</span><sc-if value="{{c.hasNote}}" hint-placeholder-val="{{true}}"><span style="font-size: 13px; color: #E4DFFF">Evidence: <span style="color: #FFFFFF; font-weight: 600">{{c.note}}</span></span></sc-if></span>
+<span style="margin-left: auto; font-weight: 600; font-size: 13px; white-space: nowrap">{{c.word}}</span>
+</button>
+</sc-for>
+</div>
+</div>
+</section>
+
+<section class="card">
+<div class="card-head"><h2>All weeks</h2><span class="note">Done, partly done, now and next</span></div>
+<div class="scroll" style="padding: 0 20px 20px"><div style="min-width: 900px; display: grid; grid-template-columns: repeat(17, minmax(0, 1fr)); gap: 6px">
+<sc-for list="{{weeks}}" as="w" hint-placeholder-count="17">
+<div class="wk {{w.cls}}" title="{{w.title}}" aria-label="{{w.aria}}"><span class="wk-n num">{{w.n}}</span><span class="wk-s" style="color: {{w.fg}}">{{w.word}}</span></div>
+</sc-for>
+</div></div>
+</section>
+
+<section class="card">
+<div class="card-head"><h2>What should I practice next, and why?</h2><span class="note">Suggested by /upskill from your work. Nothing changes until you accept.</span></div>
+<div style="padding: 0 20px 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 16px; align-items: stretch">
+<sc-for list="{{recs}}" as="r" hint-placeholder-count="3">
+<div class="item" style="padding: 16px">
+<div style="display: flex; gap: 12px; align-items: flex-start">
+<span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg></span>
+<div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+<div style="font-size: 16px; font-weight: 700">{{r.title}}</div>
+<div class="muted" style="font-size: 13px">Skill: <button class="linkbtn" style="color: #9B8CFF" onClick="{{r.pick}}">{{r.skill}}</button> in <a href="Project.dc.html">{{r.proj}}</a></div>
+</div>
+</div>
+<div><span class="chip" style="color: {{r.fg}}">{{r.status}}</span></div>
+<div>{{r.why}}</div>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<div class="sec-t">Real work behind it</div>
+<sc-for list="{{r.evidence}}" as="e" hint-placeholder-count="3">
+<div style="display: flex; gap: 8px; align-items: baseline"><span class="muted" style="font-size: 13px; min-width: 58px">{{e.kind}}</span><button class="linkbtn wl" onClick="{{e.open}}">{{e.t}}</button></div>
+</sc-for>
+</div>
+<div class="muted" style="font-size: 13px">{{r.fit}}</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: auto">
+<sc-if value="{{r.isSuggested}}" hint-placeholder-val="{{true}}"><button class="btn primary" onClick="{{r.accept}}">Accept</button><button class="btn" onClick="{{r.dismiss}}">Dismiss</button></sc-if>
+<sc-if value="{{r.isDone}}" hint-placeholder-val="{{false}}"><button class="btn small" onClick="{{r.undo}}">Undo</button></sc-if>
+</div>
+</div>
+</sc-for>
+</div>
+</section>
+
+<div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+<section class="card" style="flex: 1 1 260px; min-width: 0; overflow: hidden">
+<div class="card-head"><h2>Skills</h2><span class="note">Pick one</span></div>
+<sc-for list="{{skillList}}" as="s" hint-placeholder-count="13">
+<button class="skillbtn {{s.cls}}" aria-pressed="{{s.on}}" onClick="{{s.pick}}"><span style="display: flex; flex-direction: column"><span>{{s.name}}</span><span class="muted" style="font-weight: 400; font-size: 12.5px">{{s.fill}}</span></span><sc-if value="{{s.hasGap}}" hint-placeholder-val="{{false}}"><span class="chip" style="color: #FF7D73">Gap</span></sc-if></button>
+</sc-for>
+</section>
+<section class="card" style="flex: 3 1 560px; min-width: 0">
+<div class="card-head"><h2>How did {{selName}} get from problem to lesson?</h2><span class="note num">{{chainFilled}} of 7 steps have a note</span></div>
+<div class="scroll"><div style="min-width: 1040px; padding: 4px 20px 16px; display: flex; align-items: stretch">
+<sc-for list="{{chain}}" as="st" hint-placeholder-count="7">
+<div class="node {{st.cls}}">
+<div style="display: flex; align-items: baseline; gap: 6px"><span class="num muted" style="font-weight: 700">{{st.n}}</span><span style="font-weight: 700">{{st.label}}</span></div>
+<sc-if value="{{st.has}}" hint-placeholder-val="{{true}}"><button class="linkbtn wl" onClick="{{st.open}}">{{st.t}}</button><span><span class="chip" style="color: #5ED39A">Has evidence</span></span></sc-if>
+<sc-if value="{{st.empty}}" hint-placeholder-val="{{false}}"><span class="muted" style="font-weight: 600">Empty</span><span class="note">No note yet</span></sc-if>
+</div>
+<sc-if value="{{st.notLast}}" hint-placeholder-val="{{true}}"><div class="conn"></div></sc-if>
+</sc-for>
+</div></div>
+<div style="padding: 0 20px 18px" class="muted">Evidence links are suggested by /upskill and added by you. Next: <span style="font-weight: 600; color: #F3F3F8">{{nextStep}}</span></div>
+</section>
+</div>
+
+<section class="card" style="overflow: hidden">
+<div class="card-head"><h2>Skills by category</h2>
+<div class="segs" role="group" aria-label="Filter by category">
+<sc-for list="{{cats}}" as="c" hint-placeholder-count="8"><button class="seg {{c.cls}}" aria-pressed="{{c.on}}" onClick="{{c.pick}}">{{c.label}}</button></sc-for>
+</div></div>
+<div class="scroll"><div style="min-width: 920px">
+<div class="row head" style="grid-template-columns: 130px 180px 110px 70px minmax(0, 1fr) minmax(0, 1.1fr)"><span>Category</span><span>Skill</span><span>Level</span><span>Evidence</span><span>Latest evidence</span><span>Gap from real work</span></div>
+<sc-for list="{{skillRows}}" as="s" hint-placeholder-count="13">
+<div class="row" style="grid-template-columns: 130px 180px 110px 70px minmax(0, 1fr) minmax(0, 1.1fr); align-items: start">
+<span class="muted">{{s.cat}}</span>
+<button class="linkbtn" onClick="{{s.pick}}">{{s.name}}</button>
+<span><span class="chip" style="color: {{s.lvlFg}}">{{s.level}}</span></span>
+<span class="num">{{s.ev}}</span>
+<span><sc-if value="{{s.hasLatest}}" hint-placeholder-val="{{true}}"><button class="linkbtn wl" onClick="{{s.openLatest}}">{{s.latestT}}</button> <span class="muted num">{{s.latestD}}</span></sc-if><sc-if value="{{s.noLatest}}" hint-placeholder-val="{{false}}"><span class="muted">N/A</span></sc-if></span>
+<span><sc-if value="{{s.hasGap}}" hint-placeholder-val="{{true}}"><span class="chip" style="color: #FF7D73">Gap</span> <span style="font-size: 13px">{{s.gapText}} in <a href="Project.dc.html">{{s.proj}}</a></span></sc-if><sc-if value="{{s.noGap}}" hint-placeholder-val="{{false}}"><span class="muted">None raised</span></sc-if></span>
+</div>
+</sc-for>
+</div></div>
+</section>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); gap: 20px; align-items: start">
+<section class="card" style="min-width: 0">
+<div class="card-head"><h2>Am I learning, practicing and applying each week?</h2><span class="note">Notes by creation date</span></div>
+<div style="padding: 0 20px 20px">
+<div style="display: flex; flex-wrap: wrap; gap: 4px 18px; margin-bottom: 14px">
+<sc-for list="{{legend}}" as="l" hint-placeholder-count="3"><span><span class="sw" style="background: {{l.color}}"></span><span style="font-weight: 600">{{l.label}}</span> <span class="num muted">{{l.total}} notes</span></span></sc-for>
+</div>
+<div class="scroll"><div style="min-width: 440px">
+<div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; align-items: end; border-bottom: 1px solid #2F2F3D">
+<sc-for list="{{bars}}" as="b" hint-placeholder-count="6">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 4px; justify-content: flex-end; height: {{b.colH}}">
+<span class="num" style="font-weight: 700">{{b.total}}</span>
+<div style="width: 100%; max-width: 64px; display: flex; flex-direction: column; justify-content: flex-end; gap: 2px; padding-bottom: 6px">
+<sc-for list="{{b.segs}}" as="g" hint-placeholder-count="2"><div title="{{g.title}}" style="height: {{g.h}}; background: {{g.color}}; color: #0F0F14; font-weight: 700; display: flex; align-items: center; justify-content: center; border-radius: 8px">{{g.n}}</div></sc-for>
+</div>
+</div>
+</sc-for>
+</div>
+<div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; padding-top: 6px">
+<sc-for list="{{bars}}" as="b" hint-placeholder-count="6"><div style="text-align: center"><div style="font-weight: 600">{{b.label}}</div><div class="note">{{b.date}}</div></div></sc-for>
+</div>
+</div></div>
+<details style="margin-top: 14px"><summary style="cursor: pointer; font-weight: 600">Show as a table</summary>
+<div class="scroll" style="margin-top: 8px"><div style="min-width: 400px; border: 1px solid #2F2F3D; border-radius: 12px; overflow: hidden">
+<div class="row head" style="grid-template-columns: 70px 1fr 1fr 1fr"><span>Week</span><span>Learning</span><span>Practice</span><span>Applied</span></div>
+<sc-for list="{{bars}}" as="b" hint-placeholder-count="6"><div class="row num" style="grid-template-columns: 70px 1fr 1fr 1fr"><span>{{b.label}}</span><span>{{b.l}}</span><span>{{b.p}}</span><span>{{b.a}}</span></div></sc-for>
+</div></div></details>
+<div class="note" style="margin-top: 10px">Applied is a practice note that names the project it was applied to.</div>
+</div>
+</section>
+
+<div style="display: flex; flex-direction: column; gap: 20px; min-width: 0">
+<section class="card">
+<div class="card-head"><h2>Recently learned</h2><span class="note">Learning notes</span></div>
+<sc-for list="{{recentLearned}}" as="n" hint-placeholder-count="4">
+<div class="row" style="grid-template-columns: 56px minmax(0, 1fr); align-items: start"><span class="num muted">{{n.date}}</span><span><button class="linkbtn wl" onClick="{{n.open}}">{{n.t}}</button><div class="muted" style="font-size: 13px">{{n.skill}}</div></span></div>
+</sc-for>
+</section>
+<section class="card">
+<div class="card-head"><h2>Recent practice</h2><span class="note">Practice and applied notes</span></div>
+<sc-for list="{{recentPractice}}" as="n" hint-placeholder-count="4">
+<div class="row" style="grid-template-columns: 56px minmax(0, 1fr); align-items: start"><span class="num muted">{{n.date}}</span><span><button class="linkbtn wl" onClick="{{n.open}}">{{n.t}}</button><div class="muted" style="font-size: 13px">{{n.skill}}<sc-if value="{{n.isApplied}}" hint-placeholder-val="{{false}}">, applied to <a href="Project.dc.html">{{n.proj}}</a></sc-if></div></span></div>
+</sc-for>
+</section>
+</div>
+</div>
+
+</main>
+</div>
+
+<sc-if value="{{hasToast}}" hint-placeholder-val="{{false}}">
+<div role="status" style="position: fixed; right: 20px; bottom: 20px; max-width: 420px; padding: 10px 14px; background: #F3F3F8; color: #0F0F14; border-radius: 10px; font-size: 13px; font-weight: 600">{{toast}}</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":3200}}'>
+class Component extends DCLogic {
+  state = { sel: 'idempotency', cat: 'All', recs: {}, checks: {}, toast: '' };
+
+  themes() {
+    return ['API design: resources and naming', 'API design: errors and pagination', 'Database performance: reading query plans', 'Database performance: N+1 and indexes', 'Observability: logs and correlation ids', 'Idempotency and retries', 'Distributed systems reliability: timeouts', 'Distributed systems reliability: queues and ordering', 'Observability: metrics and alerts', 'System design: estimation', 'System design: data and consistency', 'System design: a full design review', 'Security basics: secrets and authentication', 'Security basics: rate limits and abuse', 'Technical writing: decision records', 'Technical writing: proposals', 'Review and retrospective'];
+  }
+
+  weekStates() {
+    // 1-3 done, 4 partly done, 5 done, 6 current
+    return { 1: 'done', 2: 'done', 3: 'done', 4: 'partly', 5: 'done', 6: 'current' };
+  }
+
+  checkItems() {
+    return [
+      { k: 'c1', t: 'Read about idempotency keys and dedup tables', d: true, note: 'Idempotent consumers and dedup tables' },
+      { k: 'c2', t: 'Sketch a key store with an expiry', d: true, note: 'Sketch idempotency key store with expiry' },
+      { k: 'c3', t: 'Classify callback failures before retrying, then apply it to the handler', d: false, note: '' },
+      { k: 'c4', t: 'Write the retry rules down as a lesson', d: true, note: 'A retry on a business rejection duplicates the send' },
+      { k: 'c5', t: 'Sunday review: what was learned, practiced and applied', d: false, note: '' }
+    ];
+  }
+
+  notes() {
+    return [
+      { t: 'Idempotency keys, the basics', kind: 'learning', c: '2026-09-02', skill: 'Idempotency' },
+      { t: 'Retry and backoff patterns', kind: 'learning', c: '2026-09-04', skill: 'Retries and backoff' },
+      { t: 'HTTP API design: resource naming', kind: 'learning', c: '2026-09-08', skill: 'HTTP resource design' },
+      { t: 'Design a paginated listing endpoint', kind: 'practice', c: '2026-09-11', skill: 'HTTP resource design' },
+      { t: 'PostgreSQL EXPLAIN reading', kind: 'learning', c: '2026-09-15', skill: 'PostgreSQL indexing' },
+      { t: 'Read plans for three slow queries', kind: 'practice', c: '2026-09-18', skill: 'PostgreSQL indexing' },
+      { t: 'Query planning and N+1', kind: 'learning', c: '2026-09-22', skill: 'Query performance' },
+      { t: 'Reproduce N+1 with query count', kind: 'practice', c: '2026-09-24', skill: 'Query performance' },
+      { t: 'Structured logging and correlation ids', kind: 'learning', c: '2026-09-29', skill: 'Structured logging' },
+      { t: 'Add correlation id to OTP send log', kind: 'practice', c: '2026-10-01', skill: 'Structured logging' },
+      { t: 'Prefetch wallet balance on account listing', kind: 'applied', c: '2026-10-02', skill: 'Query performance', proj: 'LoadUp' },
+      { t: 'Idempotent consumers and dedup tables', kind: 'learning', c: '2026-10-05', skill: 'Idempotency' },
+      { t: 'Sketch idempotency key store with expiry', kind: 'practice', c: '2026-10-06', skill: 'Idempotency' },
+      { t: 'Classify callback failures before retrying', kind: 'applied', c: '2026-10-06', skill: 'Retries and backoff', proj: 'IPP' }
+    ];
+  }
+
+  skills() {
+    const L = ['Aware', 'Practicing', 'Applied', 'Can teach'];
+    // chain order: problem, gap, learning, practice, applied, review, lesson
+    return [
+      { id: 'idempotency', cat: 'Reliability', name: 'Idempotency', level: L[1], latest: ['Sketch idempotency key store with expiry', '2026-10-06'], gap: 'Duplicate settlement rows', proj: 'IPP',
+        chain: ['Reproduce duplicate settlement rows', 'Idempotency', 'Idempotent consumers and dedup tables', 'Sketch idempotency key store with expiry', '', '', 'A retry on a business rejection duplicates the send'] },
+      { id: 'retries', cat: 'Reliability', name: 'Retries and backoff', level: L[1], latest: ['Classify callback failures before retrying', '2026-10-06'], gap: 'A retry duplicated a send', proj: 'IPP',
+        chain: ['Reproduce duplicate settlement rows', 'Retries and backoff', 'Retry and backoff patterns', '', 'Classify callback failures before retrying', '', 'A retry on a business rejection duplicates the send'] },
+      { id: 'http', cat: 'API design', name: 'HTTP resource design', level: L[1], latest: ['Design a paginated listing endpoint', '2026-09-11'], gap: '', proj: '',
+        chain: ['', '', 'HTTP API design: resource naming', 'Design a paginated listing endpoint', '', '', ''] },
+      { id: 'errors', cat: 'API design', name: 'Error contracts', level: L[0], latest: null, gap: '', proj: '',
+        chain: ['', '', '', '', '', '', ''] },
+      { id: 'queryperf', cat: 'Database', name: 'Query performance', level: L[2], latest: ['Prefetch wallet balance on account listing', '2026-10-02'], gap: 'One query per row', proj: 'LoadUp',
+        chain: ['Fix N+1 query on account listing', 'Query performance', 'Query planning and N+1', 'Reproduce N+1 with query count', 'Prefetch wallet balance on account listing', '', ''] },
+      { id: 'indexing', cat: 'Database', name: 'PostgreSQL indexing', level: L[1], latest: ['Read plans for three slow queries', '2026-09-18'], gap: '', proj: '',
+        chain: ['', '', 'PostgreSQL EXPLAIN reading', 'Read plans for three slow queries', '', '', ''] },
+      { id: 'logging', cat: 'Observability', name: 'Structured logging', level: L[1], latest: ['Add correlation id to OTP send log', '2026-10-01'], gap: 'Two hours lost to missing delivery logs', proj: 'LoadUp',
+        chain: ['Investigate missing OTP email', 'Structured logging', 'Structured logging and correlation ids', 'Add correlation id to OTP send log', '', '', 'Check the provider status page before debugging delivery'] },
+      { id: 'alerts', cat: 'Observability', name: 'Alert design', level: L[0], latest: null, gap: '', proj: '',
+        chain: ['', '', '', '', '', '', ''] },
+      { id: 'spikes', cat: 'System design', name: 'Spikes before design', level: L[2], latest: ['Measure the mount before building on it', '2026-10-03'], gap: '', proj: '',
+        chain: ['', '', '', '', 'Poll the vault instead of file watching', '', 'Measure the mount before building on it'] },
+      { id: 'runbooks', cat: 'Writing', name: 'Runbooks', level: L[0], latest: null, gap: 'Settlement rerun has no runbook', proj: 'IPP',
+        chain: ['Write runbook for settlement file rerun', 'Runbooks', '', '', '', '', ''] },
+      { id: 'adrs', cat: 'Writing', name: 'Decision records', level: L[1], latest: ['Use idempotency keys on payment callbacks', '2026-10-05'], gap: '', proj: '',
+        chain: ['', '', '', '', 'Use idempotency keys on payment callbacks', '', ''] },
+      { id: 'secrets', cat: 'Security', name: 'Secrets rotation', level: L[0], latest: null, gap: 'Staging credentials past rotation date', proj: 'LoadUp',
+        chain: ['Rotate staging API credentials', 'Secrets rotation', '', '', '', '', ''] },
+      { id: 'ratelimit', cat: 'Security', name: 'Rate limiting', level: L[0], latest: null, gap: 'Provider rate limit unknown', proj: 'LoadUp',
+        chain: ['Confirm rate limit with SMS provider', 'Rate limiting', '', '', '', '', ''] }
+    ];
+  }
+
+  toast(msg) {
+    this.setState({ toast: msg });
+    clearTimeout(this._t);
+    this._t = setTimeout(() => this.setState({ toast: '' }), 4200);
+  }
+
+  openNote(t) { this.toast('Opens the note [[' + t + ']] in the vault view.'); }
+
+  monthDay(ms) {
+    const mo = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const d = new Date(ms);
+    return mo[d.getUTCMonth()] + ' ' + d.getUTCDate();
+  }
+
+  noteDate(c) {
+    return this.monthDay(Date.UTC(+c.slice(0, 4), +c.slice(5, 7) - 1, +c.slice(8, 10)));
+  }
+
+  renderVals() {
+    const s = this.state;
+    const DAY = 864e5;
+    const start = Date.UTC(2026, 7, 31);
+    const themes = this.themes();
+    const curWeek = 6;
+    const wst = this.weekStates();
+    const skills = this.skills();
+    const notes = this.notes();
+
+    const weeks = themes.map((t, i) => {
+      const n = i + 1;
+      const st = wst[n] || 'upcoming';
+      const word = { done: 'Done', partly: 'Partly', current: 'Now', upcoming: 'Next' }[st];
+      const fg = { done: '#5ED39A', partly: '#F5B85C', current: '#F3F3F8', upcoming: '#A3A3B5' }[st];
+      return { n: n, cls: st === 'current' ? 'cur' : '', word: word, fg: fg, title: 'Week ' + n + ': ' + t, aria: 'Week ' + n + ', ' + word.toLowerCase() + ', ' + t };
+    });
+
+    const checks = this.checkItems().map((c) => {
+      const done = s.checks[c.k] === undefined ? c.d : s.checks[c.k];
+      return {
+        t: c.t, note: c.note, hasNote: !!c.note && done, done: done, cls: done ? 'done' : '', word: done ? 'Done' : 'Not done',
+        toggle: () => { this.setState({ checks: Object.assign({}, s.checks, { [c.k]: !done }) }); this.toast('Would update the checklist in 06-Upskilling/Roadmap/Week 06.md'); }
+      };
+    });
+    const doneCount = checks.filter((c) => c.done).length;
+
+    const recDefs = [
+      { id: 'r1', skillId: 'idempotency', title: 'Idempotency keys for payment callbacks', proj: 'IPP', why: 'A retried callback wrote the same settlement row twice. The fix is only a proposed decision so far, and you have read about it but not applied it.', fit: 'Matches this week: Idempotency and retries.',
+        evidence: [{ kind: 'Task', t: 'Reproduce duplicate settlement rows' }, { kind: 'Lesson', t: 'A retry on a business rejection duplicates the send' }, { kind: 'Decision', t: 'Use idempotency keys on payment callbacks' }] },
+      { id: 'r2', skillId: 'queryperf', title: 'Read the query plan before merging the N+1 fix', proj: 'LoadUp', why: 'The N+1 fix on the account listing is in review. You counted queries but have not read the plan for the new prefetch query.', fit: 'Revisits week 3, reading query plans.',
+        evidence: [{ kind: 'Task', t: 'Fix N+1 query on account listing' }, { kind: 'Practice', t: 'Reproduce N+1 with query count' }] },
+      { id: 'r3', skillId: 'logging', title: 'Correlation ids across the OTP send path', proj: 'LoadUp', why: 'Some OTP emails never arrive and two hours went into the wrong logs. A correlation id would show where each send stopped.', fit: 'Pulls forward part of week 9, metrics and alerts.',
+        evidence: [{ kind: 'Task', t: 'Investigate missing OTP email' }, { kind: 'Lesson', t: 'Check the provider status page before debugging delivery' }] }
+    ];
+    const recs = recDefs.map((r) => {
+      const sk = skills.find((x) => x.id === r.skillId);
+      const st = s.recs[r.id] || 'suggested';
+      const set = (v, msg) => { this.setState({ recs: Object.assign({}, s.recs, { [r.id]: v }) }); this.toast(msg); };
+      const file = '06-Upskilling/Skills/' + sk.name + '.md';
+      return {
+        title: r.title, proj: r.proj, why: r.why, fit: r.fit, skill: sk.name,
+        status: { suggested: 'Suggested', accepted: 'Accepted', dismissed: 'Dismissed' }[st],
+        fg: { suggested: '#D2A6FF', accepted: '#5ED39A', dismissed: '#A3A3B5' }[st],
+        isSuggested: st === 'suggested', isDone: st !== 'suggested',
+        evidence: r.evidence.map((e) => ({ kind: e.kind, t: e.t, open: () => this.openNote(e.t) })),
+        pick: () => this.setState({ sel: sk.id }),
+        accept: () => set('accepted', 'Would add a next action to ' + file),
+        dismiss: () => set('dismissed', 'Would record the dismissal in ' + file + ' so it is not suggested again'),
+        undo: () => set('suggested', 'Back to suggested, no file changed')
+      };
+    });
+
+    const skillList = skills.map((k) => {
+      const filled = k.chain.filter((x) => x).length;
+      return { name: k.name, fill: filled + ' of 7 steps', hasGap: !!k.gap, on: s.sel === k.id, cls: s.sel === k.id ? 'on' : '', pick: () => this.setState({ sel: k.id }) };
+    });
+    const sel = skills.find((k) => k.id === s.sel) || skills[0];
+    const labels = ['Production problem', 'Skill gap', 'Learning topic', 'Practice', 'Applied to project', 'Review', 'Lesson learned'];
+    const chain = sel.chain.map((t, i) => ({
+      n: i + 1, label: labels[i], t: t, has: !!t, empty: !t, cls: t ? 'has' : 'none', notLast: i < 6, open: () => this.openNote(t)
+    }));
+    const firstEmpty = chain.find((c) => c.empty);
+
+    const lvl = { 'Aware': '#A3A3B5', 'Practicing': '#6EA8FF', 'Applied': '#5ED39A', 'Can teach': '#D2A6FF' };
+    const cats = ['All'].concat(skills.map((k) => k.cat).filter((c, i, a) => a.indexOf(c) === i));
+    const skillRows = skills.filter((k) => s.cat === 'All' || k.cat === s.cat).map((k) => ({
+      cat: k.cat, name: k.name, level: k.level, lvlFg: lvl[k.level], ev: k.chain.slice(2).filter((x) => x).length,
+      hasLatest: !!k.latest, noLatest: !k.latest, latestT: k.latest ? k.latest[0] : '', latestD: k.latest ? this.noteDate(k.latest[1]) : '',
+      hasGap: !!k.gap, noGap: !k.gap, gapText: k.gap, proj: k.proj,
+      openLatest: () => this.openNote(k.latest ? k.latest[0] : ''), pick: () => this.setState({ sel: k.id })
+    }));
+
+    const counts = [];
+    for (let w = 1; w <= curWeek; w++) counts.push({ l: 0, p: 0, a: 0 });
+    notes.forEach((n) => {
+      const w = Math.floor((Date.UTC(+n.c.slice(0, 4), +n.c.slice(5, 7) - 1, +n.c.slice(8, 10)) - start) / (7 * DAY));
+      if (w >= 0 && w < curWeek) counts[w][{ learning: 'l', practice: 'p', applied: 'a' }[n.kind]]++;
+    });
+    const unit = 30;
+    const maxTotal = Math.max.apply(null, counts.map((c) => c.l + c.p + c.a));
+    const series = [{ k: 'a', label: 'Applied', color: '#5ED39A' }, { k: 'p', label: 'Practice', color: '#D2A6FF' }, { k: 'l', label: 'Learning', color: '#6EA8FF' }];
+    const bars = counts.map((c, i) => ({
+      label: 'Week ' + (i + 1), date: this.monthDay(start + i * 7 * DAY), total: c.l + c.p + c.a, l: c.l, p: c.p, a: c.a,
+      colH: (maxTotal * unit + (maxTotal - 1) * 2 + 34) + 'px',
+      segs: series.filter((x) => c[x.k] > 0).map((x) => ({ n: c[x.k], h: (c[x.k] * unit + (c[x.k] - 1) * 2) + 'px', color: x.color, title: x.label + ': ' + c[x.k] }))
+    }));
+    const legend = [series[2], series[1], series[0]].map((x) => ({ label: x.label, color: x.color, total: counts.reduce((a, c) => a + c[x.k], 0) }));
+
+    const byDate = (a, b) => (a.c < b.c ? 1 : -1);
+    const mk = (n) => ({ t: n.t, date: this.noteDate(n.c), skill: n.skill, proj: n.proj || '', isApplied: n.kind === 'applied', open: () => this.openNote(n.t) });
+    const recentLearned = notes.filter((n) => n.kind === 'learning').sort(byDate).slice(0, 4).map(mk);
+    const recentPractice = notes.filter((n) => n.kind !== 'learning').sort(byDate).slice(0, 4).map(mk);
+
+    const pick = (c) => () => this.setState({ cat: c });
+    return {
+      curWeek: curWeek, totalWeeks: themes.length, curTheme: themes[curWeek - 1], nextTheme: themes[curWeek],
+      weekDates: this.monthDay(start + (curWeek - 1) * 7 * DAY) + ' to ' + this.monthDay(start + (curWeek - 1) * 7 * DAY + 6 * DAY) + ', 2026',
+      checks: checks, doneCount: doneCount, checkTotal: checks.length, progW: Math.round(doneCount / checks.length * 100) + '%', weeks: weeks,
+      gapCount: skills.filter((k) => k.gap).length, practiceWeek: counts[curWeek - 1].p, appliedWeek: counts[curWeek - 1].a,
+      recs: recs, skillList: skillList, selName: sel.name, chain: chain, chainFilled: chain.filter((c) => c.has).length,
+      nextStep: firstEmpty ? firstEmpty.label + ' has no note yet.' : 'every step has a note.',
+      cats: cats.map((c) => ({ label: c, on: s.cat === c, cls: s.cat === c ? 'on' : '', pick: pick(c) })), skillRows: skillRows,
+      bars: bars, legend: legend, recentLearned: recentLearned, recentPractice: recentPractice,
+      qaLearning: () => this.toast('Would create 06-Upskilling/Learning/Untitled learning topic.md'),
+      qaPractice: () => this.toast('Would create 06-Upskilling/Practice/Untitled practice note.md'),
+      qaGap: () => this.toast('Would add a gap entry to 06-Upskilling/Skills/' + sel.name + '.md'),
+      hasToast: !!s.toast, toast: s.toast
+    };
+  }
+}
+</script>
+</body>
+</html>

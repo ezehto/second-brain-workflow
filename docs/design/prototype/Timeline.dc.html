@@ -1,0 +1,673 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Second Brain timeline</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<style>
+body{margin:0;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#F3F3F8;background:#0F0F14;font-size:14px;line-height:1.5}
+*{box-sizing:border-box}
+a{color:#9B8CFF}a:hover{color:#BDB2FF}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid #9B8CFF;outline-offset:2px}
+h1,h2,h3{margin:0;font-weight:700;letter-spacing:-0.01em}
+.day{font-size:clamp(24px,3.2vw,34px);font-weight:800;letter-spacing:-0.02em;line-height:1.15}
+.mono{font-family:'DM Mono',ui-monospace,monospace;font-size:12px}
+.num{font-variant-numeric:tabular-nums}
+.muted{color:#A3A3B5}
+.note{font-size:12px;color:#A3A3B5}
+.btn{min-height:38px;padding:0 14px;border:1px solid #2F2F3D;background:#242430;color:#F3F3F8;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;font-weight:600;white-space:nowrap;text-decoration:none}
+.btn:hover{background:#2F2F3D;color:#F3F3F8}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.primary{background:#6B58E6;border-color:#6B58E6;color:#FFFFFF}
+.btn.primary:hover{background:#7C6AF0;color:#FFFFFF}
+.btn.small{min-height:32px;padding:0 12px;font-size:13px}
+.linkbtn{background:none;border:0;padding:0;cursor:pointer;color:#F3F3F8;font-weight:600;text-align:left;text-decoration:none}
+.linkbtn:hover{color:#BDB2FF;text-decoration:underline;text-underline-offset:3px}
+a.linkbtn{color:#F3F3F8}
+a.linkbtn:hover{color:#BDB2FF}
+.chip{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border:0 !important;border-radius:999px;background:#242430 !important;font-size:12px;font-weight:600;white-space:nowrap}
+.chip::before{content:"";flex:none;width:7px;height:7px;border-radius:50%;background:currentColor}
+.card{background:#1B1B24;border:1px solid #2F2F3D;border-radius:16px}
+.card-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px 12px;padding:16px 20px 12px}
+.card-head h2{font-size:16px}
+.card.accent{background:#6B58E6;border-color:#6B58E6;color:#FFFFFF}
+.card.accent .muted,.card.accent .note{color:#E4DFFF}
+.tile{display:flex;align-items:center;gap:14px;padding:16px 18px;background:#1B1B24;border:1px solid #2F2F3D;border-radius:16px;text-align:left;color:#F3F3F8}
+.tile-v{font-size:26px;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}
+.tile-l{font-size:13px;color:#A3A3B5}
+.icon{flex:none;width:42px;height:42px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;background:#2A2550;color:#9B8CFF}
+.icon.sm{width:30px;height:30px;border-radius:9px}
+.icon svg{width:20px;height:20px}
+.icon.sm svg{width:16px;height:16px}
+.row{display:grid;align-items:center;gap:12px;padding:11px 20px;border-top:1px solid #2F2F3D}
+.head{font-size:12px;font-weight:600;color:#A3A3B5;background:#242430;border-top:0}
+.scroll{overflow-x:auto}
+.empty{padding:20px;color:#A3A3B5}
+.field{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:600;color:#A3A3B5}
+.input{min-height:38px;padding:6px 12px;border:1px solid #2F2F3D;border-radius:10px;background:#242430;font-weight:400;font-size:14px;color:#F3F3F8}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav-item{display:flex;align-items:center;gap:10px;min-height:40px;padding:0 12px;border:0;border-radius:10px;background:none;cursor:pointer;font-weight:600;color:#A3A3B5;text-align:left;text-decoration:none}
+.nav-item svg{flex:none;width:18px;height:18px}
+.nav-item:hover{background:#242430;color:#F3F3F8}
+.nav-item.on{background:#6B58E6;color:#FFFFFF}
+.seg{min-height:32px;padding:0 14px;border:0;background:none;color:#A3A3B5;border-radius:999px;cursor:pointer;font-size:13px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center}
+.seg:hover{background:#2F2F3D;color:#F3F3F8}
+.seg.on{background:#6B58E6;color:#FFFFFF}
+a.seg{color:#9B8CFF}
+span.seg{cursor:default}
+.segs{display:inline-flex;flex-wrap:wrap;gap:2px;padding:4px;background:#242430;border-radius:999px}
+.rail-list{position:relative;padding-left:22px}
+.rail-list::before{content:"";position:absolute;left:5px;top:6px;bottom:6px;width:1px;background:#2F2F3D}
+.rail-dot{position:absolute;left:-21px;top:17px;width:9px;height:9px;border-radius:50%;box-shadow:0 0 0 3px #1B1B24}
+.sec-h{font-size:12px;font-weight:600;color:#7D7D90;margin:0 0 4px}
+.daytag{padding:14px 0 6px;font-size:13px;font-weight:700;color:#F3F3F8;display:flex;align-items:baseline;gap:10px}
+.ev{position:relative;border-radius:12px;padding:8px 10px;margin:1px 0}
+.evrow{display:grid;align-items:center;gap:10px;grid-template-columns:44px 30px minmax(0,1fr) 108px 118px 66px 78px}
+.node{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;background:#242430;font-size:12px}
+.sq{flex:none;width:8px;height:8px;border-radius:50%}
+.rule{flex:none;width:16px;height:2px;background:#7D7D90}
+.trail{margin:8px 0 2px 84px;padding:10px 12px;border:1px solid #2F2F3D;border-radius:12px;background:#15151C;display:flex;flex-direction:column;gap:8px}
+.steps{display:flex;flex-wrap:wrap;align-items:center;gap:6px 0}
+.sug{margin:8px 0 2px 84px;padding:10px 12px;border:1px solid rgba(245,184,92,.35);border-radius:12px;background:#3A3020;color:#F5B85C;display:flex;flex-direction:column;gap:8px;font-size:13px}
+.sug .mono{color:#F5B85C}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);max-width:min(640px,calc(100% - 32px));background:#F3F3F8;color:#0F0F14;padding:10px 16px;border-radius:12px;font-size:13px;font-weight:600}
+.track{height:8px;border-radius:999px;background:#242430;overflow:hidden}
+.fill{height:8px;border-radius:999px;background:#9B8CFF}
+@media (max-width:820px){.nav{flex-direction:row;flex-wrap:wrap}.nav-item{min-height:44px}.btn,.seg,.input{min-height:44px}.trail,.sug{margin-left:0}}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; align-items: stretch">
+
+<nav aria-label="Main" style="flex: 1 0 230px; max-width: 100%; background: #15151C; border-right: 1px solid #2F2F3D; padding: 20px 14px; display: flex; flex-direction: column; gap: 18px">
+<div style="display: flex; flex-direction: column; gap: 2px; padding: 0 12px">
+<div style="display: flex; align-items: center; gap: 10px; font-size: 17px; font-weight: 800"><span style="width: 22px; height: 22px; border-radius: 7px; background: #6B58E6"></span>Second Brain</div>
+<div class="mono muted">D:\Second Brain</div>
+</div>
+<div>
+<div class="sec-h" style="padding: 0 12px">Today</div>
+<div class="nav">
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg><span>Dashboard</span></a>
+<a class="nav-item" href="Standup.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.7A8 8 0 1 1 21 12z"/></svg><span>Standup</span></a>
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1.5 3h5L16 13h5"/></svg><span>Inbox</span></a>
+</div>
+</div>
+<div>
+<div class="sec-h" style="padding: 0 12px">Work</div>
+<div class="nav">
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg><span>Tasks</span></a>
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Projects</span></a>
+<a class="nav-item" href="Workflow.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="12" r="2.5"/><path d="M6 8.5v7"/><path d="M8.5 6H13a5 5 0 0 1 5 3.5"/></svg><span>Workflow</span></a>
+<a class="nav-item on" href="Timeline.dc.html" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Timeline</span></a>
+</div>
+</div>
+<div>
+<div class="sec-h" style="padding: 0 12px">Knowledge</div>
+<div class="nav">
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h10"/></svg><span>Knowledge</span></a>
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18"/><path d="M12 6h7l-2 3 2 3h-7"/><path d="M12 13H5l2 2.5L5 18h7"/></svg><span>Decisions</span></a>
+<a class="nav-item" href="Upskilling.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg><span>Upskilling</span></a>
+</div>
+</div>
+<div>
+<div class="sec-h" style="padding: 0 12px">System</div>
+<div class="nav">
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><span>Search</span></a>
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg><span>Index status</span></a>
+</div>
+</div>
+</nav>
+
+<div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; padding: 20px 28px 8px">
+<div style="flex: 1 1 280px; display: flex; flex-direction: column; gap: 2px">
+<h1 style="font-size: 24px; font-weight: 800">Timeline</h1>
+<div class="muted">What happened across the vault, Jira, GitLab and Calendar. Vault events come from file times (Phase 1; documents Phase 2, learning Phase 3). The other three arrive in Phase 4 and are read-only.</div>
+</div>
+<a href="Main.dc.html" class="input" style="flex: 1 1 220px; max-width: 360px; display: flex; align-items: center; gap: 8px; color: #A3A3B5; text-decoration: none"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>Search the vault</a>
+<div class="segs" aria-label="Context"><span class="seg on">All projects</span><a class="seg" href="Project.dc.html">IPP</a></div>
+<span style="width: 36px; height: 36px; border-radius: 50%; background: #2A2550; color: #9B8CFF; display: inline-flex; align-items: center; justify-content: center; font-weight: 700" title="raymark">R</span>
+</header>
+
+<main style="flex: 1; padding: 12px 28px 32px; display: flex; flex-direction: column; gap: 20px; max-width: 1360px; width: 100%">
+
+<section style="display: flex; flex-direction: column; gap: 8px">
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr)); gap: 16px">
+<div class="tile"><span class="icon" style="background: #1E3329; color: #5ED39A"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg></span><div><div class="tile-v">{{cTasks}}</div><div class="tile-l">Tasks completed</div></div></div>
+<div class="tile"><span class="icon" style="background: #2A2550; color: #D2A6FF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18"/><path d="M12 6h7l-2 3 2 3h-7"/><path d="M12 13H5l2 2.5L5 18h7"/></svg></span><div><div class="tile-v">{{cDecisions}}</div><div class="tile-l">Decisions</div></div></div>
+<div class="tile"><span class="icon" style="background: #1F2C44; color: #6EA8FF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M5 20h14"/></svg></span><div><div class="tile-v">{{cDeploys}}</div><div class="tile-l">Deployments</div></div></div>
+<div class="tile"><span class="icon" style="background: #3A2422; color: #FF7D73"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4l9 16H3z"/><path d="M12 10v4"/><path d="M12 17v.01"/></svg></span><div><div class="tile-v">{{cIncidents}}</div><div class="tile-l">Incidents</div></div></div>
+</div>
+<div class="note">Counts for {{rangeText}}. The sample holds six working days, so 7 days and 30 days show the same events. They follow the date range below and ignore the other filters.</div>
+</section>
+
+<section class="card">
+<div class="card-head"><h2>How many events a day, and from where?</h2><span class="note">Working days, all projects, from the sample</span></div>
+<div style="padding: 0 20px 20px; display: flex; flex-wrap: wrap; gap: 20px 32px; align-items: flex-end">
+<div style="flex: 3 1 420px; min-width: 0" role="img" aria-label="{{chartLabel}}">
+<div style="margin-top: 30px; position: relative; height: 150px">
+<svg viewBox="0 0 600 150" preserveAspectRatio="none" style="width: 100%; height: 150px; display: block" aria-hidden="true"><path d="{{areaPath}}" fill="#9B8CFF" fill-opacity="0.25"></path><path d="{{linePath}}" fill="none" stroke="#9B8CFF" stroke-width="2.5" stroke-linejoin="round" vector-effect="non-scaling-stroke"></path></svg>
+<sc-for list="{{points}}" as="p" hint-placeholder-count="6">
+<div title="{{p.tip}}" style="position: absolute; left: {{p.left}}; bottom: {{p.bottom}}; width: 10px; height: 10px; margin: 0 0 -5px -5px; border-radius: 50%; background: #9B8CFF; box-shadow: 0 0 0 3px #1B1B24"><span class="num" style="position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); font-weight: 700; font-size: 13px">{{p.total}}</span></div>
+</sc-for>
+</div>
+<div style="display: flex; border-top: 1px solid #2F2F3D; margin-top: 6px">
+<sc-for list="{{points}}" as="p" hint-placeholder-count="6"><div class="note" style="flex: 1 1 0; text-align: center; padding-top: 6px">{{p.label}}</div></sc-for>
+</div>
+</div>
+<div style="flex: 1 1 200px; display: flex; flex-direction: column; gap: 6px">
+<div class="sec-h" style="color: #A3A3B5; margin: 0">Events by source, six days</div>
+<sc-for list="{{legend}}" as="l" hint-placeholder-count="4">
+<div style="display: flex; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid #2F2F3D"><span style="width: 10px; height: 10px; border-radius: 50%; background: {{l.bg}}"></span><span style="flex: 1">{{l.label}}</span><strong class="num">{{l.n}}</strong></div>
+</sc-for>
+<div class="note">Each day is one point: its total across all four sources.</div>
+</div>
+</div>
+</section>
+
+<section class="card" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: flex-end">
+<div class="field">Date range<div class="segs"><sc-for list="{{segRange}}" as="o" hint-placeholder-count="3"><button class="seg {{o.cls}}" aria-pressed="{{o.pressed}}" onClick="{{o.pick}}">{{o.label}}</button></sc-for></div></div>
+<div class="field">Project<div class="segs"><sc-for list="{{segProject}}" as="o" hint-placeholder-count="5"><button class="seg {{o.cls}}" aria-pressed="{{o.pressed}}" onClick="{{o.pick}}">{{o.label}}</button></sc-for></div></div>
+<div class="field">Source<div class="segs"><sc-for list="{{segSource}}" as="o" hint-placeholder-count="5"><button class="seg {{o.cls}}" aria-pressed="{{o.pressed}}" onClick="{{o.pick}}">{{o.label}}</button></sc-for></div></div>
+<label class="field">Activity type
+<select class="input" value="{{fType}}" onChange="{{setType}}">
+<option value="all">All types</option>
+<option value="task-created">Task created</option>
+<option value="task-completed">Task completed</option>
+<option value="standup">Standup</option>
+<option value="decision">Decision</option>
+<option value="lesson">Lesson</option>
+<option value="document">Document</option>
+<option value="meeting">Meeting</option>
+<option value="ticket">Ticket updated</option>
+<option value="commit">Commit</option>
+<option value="mr">Merge request</option>
+<option value="review">Code review</option>
+<option value="deploy">Deployment</option>
+<option value="incident">Incident</option>
+<option value="learning">Learning</option>
+</select></label>
+<label class="field">Status
+<select class="input" value="{{fStatus}}" onChange="{{setStatus}}">
+<option value="all">Any status</option>
+<option value="open">Open</option>
+<option value="review">In review</option>
+<option value="blocked">Blocked</option>
+<option value="done">Done</option>
+<option value="na">N/A, no state</option>
+</select></label>
+<div style="display: flex; align-items: center; gap: 12px; min-height: 38px"><span class="num" style="font-weight: 700" role="status">{{countText}}</span><button class="btn small" onClick="{{resetFilters}}">Reset filters</button></div>
+</div>
+<div class="note">Person is left out: this is a single-user vault, so every event is yours.</div>
+</section>
+
+<div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+
+<section class="card" style="flex: 999 1 600px; min-width: 0">
+<div class="card-head"><h2>Engineering activity</h2><span class="note">Newest first. Source names where each event comes from.</span></div>
+<div class="scroll"><div style="min-width: 760px; padding: 0 20px 16px">
+<div class="evrow note" style="padding: 0 10px 6px; font-weight: 600"><span>Time</span><span></span><span>Title</span><span>Project</span><span>Activity</span><span>Source</span><span>Status</span></div>
+<sc-for list="{{days}}" as="d" hint-placeholder-count="3">
+<div>
+<div class="daytag"><span>{{d.label}}</span><span class="note num">{{d.countText}}</span></div>
+<div class="rail-list">
+<sc-for list="{{d.events}}" as="e" hint-placeholder-count="4">
+<div class="ev" style="background: {{e.bg}}">
+<span class="rail-dot" style="background: {{e.srcFg}}"></span>
+<div class="evrow">
+<span class="num muted" style="font-size: 13px">{{e.time}}</span>
+<span class="icon sm" style="background: {{e.srcBg}}; color: {{e.srcFg}}">
+<sc-if value="{{e.isVault}}" hint-placeholder-val="{{true}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h10"/></svg></sc-if>
+<sc-if value="{{e.isJira}}" hint-placeholder-val="{{false}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="6" width="16" height="12" rx="2.5"/><path d="M9 6v12"/></svg></sc-if>
+<sc-if value="{{e.isGitlab}}" hint-placeholder-val="{{false}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="12" r="2.5"/><path d="M6 8.5v7"/><path d="M8.5 6H13a5 5 0 0 1 5 3.5"/></svg></sc-if>
+<sc-if value="{{e.isCal}}" hint-placeholder-val="{{false}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 10h16"/><path d="M9 3v4"/><path d="M15 3v4"/></svg></sc-if>
+</span>
+<span><button class="linkbtn" aria-pressed="{{e.selected}}" onClick="{{e.select}}">{{e.title}}</button></span>
+<a href="Project.dc.html" style="font-size: 13px">{{e.projText}}</a>
+<span class="chip" style="color: {{e.typeFg}}">{{e.typeWord}}</span>
+<span style="font-weight: 600; font-size: 13px; color: {{e.srcFg}}">{{e.srcText}}</span>
+<span style="font-size: 12px; font-weight: 600; color: {{e.stFg}}">{{e.stText}}</span>
+</div>
+<sc-if value="{{e.hasTrail}}" hint-placeholder-val="{{false}}">
+<div class="trail">
+<div style="font-size: 13px"><strong>Linked trail.</strong> <span class="muted">{{e.basis}}</span></div>
+<div class="steps">
+<sc-for list="{{e.trail}}" as="st" hint-placeholder-count="5">
+<span style="display: inline-flex; align-items: center"><span class="node" style="border: 1px {{st.bstyle}} #2F2F3D"><span class="sq" style="background: {{st.fill}}"></span><strong>{{st.label}}</strong> <span class="mono">{{st.val}}</span> <span class="muted">{{st.note}}</span></span><sc-if value="{{st.hasNext}}" hint-placeholder-val="{{true}}"><span class="rule"></span></sc-if></span>
+</sc-for>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{e.sugPending}}" hint-placeholder-val="{{false}}">
+<div class="sug">
+<div><strong>Possible link, not confirmed.</strong> This task may come from the Calendar meeting <span class="mono">Settlement file rerun review</span> on Sep 29. Basis: same project, and both titles mention a settlement rerun. Suggested only; nothing is linked until you say so.</div>
+<div style="display: flex; gap: 8px"><button class="btn small primary" onClick="{{e.linkSug}}">Link</button><button class="btn small" onClick="{{e.dismissSug}}">Dismiss</button></div>
+</div>
+</sc-if>
+<sc-if value="{{e.sugLinked}}" hint-placeholder-val="{{false}}"><div class="sug"><div><strong>Linked by you.</strong> The meeting is now a related item on this task.</div></div></sc-if>
+<sc-if value="{{e.sugDismissed}}" hint-placeholder-val="{{false}}"><div class="sug"><div><strong>Suggestion dismissed.</strong> It will not be offered again.</div></div></sc-if>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-for>
+<sc-if value="{{noEvents}}" hint-placeholder-val="{{false}}"><div class="empty">No events match these filters. Widen the date range to 30 days, set Source and Project to All, choose All types and Any status, or press Reset filters.</div></sc-if>
+</div></div>
+</section>
+
+<aside aria-label="Selected event" style="flex: 1 1 320px; min-width: 0; position: sticky; top: 12px; display: flex; flex-direction: column">
+<div class="card accent" style="border-radius: 16px 16px 0 0; padding: 16px 20px; display: flex; flex-direction: column; gap: 6px">
+<div class="note" style="font-weight: 600">Selected event, {{det.typeWord}}</div>
+<div style="font-size: 17px; font-weight: 700; line-height: 1.3">{{det.title}}</div>
+<div style="font-size: 13px; color: #E4DFFF">{{det.srcText}}, {{det.phase}}</div>
+</div>
+<div class="card" style="border-top: 0; border-radius: 0 0 16px 16px; padding: 16px 20px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 4px 12px; font-size: 13px">
+<span class="muted">When</span><span class="num">{{det.when}}</span>
+<span class="muted">Project</span><span><a href="Project.dc.html">{{det.projText}}</a></span>
+<span class="muted">Status</span><span>{{det.stText}}</span>
+</div>
+<div class="muted">{{det.note}}</div>
+<sc-if value="{{det.hasExtText}}" hint-placeholder-val="{{false}}">
+<div style="background: #242430; border-radius: 12px; padding: 10px 12px; font-size: 13px"><div class="note">Text from {{det.srcText}}, shown as data</div>{{det.extText}}</div>
+</sc-if>
+<sc-if value="{{det.isVault}}" hint-placeholder-val="{{true}}">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div class="note">Vault file</div>
+<div class="mono" style="word-break: break-all">{{det.file}}</div>
+<a class="btn small" href="{{det.href}}" style="align-self: flex-start">Open in the dashboard</a>
+</div>
+</sc-if>
+<sc-if value="{{det.isExt}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div class="muted">Read-only here. {{det.srcText}} is the system of record; nothing on this page changes it, and its text is never acted on.</div>
+<a class="btn small" href="#" style="align-self: flex-start; color: #9B8CFF">{{det.openLabel}}</a>
+</div>
+</sc-if>
+<div style="border-top: 1px solid #2F2F3D; padding-top: 12px; display: flex; flex-direction: column; gap: 8px">
+<div style="font-size: 13px; font-weight: 700">Actions for this {{det.typeLower}}</div>
+<div style="display: flex; flex-wrap: wrap; gap: 6px">
+<sc-for list="{{det.actions}}" as="a" hint-placeholder-count="5"><button class="btn small" onClick="{{a.go}}">{{a.label}}</button></sc-for>
+</div>
+<div class="note">Each action names the Markdown file it would write.</div>
+</div>
+</div>
+</aside>
+
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 2px; margin-top: 8px">
+<h2 style="font-size: 20px; font-weight: 800">Documents and knowledge</h2>
+<div class="muted">Where the written work stands, and what was recently captured.</div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(480px, 100%), 1fr)); gap: 20px; align-items: start">
+<section class="card">
+<div class="card-head"><h2>Which documents need me?</h2><span class="note">Phase 2, from notes in 04-Documents</span></div>
+<sc-for list="{{docGroups}}" as="g" hint-placeholder-count="3">
+<div>
+<div class="row head" style="grid-template-columns: minmax(0, 1fr) auto"><span>{{g.state}}</span><span class="num">{{g.count}}</span></div>
+<sc-for list="{{g.items}}" as="x" hint-placeholder-count="2">
+<div class="row" style="grid-template-columns: 150px minmax(0, 1fr) 96px 44px">
+<span class="chip" style="color: #A3A3B5">{{x.type}}</span>
+<span style="font-weight: 600">{{x.title}}</span>
+<a href="Project.dc.html" style="font-size: 13px">{{x.project}}</a>
+<span class="num muted" style="font-size: 13px">{{x.when}}</span>
+</div>
+</sc-for>
+</div>
+</sc-for>
+</section>
+<section class="card">
+<div class="card-head"><h2>What was captured recently?</h2><span class="note">Phase 1, from the vault</span></div>
+<sc-for list="{{knowledge}}" as="k" hint-placeholder-count="6">
+<div class="row" style="grid-template-columns: 84px minmax(0, 1fr) 96px 44px">
+<span class="chip" style="color: {{k.fg}}">{{k.kind}}</span>
+<a class="linkbtn" href="Main.dc.html">{{k.title}}</a>
+<a href="Project.dc.html" style="font-size: 13px">{{k.project}}</a>
+<span class="num muted" style="font-size: 13px">{{k.when}}</span>
+</div>
+</sc-for>
+</section>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 2px; margin-top: 8px">
+<h2 style="font-size: 20px; font-weight: 800">Claude usage, system and integrations</h2>
+<div class="muted">Usage is Phase 5. Integrations are Phase 4.</div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(440px, 100%), 1fr)); gap: 20px; align-items: start">
+<section class="card">
+<div class="card-head"><h2>Claude usage, last 7 days</h2><span class="note">Estimated, Phase 5</span></div>
+<div style="padding: 0 20px 20px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr)); gap: 12px">
+<div style="background: #242430; border-radius: 12px; padding: 12px 14px"><div class="tile-v" style="font-size: 22px">about 6.4M</div><div class="tile-l">tokens, Estimated</div></div>
+<div style="background: #242430; border-radius: 12px; padding: 12px 14px"><div class="tile-v" style="font-size: 22px">about USD 41</div><div class="tile-l">cost, Estimated from a price table</div></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 10px">
+<sc-for list="{{usage}}" as="u" hint-placeholder-count="3">
+<div style="display: flex; flex-direction: column; gap: 4px"><div style="display: flex; justify-content: space-between; font-size: 13px"><span>{{u.name}}</span><span class="num muted">{{u.text}}</span></div><div class="track"><div class="fill" style="width: {{u.w}}"></div></div></div>
+</sc-for>
+<div style="display: flex; justify-content: space-between; font-size: 13px"><span class="muted">By command</span><span>N/A</span></div>
+<div style="display: flex; justify-content: space-between; font-size: 13px"><span class="muted">By task</span><span>N/A</span></div>
+</div>
+<div class="note">The logs record project, model and session, not the command or task, so those two show N/A.</div>
+<div style="display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 2px 12px; font-size: 13px; border-top: 1px solid #2F2F3D; padding-top: 12px">
+<span class="muted">Vault index</span><span class="num">Last pass 14:39:52</span>
+<span class="muted">Vault</span><span class="mono">D:\Second Brain</span>
+<span class="muted">Vault git</span><span>Committed by /eod only</span>
+</div>
+</div>
+</section>
+<section class="card">
+<div class="card-head"><h2>Integrations</h2><span class="note">Phase 4, read-only</span></div>
+<sc-for list="{{providers}}" as="p" hint-placeholder-count="3">
+<div class="row" style="grid-template-columns: 42px minmax(0, 1fr) auto; align-items: start">
+<span class="icon" style="background: {{p.bg}}; color: {{p.fg}}; font-weight: 800">{{p.initial}}</span>
+<div style="display: flex; flex-direction: column; gap: 2px"><span style="font-weight: 600">{{p.name}}</span><span class="note">{{p.supplies}}</span><span class="note num">Last synced {{p.synced}}</span>
+<sc-if value="{{p.hasFix}}" hint-placeholder-val="{{false}}"><span style="font-size: 13px; color: #FF7D73">{{p.fix}}</span></sc-if></div>
+<span class="chip" style="color: {{p.tagFg}}">{{p.tag}}</span>
+</div>
+</sc-for>
+</section>
+</div>
+
+</main>
+</div>
+</div>
+
+<sc-if value="{{hasToast}}" hint-placeholder-val="{{false}}"><div class="toast" role="status">{{toast}}</div></sc-if>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":3700}}'>
+class Component extends DCLogic {
+  state = { sel: 'a3', fRange: '7', fProject: 'all', fSource: 'all', fType: 'all', fStatus: 'all', sug: '', toast: '' };
+
+  types() {
+    return {
+      'task-created': { word: 'Task created', fg: '#A3A3B5' },
+      'task-completed': { word: 'Task completed', fg: '#5ED39A' },
+      'standup': { word: 'Standup', fg: '#A3A3B5' },
+      'decision': { word: 'Decision', fg: '#D2A6FF' },
+      'lesson': { word: 'Lesson', fg: '#A3A3B5' },
+      'document': { word: 'Document', fg: '#A3A3B5' },
+      'meeting': { word: 'Meeting', fg: '#6EA8FF' },
+      'ticket': { word: 'Ticket updated', fg: '#6EA8FF' },
+      'commit': { word: 'Commit', fg: '#6EA8FF' },
+      'mr': { word: 'Merge request', fg: '#6EA8FF' },
+      'review': { word: 'Code review', fg: '#D2A6FF' },
+      'deploy': { word: 'Deployment', fg: '#6EA8FF' },
+      'incident': { word: 'Incident', fg: '#FF7D73' },
+      'learning': { word: 'Learning', fg: '#A3A3B5' }
+    };
+  }
+
+  sources() {
+    return {
+      vault: { label: 'Vault', ext: false, fg: '#9B8CFF', bg: '#2A2550' },
+      jira: { label: 'Jira', ext: true, fg: '#6EA8FF', bg: '#1F2C44' },
+      gitlab: { label: 'GitLab', ext: true, fg: '#F5B85C', bg: '#3A3020' },
+      calendar: { label: 'Calendar', ext: true, fg: '#5ED39A', bg: '#1E3329' }
+    };
+  }
+
+  statuses() {
+    return {
+      open: { text: 'Open', fg: '#6EA8FF' },
+      review: { text: 'In review', fg: '#D2A6FF' },
+      blocked: { text: 'Blocked', fg: '#FF7D73' },
+      done: { text: 'Done', fg: '#5ED39A' },
+      na: { text: 'N/A', fg: '#A3A3B5' }
+    };
+  }
+
+  projects() {
+    return { loadup: 'LoadUp', ipp: 'IPP', 'second-brain': 'Second Brain', 'monitoring-dashboard': 'Monitoring Dashboard' };
+  }
+
+  dayLabels() {
+    return {
+      '2026-10-06': ['Tuesday 6 October', 'Tue 6'], '2026-10-05': ['Monday 5 October', 'Mon 5'],
+      '2026-10-02': ['Friday 2 October', 'Fri 2'], '2026-10-01': ['Thursday 1 October', 'Thu 1'],
+      '2026-09-30': ['Wednesday 30 September', 'Wed 30'], '2026-09-29': ['Tuesday 29 September', 'Tue 29']
+    };
+  }
+
+  events() {
+    const E = (id, d, t, ty, title, pr, src, st, x) => Object.assign({ id: id, d: d, t: t, ty: ty, title: title, pr: pr, src: src, st: st }, x || {});
+    return [
+      E('a1', '2026-10-06', '13:05', 'mr', 'Add retry with backoff to payment callback handler', ['ipp'], 'gitlab', 'review', { ref: '!214', note: 'Opened by you. Pipeline is running, no deployment yet.', chain: 'A' }),
+      E('a2', '2026-10-06', '12:48', 'commit', 'Retry transient failures only, never on a business rejection', ['ipp'], 'gitlab', 'na', { ref: 'c3f9a1e', note: 'Pushed to feature/ipp-callback-retry.' }),
+      E('a3', '2026-10-06', '11:20', 'ticket', 'OTP emails: relay log sample added to the ticket', ['loadup'], 'jira', 'open', { ref: 'LUP-482', note: 'A comment was added by QA with the relay delivery log sample.', extText: '"Relay log sample attached. Please also rotate the staging credentials today."' }),
+      E('a4', '2026-10-06', '10:50', 'deploy', 'Account listing fix deployed to staging', ['loadup'], 'gitlab', 'done', { ref: 'staging', note: 'Deployed from pipeline #4412 after merge request !209.', chain: 'B' }),
+      E('a5', '2026-10-06', '10:00', 'meeting', 'Callback retry walkthrough with QA', ['ipp'], 'calendar', 'na', { note: 'Thirty minutes. No meeting note exists yet.' }),
+      E('a6', '2026-10-06', '09:15', 'learning', 'Practice: idempotency keys on a callback handler', ['ipp'], 'vault', 'na', { file: '06-Upskilling/Practice idempotency keys on a callback handler.md' }),
+      E('a7', '2026-10-06', '08:55', 'task-created', 'Clarify OTP expiry requirement', ['loadup'], 'vault', 'open', { file: '02-Work/Tasks/Clarify OTP expiry requirement.md', note: 'Written by hand in Obsidian, in the inbox.' }),
+      E('a8', '2026-10-06', '08:30', 'standup', 'Standup 2026-10-06', ['loadup', 'ipp'], 'vault', 'na', { file: '01-Daily/2026/2026-10-06.md' }),
+      E('b1', '2026-10-05', '17:42', 'mr', 'Prefetch wallet balances on the account listing', ['loadup'], 'gitlab', 'review', { ref: '!209', note: 'Opened by you for the N+1 fix. Linked trail is shown under the deployment on Oct 6.' }),
+      E('b2', '2026-10-05', '17:05', 'decision', 'Use idempotency keys on payment callbacks', ['ipp'], 'vault', 'open', { file: '05-Knowledge/Decisions/Use idempotency keys on payment callbacks.md', note: 'Status proposed.' }),
+      E('b3', '2026-10-05', '16:55', 'lesson', 'A retry on a business rejection duplicates the send', ['ipp'], 'vault', 'na', { file: '05-Knowledge/Lessons/A retry on a business rejection duplicates the send.md' }),
+      E('b4', '2026-10-05', '16:48', 'task-completed', 'Reproduce duplicate settlement rows', ['ipp'], 'vault', 'done', { file: '02-Work/Tasks/Reproduce duplicate settlement rows.md' }),
+      E('b5', '2026-10-05', '16:20', 'review', 'Reviewed callback logging, approved', ['ipp'], 'gitlab', 'done', { ref: '!207', note: 'You approved with two comments on log fields.' }),
+      E('b6', '2026-10-05', '14:30', 'ticket', 'Load test wallet reservation: blocked on staging database refresh', ['ipp'], 'jira', 'blocked', { ref: 'IPP-305', note: 'Status moved to Blocked. Waiting on infra.' }),
+      E('b7', '2026-10-05', '12:00', 'decision', 'Poll the vault instead of file watching', ['second-brain'], 'vault', 'done', { file: '05-Knowledge/Decisions/Poll the vault instead of file watching.md', note: 'Status accepted.' }),
+      E('b8', '2026-10-05', '09:15', 'ticket', 'Confirm SMS rate limit: waiting on the provider', ['loadup'], 'jira', 'blocked', { ref: 'LUP-479', note: 'Waiting on the provider account manager.' }),
+      E('b9', '2026-10-05', '09:00', 'standup', 'Standup 2026-10-05', ['loadup', 'ipp'], 'vault', 'na', { file: '01-Daily/2026/2026-10-05.md' }),
+      E('c1', '2026-10-02', '16:10', 'task-created', 'Write runbook for settlement file rerun', ['ipp'], 'vault', 'open', { file: '02-Work/Tasks/Write runbook for settlement file rerun.md', sug: true }),
+      E('c2', '2026-10-02', '15:10', 'decision', 'Keep OTP email on the existing SMTP relay', ['loadup'], 'vault', 'done', { file: '05-Knowledge/Decisions/Keep OTP email on the existing SMTP relay.md', note: 'Status accepted.' }),
+      E('c3', '2026-10-02', '11:00', 'meeting', 'Provider call: OTP relay logs', ['loadup'], 'calendar', 'na', { note: 'Provider account manager and you. Follow-up: send the relay log sample.' }),
+      E('c4', '2026-10-02', '09:30', 'task-completed', 'Enable Docker WSL integration', ['second-brain'], 'vault', 'done', { file: '02-Work/Tasks/Enable Docker WSL integration.md' }),
+      E('c5', '2026-10-02', '09:00', 'standup', 'Standup 2026-10-02', ['loadup', 'ipp', 'second-brain'], 'vault', 'na', { file: '01-Daily/2026/2026-10-02.md' }),
+      E('d1', '2026-10-01', '18:00', 'lesson', 'Check the provider status page before debugging delivery', ['loadup'], 'vault', 'na', { file: '05-Knowledge/Lessons/Check the provider status page before debugging delivery.md' }),
+      E('d2', '2026-10-01', '14:20', 'document', 'Incident report: OTP emails delayed on 30 September', ['loadup'], 'vault', 'review', { file: '02-Work/Incidents/OTP emails delayed on 30 September.md', note: 'Incident report, needs review.' }),
+      E('d3', '2026-10-01', '10:10', 'commit', 'Log relay delivery status for each OTP send', ['loadup'], 'gitlab', 'na', { ref: 'a81d20b', note: 'Delivery logging that the SMTP relay decision called for.' }),
+      E('d4', '2026-10-01', '09:00', 'standup', 'Standup 2026-10-01', ['loadup'], 'vault', 'na', { file: '01-Daily/2026/2026-10-01.md' }),
+      E('e1', '2026-09-30', '15:10', 'incident', 'OTP emails delayed for some sign-ins', ['loadup'], 'jira', 'done', { ref: 'INC-77', note: 'Resolved after the provider cleared its own delay. The report is a draft in review.' }),
+      E('e2', '2026-09-30', '14:20', 'task-created', 'Confirm rate limit with SMS provider', ['loadup'], 'vault', 'open', { file: '02-Work/Tasks/Confirm rate limit with SMS provider.md' }),
+      E('e3', '2026-09-30', '11:00', 'meeting', 'Vault structure review', ['second-brain'], 'calendar', 'na', { note: 'Folder layout and templates. No meeting note exists yet.' }),
+      E('e4', '2026-09-30', '10:00', 'ticket', 'Retry callbacks on transient failure: moved to In progress', ['ipp'], 'jira', 'open', { ref: 'IPP-298', note: 'Start of the callback retry work.' }),
+      E('e5', '2026-09-30', '09:00', 'standup', 'Standup 2026-09-30', ['loadup', 'ipp'], 'vault', 'na', { file: '01-Daily/2026/2026-09-30.md' }),
+      E('f1', '2026-09-29', '16:30', 'task-created', 'Rotate staging API credentials', ['loadup'], 'vault', 'open', { file: '02-Work/Tasks/Rotate staging API credentials.md' }),
+      E('f2', '2026-09-29', '15:00', 'learning', 'Notes: Docker bind mounts on a Windows drive', ['second-brain'], 'vault', 'na', { file: '06-Upskilling/Notes Docker bind mounts on a Windows drive.md' }),
+      E('f3', '2026-09-29', '11:30', 'meeting', 'Settlement file rerun review', ['ipp'], 'calendar', 'na', { note: 'Calendar title only. The attendee notes are not read.' }),
+      E('f4', '2026-09-29', '09:00', 'standup', 'Standup 2026-09-29', ['loadup', 'ipp'], 'vault', 'na', { file: '01-Daily/2026/2026-09-29.md' })
+    ];
+  }
+
+  trailFor(chain) {
+    const A = [
+      { label: 'Jira issue', val: 'IPP-298', note: 'in progress' },
+      { label: 'Branch', val: 'feature/ipp-callback-retry', note: '' },
+      { label: 'Merge request', val: '!214', note: 'in review' },
+      { label: 'Pipeline', val: '#4431', note: 'running' },
+      { label: 'Deployment', val: 'N/A', note: 'none yet', pending: true }
+    ];
+    const B = [
+      { label: 'Jira issue', val: 'LUP-471', note: 'N+1 on account listing' },
+      { label: 'Branch', val: 'fix/LUP-471-account-listing', note: '' },
+      { label: 'Merge request', val: '!209', note: 'Oct 5' },
+      { label: 'Pipeline', val: '#4412', note: 'passed' },
+      { label: 'Deployment', val: 'staging', note: 'Oct 6 10:50' }
+    ];
+    const basis = {
+      A: 'High confidence: the issue key IPP-298 is in the branch name and the merge request title.',
+      B: 'High confidence: the issue key LUP-471 is in the branch name, the merge request title and the pipeline.'
+    };
+    const steps = chain === 'A' ? A : B;
+    return { basis: basis[chain], trail: steps.map((x, i) => ({ label: x.label, val: x.val, note: x.note, fill: x.pending ? '#7D7D90' : '#9B8CFF', bstyle: x.pending ? 'dashed' : 'solid', hasNext: i < steps.length - 1 })) };
+  }
+
+  slug(e) { return e.title.replace(/[:\/\\]/g, '').slice(0, 70); }
+
+  actionsFor(e) {
+    const T = '2026-10-06';
+    const s = this.slug(e);
+    const key = e.ref || s;
+    const make = (label, verb, file) => ({ label: label, go: () => this.say('Would ' + verb + ' ' + file) });
+    const task = make('Create task', 'create', '02-Work/Tasks/' + s + '.md');
+    const note = make('Create note', 'create', e.src === 'jira' ? '02-Work/Tickets/' + key + '.md' : '07-External-Context/' + key + '.md');
+    const decision = make('Create decision', 'create', '05-Knowledge/Decisions/' + s + '.md');
+    const lesson = make('Create lesson', 'create', '05-Knowledge/Lessons/' + s + '.md');
+    const follow = make('Create follow-up', 'create', '02-Work/Follow-ups/Follow up ' + s + '.md');
+    const link = make('Link to project', 'set project in', (e.src === 'jira' ? '02-Work/Tickets/' + key : '07-External-Context/' + key) + '.md');
+    const start = make('Start implementation', 'create', '02-Work/Tasks/Implement ' + key + '.md (status in-progress)');
+    const meet = make('Create meeting note', 'create', '02-Work/Meetings/' + e.d + ' ' + s + '.md');
+    const byType = {
+      ticket: [task, note, decision, follow, link, start],
+      meeting: [meet, follow, decision, task],
+      mr: [task, note, follow, link],
+      commit: [note, lesson, follow],
+      review: [follow, lesson, note],
+      deploy: [follow, task, note],
+      incident: [task, lesson, decision, follow, note],
+      'task-created': [follow, decision, note],
+      'task-completed': [lesson, follow],
+      standup: [follow],
+      decision: [task, follow],
+      lesson: [task, decision],
+      document: [follow, task],
+      learning: [lesson, task]
+    };
+    return byType[e.ty] || [follow];
+  }
+
+  say(text) {
+    this.setState({ toast: text });
+    if (this._t) clearTimeout(this._t);
+    this._t = setTimeout(() => this.setState({ toast: '' }), 4200);
+  }
+
+  seg(options, key, current) {
+    return options.map((o) => ({ label: o[1], cls: o[0] === current ? 'on' : '', pressed: o[0] === current, pick: () => this.setState({ [key]: o[0] }) }));
+  }
+
+  renderVals() {
+    const s = this.state;
+    const TY = this.types(), SR = this.sources(), ST = this.statuses(), PJ = this.projects(), DL = this.dayLabels();
+    const all = this.events();
+    const cutoff = { '1': '2026-10-06', '7': '2026-09-29', '30': '2026-09-06' }[s.fRange];
+    const rangeText = { '1': 'Today, Oct 6', '7': '7 days, Sep 29 to Oct 6', '30': '30 days, Sep 6 to Oct 6' }[s.fRange];
+    const inRange = all.filter((e) => e.d >= cutoff);
+    const shown = inRange.filter((e) =>
+      (s.fProject === 'all' || e.pr.indexOf(s.fProject) >= 0) && (s.fSource === 'all' || e.src === s.fSource) &&
+      (s.fType === 'all' || e.ty === s.fType) && (s.fStatus === 'all' || e.st === s.fStatus));
+
+    const sugOpen = s.sug === '';
+    const dates = Object.keys(DL).sort().reverse();
+    const days = dates.map((d) => {
+      const evs = shown.filter((e) => e.d === d).sort((a, b) => b.t.localeCompare(a.t));
+      return { label: DL[d][0] + (d === '2026-10-06' ? ', today' : ''), countText: evs.length + (evs.length === 1 ? ' event' : ' events'), events: evs.map((e) => {
+        const tr = e.chain ? this.trailFor(e.chain) : null;
+        const showTrail = !!e.chain && ((e.chain === 'A' && e.ty === 'mr') || (e.chain === 'B' && e.ty === 'deploy'));
+        return {
+          time: e.t, typeWord: TY[e.ty].word, typeFg: TY[e.ty].fg,
+          title: (e.ref && e.src !== 'vault' && e.ty !== 'deploy' ? e.ref + ' ' : '') + e.title,
+          projText: e.pr.map((p) => PJ[p]).join(', '), srcText: SR[e.src].label, srcFg: SR[e.src].fg, srcBg: SR[e.src].bg,
+          isVault: e.src === 'vault', isJira: e.src === 'jira', isGitlab: e.src === 'gitlab', isCal: e.src === 'calendar',
+          stText: ST[e.st].text, stFg: ST[e.st].fg, bg: e.id === s.sel ? '#242430' : 'transparent', selected: e.id === s.sel,
+          select: () => this.setState({ sel: e.id }),
+          hasTrail: showTrail, basis: tr ? tr.basis : '', trail: tr ? tr.trail : [],
+          sugPending: !!e.sug && sugOpen, sugLinked: !!e.sug && s.sug === 'linked', sugDismissed: !!e.sug && s.sug === 'dismissed',
+          linkSug: () => this.setState({ sug: 'linked', toast: 'Would add [[Settlement file rerun review]] under Related in 02-Work/Tasks/Write runbook for settlement file rerun.md' }),
+          dismissSug: () => this.setState({ sug: 'dismissed', toast: 'Dismissed. No file written.' })
+        };
+      }) };
+    }).filter((d) => d.events.length > 0);
+
+    const sel = all.find((e) => e.id === s.sel) || all[0];
+    const ext = SR[sel.src].ext;
+    const phase = ext ? 'Phase 4' : (sel.ty === 'document' ? 'Phase 2' : (sel.ty === 'learning' ? 'Phase 3' : 'Phase 1'));
+    const dtime = sel.d.slice(8) + ' ' + { '09': 'Sep', '10': 'Oct' }[sel.d.slice(5, 7)];
+    const det = {
+      typeWord: TY[sel.ty].word, typeLower: TY[sel.ty].word.toLowerCase(),
+      title: (sel.ref && sel.src !== 'vault' && sel.ty !== 'deploy' ? sel.ref + ' ' : '') + sel.title,
+      when: dtime.replace(/^0/, '') + ', ' + sel.t + ' Manila',
+      projText: sel.pr.map((p) => PJ[p]).join(', '), srcText: SR[sel.src].label, phase: phase, stText: ST[sel.st].text,
+      note: sel.note || (ext ? '' : 'Time is the file modification time.'),
+      hasExtText: !!sel.extText, extText: sel.extText || '', isExt: ext, isVault: !ext, file: sel.file || '', openLabel: 'Open in ' + SR[sel.src].label,
+      href: sel.ty === 'standup' ? 'Standup.dc.html' : 'Main.dc.html',
+      actions: this.actionsFor(sel)
+    };
+
+    const order = ['vault', 'jira', 'gitlab', 'calendar'];
+    const chartDates = dates.slice().reverse();
+    const totals = chartDates.map((d) => all.filter((e) => e.d === d).length);
+    const max = Math.max.apply(null, totals);
+    const W = 600, H = 150, n = chartDates.length;
+    const pts = chartDates.map((d, i) => {
+      const x = (i + 0.5) / n * W;
+      const rise = totals[i] / max * (H - 12) + 6;
+      return { x: x, y: H - rise, rise: rise, d: d, total: totals[i] };
+    });
+    const linePath = pts.map((p, i) => (i === 0 ? 'M ' : 'L ') + p.x.toFixed(1) + ' ' + p.y.toFixed(1)).join(' ');
+    const areaPath = linePath + ' L ' + pts[n - 1].x.toFixed(1) + ' ' + H + ' L ' + pts[0].x.toFixed(1) + ' ' + H + ' Z';
+    const points = pts.map((p) => {
+      const evs = all.filter((e) => e.d === p.d);
+      return { total: p.total, label: DL[p.d][1], left: (p.x / W * 100).toFixed(2) + '%', bottom: p.rise.toFixed(1) + 'px',
+        tip: DL[p.d][0] + ': ' + order.map((k) => SR[k].label + ' ' + evs.filter((e) => e.src === k).length).join(', ') };
+    });
+    const legend = order.map((k) => ({ label: SR[k].label, bg: SR[k].fg, n: all.filter((e) => e.src === k).length }));
+    const chartLabel = 'Total events per day: ' + points.map((p) => p.label + ' ' + p.total).join(', ') + '.';
+
+    const cnt = (ty) => inRange.filter((e) => e.ty === ty).length;
+
+    const docGroups = [
+      { state: 'Draft', items: [
+        { type: 'Change request', title: 'Add idempotency keys to the payment callback handler', project: 'IPP', when: 'Oct 5' },
+        { type: 'Technical design', title: 'Callback retry and idempotency design', project: 'IPP', when: 'Oct 6' } ] },
+      { state: 'Needs review', items: [
+        { type: 'Incident report', title: 'OTP emails delayed on 30 September', project: 'LoadUp', when: 'Oct 1' },
+        { type: 'Proposal', title: 'OTP delivery provider migration', project: 'LoadUp', when: 'Sep 30' } ] },
+      { state: 'Recently completed', items: [
+        { type: 'Architecture document', title: 'Vault indexer: polling design', project: 'Second Brain', when: 'Oct 5' },
+        { type: 'Status report', title: 'IPP status for the week ending 2 October', project: 'IPP', when: 'Oct 2' } ] }
+    ];
+    docGroups.forEach((g) => { g.count = g.items.length; });
+
+    const knowledge = [
+      { kind: 'Decision', fg: '#D2A6FF', title: 'Use idempotency keys on payment callbacks', project: 'IPP', when: 'Oct 5' },
+      { kind: 'Lesson', fg: '#A3A3B5', title: 'A retry on a business rejection duplicates the send', project: 'IPP', when: 'Oct 5' },
+      { kind: 'Decision', fg: '#D2A6FF', title: 'Poll the vault instead of file watching', project: 'Second Brain', when: 'Oct 5' },
+      { kind: 'Lesson', fg: '#A3A3B5', title: 'Measure the mount before building on it', project: 'Second Brain', when: 'Oct 3' },
+      { kind: 'Decision', fg: '#D2A6FF', title: 'Keep OTP email on the existing SMTP relay', project: 'LoadUp', when: 'Oct 2' },
+      { kind: 'Lesson', fg: '#A3A3B5', title: 'Check the provider status page before debugging delivery', project: 'LoadUp', when: 'Oct 1' }
+    ];
+
+    const usage = [
+      { name: 'IPP', text: 'about 2.6M tokens', w: '100%' },
+      { name: 'LoadUp', text: 'about 1.9M tokens', w: '73%' },
+      { name: 'Second Brain', text: 'about 1.9M tokens', w: '73%' }
+    ];
+
+    const providers = [
+      { name: 'Jira', initial: 'J', supplies: 'Tickets and incidents', bg: SR.jira.bg, fg: SR.jira.fg, synced: '14:36', tag: 'Connected', tagFg: '#5ED39A', hasFix: false, fix: '' },
+      { name: 'GitLab', initial: 'G', supplies: 'Commits, merge requests, pipelines, deployments', bg: SR.gitlab.bg, fg: SR.gitlab.fg, synced: '14:36', tag: 'Connected', tagFg: '#5ED39A', hasFix: false, fix: '' },
+      { name: 'Calendar', initial: 'C', supplies: 'Meetings', bg: SR.calendar.bg, fg: SR.calendar.fg, synced: '10:30', tag: 'Error, token expired', tagFg: '#FF7D73', hasFix: true, fix: 'Renew the Calendar token in .env and restart the indexer. Meetings after 10:30 today are not shown until then.' }
+    ];
+
+    return {
+      cTasks: cnt('task-completed'), cDecisions: cnt('decision'), cDeploys: cnt('deploy'), cIncidents: cnt('incident'), rangeText: rangeText,
+      points: points, linePath: linePath, areaPath: areaPath, legend: legend, chartLabel: chartLabel,
+      segRange: this.seg([['1', 'Today'], ['7', '7 days'], ['30', '30 days']], 'fRange', s.fRange),
+      segProject: this.seg([['all', 'All'], ['loadup', 'LoadUp'], ['ipp', 'IPP'], ['second-brain', 'Second Brain'], ['monitoring-dashboard', 'Monitoring Dashboard']], 'fProject', s.fProject),
+      segSource: this.seg([['all', 'All'], ['vault', 'Vault'], ['jira', 'Jira'], ['gitlab', 'GitLab'], ['calendar', 'Calendar']], 'fSource', s.fSource),
+      fType: s.fType, fStatus: s.fStatus,
+      setType: (e) => this.setState({ fType: e.target.value }),
+      setStatus: (e) => this.setState({ fStatus: e.target.value }),
+      resetFilters: () => this.setState({ fRange: '7', fProject: 'all', fSource: 'all', fType: 'all', fStatus: 'all' }),
+      countText: 'Showing ' + shown.length + ' of ' + all.length + ' events',
+      days: days, noEvents: shown.length === 0, det: det,
+      docGroups: docGroups, knowledge: knowledge, usage: usage, providers: providers,
+      toast: s.toast, hasToast: s.toast !== ''
+    };
+  }
+}
+</script>
+</body>
+</html>

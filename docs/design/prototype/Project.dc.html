@@ -1,0 +1,696 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>IPP project view</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<style>
+body{margin:0;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#F3F3F8;background:#0F0F14;font-size:14px;line-height:1.5}
+*{box-sizing:border-box}
+a{color:#9B8CFF}a:hover{color:#BDB2FF}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid #9B8CFF;outline-offset:2px}
+h1,h2,h3{margin:0;font-weight:700;letter-spacing:-0.01em}
+.day{font-size:clamp(24px,3.2vw,34px);font-weight:800;letter-spacing:-0.02em;line-height:1.15}
+.mono{font-family:'DM Mono',ui-monospace,monospace;font-size:12px}
+.num{font-variant-numeric:tabular-nums}
+.muted{color:#A3A3B5}
+.note{font-size:12px;color:#A3A3B5}
+.btn{min-height:38px;padding:0 14px;border:1px solid #2F2F3D;background:#242430;color:#F3F3F8;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;font-weight:600;white-space:nowrap;text-decoration:none}
+.btn:hover{background:#2F2F3D;color:#F3F3F8}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.primary{background:#6B58E6;border-color:#6B58E6;color:#FFFFFF}
+.btn.primary:hover{background:#7C6AF0;color:#FFFFFF}
+.btn.small{min-height:32px;padding:0 12px;font-size:13px}
+.linkbtn{background:none;border:0;padding:0;cursor:pointer;color:#F3F3F8;font-weight:600;text-align:left;text-decoration:none}
+.linkbtn:hover{color:#BDB2FF;text-decoration:underline;text-underline-offset:3px}
+.wl{color:#9B8CFF}
+.wl::before{content:"[[";font-family:'DM Mono',monospace;font-size:12px;font-weight:400;color:#7D7D90}
+.wl::after{content:"]]";font-family:'DM Mono',monospace;font-size:12px;font-weight:400;color:#7D7D90}
+.chip{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border:0 !important;border-radius:999px;background:#242430 !important;font-size:12px;font-weight:600;white-space:nowrap}
+.chip::before{content:"";flex:none;width:7px;height:7px;border-radius:50%;background:currentColor}
+.card{background:#1B1B24;border:1px solid #2F2F3D;border-radius:16px}
+.card-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px 12px}
+.card-head h2{font-size:16px}
+.card.accent{background:#6B58E6;border-color:#6B58E6;color:#FFFFFF}
+.card.accent .muted,.card.accent .note{color:#E4DFFF}
+.tile{display:flex;align-items:center;gap:14px;padding:16px 18px;background:#1B1B24;border:1px solid #2F2F3D;border-radius:16px;text-align:left;color:#F3F3F8;text-decoration:none}
+.tile-v{font-size:26px;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}
+.tile-l{font-size:13px;color:#A3A3B5}
+.icon{flex:none;width:42px;height:42px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;background:#2A2550;color:#9B8CFF}
+.icon.sm{width:30px;height:30px;border-radius:9px}
+.icon svg{width:20px;height:20px}
+.icon.sm svg{width:16px;height:16px}
+.row{display:grid;align-items:center;gap:12px;padding:11px 20px;border-top:1px solid #2F2F3D}
+.head{font-size:12px;font-weight:600;color:#A3A3B5;background:#242430;border-top:0}
+.scroll{overflow-x:auto}
+.empty{padding:20px;color:#A3A3B5}
+.input{min-height:38px;padding:6px 12px;border:1px solid #2F2F3D;border-radius:10px;background:#242430;font-weight:400;font-size:14px;color:#F3F3F8}
+a.input{display:flex;align-items:center;gap:8px;text-decoration:none;color:#A3A3B5}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav-item{display:flex;align-items:center;gap:10px;min-height:40px;padding:0 12px;border:0;border-radius:10px;background:none;cursor:pointer;font-weight:600;color:#A3A3B5;text-align:left;text-decoration:none}
+.nav-item svg{flex:none;width:18px;height:18px}
+.nav-item:hover{background:#242430;color:#F3F3F8}
+.nav-item.on{background:#6B58E6;color:#FFFFFF}
+.count{font-size:12px;font-weight:700;padding:1px 8px;border-radius:999px;background:#242430;color:#F3F3F8;font-variant-numeric:tabular-nums}
+.seg{min-height:32px;padding:0 14px;border:0;background:none;color:#A3A3B5;border-radius:999px;cursor:pointer;font-size:13px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.seg:hover{background:#2F2F3D;color:#F3F3F8}
+.seg.on{background:#6B58E6;color:#FFFFFF}
+.segs{display:inline-flex;flex-wrap:wrap;gap:2px;padding:4px;background:#242430;border-radius:999px}
+.tab{min-height:36px;padding:0 18px;font-size:14px}
+.track{height:8px;border-radius:999px;background:#242430;overflow:hidden}
+.fill{height:8px;border-radius:999px;background:#9B8CFF}
+.rail-list{position:relative;padding:4px 20px 16px 42px}
+.rail-list::before{content:"";position:absolute;left:25px;top:12px;bottom:22px;width:1px;background:#2F2F3D}
+.rail-item{position:relative;padding:6px 0;display:flex;flex-direction:column;gap:1px}
+.rail-dot{position:absolute;left:-21px;top:12px;width:9px;height:9px;border-radius:50%;background:#9B8CFF;box-shadow:0 0 0 3px #1B1B24}
+.sec-h{font-size:12px;font-weight:600;color:#7D7D90;margin:0 0 4px}
+.sec-t{font-size:12px;font-weight:600;color:#A3A3B5;margin:0 0 4px}
+.inset{background:#242430;border-radius:12px}
+.nodebtn{position:absolute;width:168px;height:72px;padding:8px;display:flex;align-items:center;justify-content:center;text-align:center;border-radius:12px;cursor:pointer;font-size:13px;line-height:17px;color:#F3F3F8}
+.nodebtn:hover{background:#2F2F3D !important}
+.stage{position:absolute;top:40px;width:120px;height:80px;padding:8px;display:flex;align-items:center;justify-content:center;text-align:center;border-radius:12px;font-size:13px;line-height:17px;color:#F3F3F8}
+.lbl{position:absolute;font-size:13px;line-height:16px;color:#A3A3B5;text-align:center}
+.ms-l{position:absolute;width:170px;margin-left:-85px;text-align:center;font-size:13px;line-height:17px}
+.ms-k{position:absolute;top:60px;width:13px;height:13px;margin-left:-6px;border-radius:50%}
+.tk{position:absolute;top:80px;width:34px;margin-left:-17px;text-align:center;font-size:12px;color:#A3A3B5}
+.trail{display:flex;flex-wrap:wrap;align-items:stretch;gap:6px}
+.tw{flex:1 1 150px;min-width:140px;display:flex;align-items:center;gap:6px}
+.tnode{flex:1;align-self:stretch;background:#242430;border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;font-size:13px}
+.chev{flex:none;width:16px;height:16px;color:#7D7D90}
+@media (max-width:820px){.nav{flex-direction:row;flex-wrap:wrap}.nav-item{min-height:44px}.btn,.seg,.input{min-height:44px}}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-direction: column">
+<div style="flex: 1; display: flex; flex-wrap: wrap; align-items: stretch">
+
+<nav aria-label="Main" style="flex: 1 0 230px; background: #15151C; border-right: 1px solid #2F2F3D; padding: 20px 14px; display: flex; flex-direction: column; gap: 18px">
+<div style="display: flex; flex-direction: column; gap: 2px; padding: 0 10px">
+<div style="display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 17px"><span style="width: 22px; height: 22px; border-radius: 7px; background: #6B58E6"></span>Second Brain</div>
+<div class="mono muted">D:\Second Brain</div>
+</div>
+<div>
+<div class="sec-h" style="padding: 0 12px">Today</div>
+<div class="nav">
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Dashboard</a>
+<a class="nav-item" href="Standup.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.7A8 8 0 1 1 21 12z"/></svg>Standup</a>
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1.5 3h5L16 13h5"/></svg>Inbox</a>
+</div>
+</div>
+<div>
+<div class="sec-h" style="padding: 0 12px">Work</div>
+<div class="nav">
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>Tasks</a>
+<a class="nav-item on" href="Main.dc.html" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Projects</a>
+<a class="nav-item" href="Workflow.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="12" r="2.5"/><path d="M6 8.5v7"/><path d="M8.5 6H13a5 5 0 0 1 5 3.5"/></svg>Workflow</a>
+<a class="nav-item" href="Timeline.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Timeline</a>
+</div>
+</div>
+<div>
+<div class="sec-h" style="padding: 0 12px">Knowledge</div>
+<div class="nav">
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h10"/></svg>Knowledge</a>
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18"/><path d="M12 6h7l-2 3 2 3h-7"/><path d="M12 13H5l2 2.5L5 18h7"/></svg>Decisions</a>
+<a class="nav-item" href="Upskilling.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>Upskilling</a>
+</div>
+</div>
+<div>
+<div class="sec-h" style="padding: 0 12px">System</div>
+<div class="nav">
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>Search</a>
+<a class="nav-item" href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg>Index status</a>
+</div>
+</div>
+</nav>
+
+<div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; padding: 20px 28px 8px">
+<div style="flex: 1 1 260px; display: flex; flex-direction: column; gap: 2px; min-width: 0">
+<h1 style="font-size: 24px; font-weight: 800">IPP</h1>
+<div class="muted">Payment processing: callbacks, settlement files and wallet reservation.</div>
+</div>
+<a class="input" href="Main.dc.html" style="flex: 2 1 240px; max-width: 380px"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>Search the vault</a>
+<div class="segs" role="group" aria-label="Context">
+<a class="seg" href="Main.dc.html">All projects</a>
+<span class="seg on" aria-current="true">IPP</span>
+</div>
+<span aria-label="raymark" style="width: 36px; height: 36px; border-radius: 50%; background: #2A2550; color: #9B8CFF; display: inline-flex; align-items: center; justify-content: center; font-weight: 800">R</span>
+</header>
+
+<main style="flex: 1; padding: 12px 28px 28px; display: flex; flex-direction: column; gap: 20px; max-width: 1320px; width: 100%">
+
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px">
+<div class="muted">Read from <span class="mono">02-Work/Projects/IPP.md</span>. Quick actions write Markdown into the vault.</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<button class="btn primary" onClick="{{qaTask}}">+ Task</button>
+<button class="btn" onClick="{{qaDecision}}">+ Decision</button>
+<button class="btn" onClick="{{qaFollow}}">+ Follow-up</button>
+<button class="btn" onClick="{{qaDoc}}">+ Document</button>
+</div>
+</div>
+
+<div class="segs" role="group" aria-label="Project sections" style="align-self: flex-start">
+<sc-for list="{{tabs}}" as="t" hint-placeholder-count="5">
+<button class="seg tab {{t.cls}}" aria-pressed="{{t.pressed}}" onClick="{{t.go}}">{{t.label}}</button>
+</sc-for>
+</div>
+
+<!-- OVERVIEW -->
+<sc-if value="{{isOverview}}" hint-placeholder-val="{{true}}">
+<div style="display: flex; flex-direction: column; gap: 20px">
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 16px">
+<div class="tile" style="align-items: flex-start">
+<span class="icon" style="background: #3A2422; color: #FF7D73"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l2.5-6 4 12 2.5-6H21"/></svg></span>
+<div style="display: flex; flex-direction: column; gap: 4px; min-width: 0"><span class="tile-v" style="color: #FF7D73">Blocked</span><span class="tile-l">1 blocked task: Load test wallet reservation path, waiting on the staging database refresh. No open task is overdue.</span></div>
+</div>
+<div class="tile">
+<span class="icon" style="background: #1F2C44; color: #6EA8FF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg></span>
+<div style="display: flex; flex-direction: column"><span class="tile-v">{{openCount}}</span><span class="tile-l">Open tasks, {{taskTotal}} in all</span></div>
+</div>
+<div class="tile">
+<span class="icon" style="background: #3A2422; color: #FF7D73"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5"/><path d="M12 18h.01"/></svg></span>
+<div style="display: flex; flex-direction: column"><span class="tile-v" style="color: #FF7D73">{{blockerCount}}</span><span class="tile-l">Blocked task</span></div>
+</div>
+<div class="tile">
+<span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5"/></svg></span>
+<div style="display: flex; flex-direction: column"><span class="tile-v">Oct 6</span><span class="tile-l">Next milestone: settlement rerun runbook due today</span></div>
+</div>
+</div>
+<div class="note" style="margin-top: -8px">Health rule: Blocked if any task is blocked, At risk if any open task is overdue, On track otherwise.</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(460px, 100%), 1fr)); gap: 20px; align-items: start">
+
+<div style="display: flex; flex-direction: column; gap: 20px; min-width: 0">
+<section class="card">
+<div class="card-head"><h2>How many tasks are in each status?</h2><span class="note num">{{taskTotal}} task notes, cancelled not counted</span></div>
+<div style="padding: 4px 20px 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 20px 32px">
+<div style="position: relative; width: 150px; height: 150px; border-radius: 50%; background: {{donutBg}}; flex: none">
+<div style="position: absolute; left: 25px; top: 25px; width: 100px; height: 100px; border-radius: 50%; background: #1B1B24; display: flex; flex-direction: column; align-items: center; justify-content: center"><span class="tile-v">{{taskTotal}}</span><span class="note">tasks</span></div>
+</div>
+<div style="flex: 1 1 200px; display: flex; flex-direction: column; gap: 8px">
+<sc-for list="{{counts}}" as="c" hint-placeholder-count="6">
+<div style="display: flex; align-items: center; gap: 10px"><span style="width: 10px; height: 10px; border-radius: 50%; background: {{c.fg}}"></span><span style="flex: 1">{{c.status}}</span><span class="num" style="font-weight: 700">{{c.n}}</span></div>
+</sc-for>
+</div>
+</div>
+</section>
+
+<section class="card">
+<div class="card-head"><h2>What is blocked, and on what?</h2><span class="count">{{blockerCount}}</span></div>
+<sc-for list="{{blockers}}" as="b" hint-placeholder-count="1">
+<div class="row" style="grid-template-columns: 30px minmax(0, 1fr)">
+<span class="icon sm" style="background: #3A2422; color: #FF7D73"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5"/><path d="M12 18h.01"/></svg></span>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<strong>{{b.title}}</strong>
+<span class="muted" style="font-size: 13px">Waits on: {{b.waitsOn}}. Owner: {{b.owner}}. Since {{b.since}}.</span>
+</div>
+</div>
+</sc-for>
+</section>
+
+<section class="card">
+<div class="card-head"><h2>Recent decisions</h2></div>
+<sc-for list="{{decisionsRecent}}" as="d" hint-placeholder-count="2">
+<div class="row" style="grid-template-columns: 110px minmax(0, 1fr) 56px">
+<span><span class="chip" style="color: {{d.fg}}">{{d.status}}</span></span>
+<span>{{d.title}}</span>
+<span class="num muted">{{d.when}}</span>
+</div>
+</sc-for>
+</section>
+
+<section class="card">
+<div class="card-head"><h2>Which tickets are open?</h2><span class="note">From Jira, Phase 4</span></div>
+<sc-for list="{{tickets}}" as="t" hint-placeholder-count="2">
+<div class="row" style="grid-template-columns: 30px minmax(0, 1fr) auto">
+<span class="icon sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9a2 2 0 0 0 0 6v3h18v-3a2 2 0 0 1 0-6V6H3z"/></svg></span>
+<div style="display: flex; flex-direction: column"><strong>{{t.title}}</strong><span class="muted" style="font-size: 13px">{{t.key}}, linked to {{t.task}}</span></div>
+<span class="chip" style="color: {{t.fg}}">{{t.status}}</span>
+</div>
+</sc-for>
+</section>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 20px; min-width: 0">
+<section class="card accent" style="padding: 20px; display: flex; flex-direction: column; gap: 10px">
+<h2 style="font-size: 16px">Next action</h2>
+<div style="font-size: 20px; font-weight: 800; line-height: 1.3">Add the idempotency-key check to the callback handler and rerun the staging test</div>
+<div class="muted">Owner: raymark. Due Oct 7. Testing failed on staging, so this is rework 1.</div>
+</section>
+
+<section class="card">
+<div class="card-head"><h2>After that</h2><span class="note">Next actions, four in all</span></div>
+<sc-for list="{{nextRest}}" as="a" hint-placeholder-count="3">
+<div class="row" style="grid-template-columns: minmax(0, 1fr) 150px">
+<span>{{a.text}}</span>
+<span class="muted" style="font-size: 13px">{{a.owner}}</span>
+</div>
+</sc-for>
+</section>
+
+<section class="card">
+<div class="card-head"><h2>Recent activity</h2><span class="note">Last five, with source</span></div>
+<div class="rail-list">
+<sc-for list="{{recent}}" as="r" hint-placeholder-count="5">
+<div class="rail-item"><span class="rail-dot"></span><span class="muted" style="font-size: 12px">{{r.when}}, {{r.source}}</span><span>{{r.title}}</span></div>
+</sc-for>
+</div>
+</section>
+</div>
+</div>
+
+<section class="card">
+<div class="card-head"><h2>When are the next milestones?</h2><span class="note">Task due dates from the vault. Release dates need Jira, Phase 4</span></div>
+<div class="scroll"><div style="min-width: 760px; padding: 6px 28px 14px">
+<div style="position: relative; height: 150px">
+<div style="position: absolute; left: 0; right: 0; top: 66px; height: 2px; background: #2F2F3D"></div>
+<sc-for list="{{ticks}}" as="k" hint-placeholder-count="11">
+<span class="tk num" style="left: {{k.left}}; font-weight: {{k.fw}}; color: {{k.fg}}">{{k.text}}</span>
+</sc-for>
+<sc-for list="{{milestones}}" as="m" hint-placeholder-count="4">
+<div>
+<div class="ms-k" style="left: {{m.left}}; background: {{m.fill}}; border: 2px solid {{m.fg}}"></div>
+<div class="ms-l" style="left: {{m.left}}; top: {{m.top}}"><strong>{{m.title}}</strong><br><span class="muted">{{m.sub}}</span></div>
+</div>
+</sc-for>
+</div>
+</div></div>
+</section>
+
+</div>
+</sc-if>
+
+<!-- WORKFLOW -->
+<sc-if value="{{isWorkflow}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; flex-direction: column; gap: 20px">
+<section class="card">
+<div class="card-head"><h2>Where is this project stuck, and why?</h2><span class="note">Needs a workflow stage on each task, not in the plan yet</span></div>
+<div style="padding: 0 20px 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 12px">
+<div class="inset" style="padding: 12px 14px"><div class="sec-t">Current stage</div><strong style="color: #9B8CFF">Implementation, rework 1</strong></div>
+<div class="inset" style="padding: 12px 14px"><div class="sec-t">Failed stage</div><strong style="color: #FF7D73">Testing: retried callback wrote the settlement row twice</strong></div>
+<div class="inset" style="padding: 12px 14px"><div class="sec-t">Pending approval</div><strong style="color: #D2A6FF">Idempotency key decision, at Architecture</strong></div>
+<div class="inset" style="padding: 12px 14px"><div class="sec-t">Next required action, owner raymark</div><strong>Add the idempotency-key check to the callback handler, then rerun the staging test</strong></div>
+</div>
+<div class="scroll" style="padding: 8px 20px 12px; border-top: 1px solid #2F2F3D">
+<div style="position: relative; width: 1512px; height: 256px">
+<svg width="47" height="8" viewBox="0 0 47 8" preserveAspectRatio="none" style="position: absolute; left: 144px; top: 76px; width: 47px; height: 8px; overflow: visible; fill: none; stroke: #7D7D90; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-1" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#7D7D90" stroke="none" style="stroke: none; fill: #7D7D90; fill: context-stroke"/></marker></defs><path d="M 0 4 L 43 4" marker-end="url(#dc-arrow-head-filled-1)"></path></svg>
+<svg width="47" height="8" viewBox="0 0 47 8" preserveAspectRatio="none" style="position: absolute; left: 312px; top: 76px; width: 47px; height: 8px; overflow: visible; fill: none; stroke: #7D7D90; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-2" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#7D7D90" stroke="none" style="stroke: none; fill: #7D7D90; fill: context-stroke"/></marker></defs><path d="M 0 4 L 43 4" marker-end="url(#dc-arrow-head-filled-2)"></path></svg>
+<svg width="47" height="8" viewBox="0 0 47 8" preserveAspectRatio="none" style="position: absolute; left: 480px; top: 76px; width: 47px; height: 8px; overflow: visible; fill: none; stroke: #7D7D90; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-3" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#7D7D90" stroke="none" style="stroke: none; fill: #7D7D90; fill: context-stroke"/></marker></defs><path d="M 0 4 L 43 4" marker-end="url(#dc-arrow-head-filled-3)"></path></svg>
+<svg width="47" height="8" viewBox="0 0 47 8" preserveAspectRatio="none" style="position: absolute; left: 648px; top: 76px; width: 47px; height: 8px; overflow: visible; fill: none; stroke: #7D7D90; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-4" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#7D7D90" stroke="none" style="stroke: none; fill: #7D7D90; fill: context-stroke"/></marker></defs><path d="M 0 4 L 43 4" marker-end="url(#dc-arrow-head-filled-4)"></path></svg>
+<svg width="47" height="8" viewBox="0 0 47 8" preserveAspectRatio="none" style="position: absolute; left: 816px; top: 76px; width: 47px; height: 8px; overflow: visible; fill: none; stroke: #7D7D90; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-5" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#7D7D90" stroke="none" style="stroke: none; fill: #7D7D90; fill: context-stroke"/></marker></defs><path d="M 0 4 L 43 4" marker-end="url(#dc-arrow-head-filled-5)"></path></svg>
+<svg width="47" height="8" viewBox="0 0 47 8" preserveAspectRatio="none" style="position: absolute; left: 984px; top: 76px; width: 47px; height: 8px; overflow: visible; fill: none; stroke: #7D7D90; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 6 6"><defs><marker id="dc-arrow-head-filled-6" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#7D7D90" stroke="none" style="stroke: none; fill: #7D7D90; fill: context-stroke"/></marker></defs><path d="M 0 4 L 43 4" marker-end="url(#dc-arrow-head-filled-6)"></path></svg>
+<svg width="47" height="8" viewBox="0 0 47 8" preserveAspectRatio="none" style="position: absolute; left: 1152px; top: 76px; width: 47px; height: 8px; overflow: visible; fill: none; stroke: #7D7D90; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 6 6"><defs><marker id="dc-arrow-head-filled-7" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#7D7D90" stroke="none" style="stroke: none; fill: #7D7D90; fill: context-stroke"/></marker></defs><path d="M 0 4 L 43 4" marker-end="url(#dc-arrow-head-filled-7)"></path></svg>
+<svg width="47" height="8" viewBox="0 0 47 8" preserveAspectRatio="none" style="position: absolute; left: 1320px; top: 76px; width: 47px; height: 8px; overflow: visible; fill: none; stroke: #7D7D90; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 6 6"><defs><marker id="dc-arrow-head-filled-8" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#7D7D90" stroke="none" style="stroke: none; fill: #7D7D90; fill: context-stroke"/></marker></defs><path d="M 0 4 L 43 4" marker-end="url(#dc-arrow-head-filled-8)"></path></svg>
+<svg width="8" height="48" viewBox="0 0 8 48" preserveAspectRatio="none" style="position: absolute; left: 752px; top: 120px; width: 8px; height: 48px; overflow: visible; fill: none; stroke: #FF7D73; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M 4 0 L 4 48"></path></svg>
+<svg width="168" height="8" viewBox="0 0 168 8" preserveAspectRatio="none" style="position: absolute; left: 588px; top: 164px; width: 168px; height: 8px; overflow: visible; fill: none; stroke: #FF7D73; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M 0 4 L 168 4"></path></svg>
+<svg width="8" height="47" viewBox="0 0 8 47" preserveAspectRatio="none" style="position: absolute; left: 584px; top: 121px; width: 8px; height: 47px; overflow: visible; fill: none; stroke: #FF7D73; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-9" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#FF7D73" stroke="none" style="stroke: none; fill: #FF7D73; fill: context-stroke"/></marker></defs><path d="M 4 47 L 4 4" marker-end="url(#dc-arrow-head-filled-9)"></path></svg>
+<svg width="8" height="47" viewBox="0 0 8 47" preserveAspectRatio="none" style="position: absolute; left: 248px; top: 121px; width: 8px; height: 47px; overflow: visible; fill: none; stroke: #D2A6FF; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 6 6"><defs><marker id="dc-arrow-head-filled-10" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#D2A6FF" stroke="none" style="stroke: none; fill: #D2A6FF; fill: context-stroke"/></marker></defs><path d="M 4 47 L 4 4" marker-end="url(#dc-arrow-head-filled-10)"></path></svg>
+<div class="stage" style="left: 24px; background: #242430; border: 1px solid #5ED39A"><span><b>Requirements</b><br>Done</span></div>
+<div class="stage" style="left: 192px; background: #242430; border: 1px solid #5ED39A"><span><b>Architecture</b><br>Done</span></div>
+<div class="stage" style="left: 360px; background: #242430; border: 1px solid #5ED39A"><span><b>Planning</b><br>Done</span></div>
+<div class="stage" style="left: 528px; background: #242430; border: 2px solid #9B8CFF"><span><b>Implementation</b><br>Current, rework 1</span></div>
+<div class="stage" style="left: 696px; background: #3A2422; border: 2px solid #FF7D73"><span><b>Testing</b><br>Failed</span></div>
+<div class="stage" style="left: 864px; background: #242430; border: 1.5px dashed #7D7D90; color: #A3A3B5"><span><b>Code review</b><br>Not reached</span></div>
+<div class="stage" style="left: 1032px; background: #242430; border: 1.5px dashed #7D7D90; color: #A3A3B5"><span><b>Deployment</b><br>Not reached</span></div>
+<div class="stage" style="left: 1200px; background: #242430; border: 1.5px dashed #7D7D90; color: #A3A3B5"><span><b>Validation</b><br>Not reached</span></div>
+<div class="stage" style="left: 1368px; background: #242430; border: 1.5px dashed #7D7D90; color: #A3A3B5"><span><b>Complete</b><br>Not reached</span></div>
+<div style="position: absolute; left: 152px; top: 168px; width: 200px; height: 64px; box-sizing: border-box; padding: 8px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 13px; line-height: 17px; border: 1.5px dashed #D2A6FF; border-radius: 12px; background: #242430"><span><b style="color: #D2A6FF">Approval pending</b><br>Idempotency key decision</span></div>
+<div class="lbl" style="left: 492px; top: 180px; width: 360px; color: #FF7D73">Testing failed: retried callback wrote the settlement row twice. Back to Implementation, rework 1</div>
+</div>
+</div>
+</section>
+
+<section class="card">
+<div class="card-head"><h2>Work items by stage</h2><span class="note">Stage, rework count and failure reason need task fields not in the plan yet</span></div>
+<div class="scroll"><div style="min-width: 1040px">
+<div class="row head" style="grid-template-columns: minmax(0, 1.5fr) 130px minmax(0, 1.3fr) 64px minmax(0, 1fr) minmax(0, 1.5fr)"><span>Work item</span><span>Stage</span><span>Failure reason</span><span>Rework</span><span>Blocker</span><span>Required action and owner</span></div>
+<sc-for list="{{items}}" as="w" hint-placeholder-count="5">
+<div class="row" style="grid-template-columns: minmax(0, 1.5fr) 130px minmax(0, 1.3fr) 64px minmax(0, 1fr) minmax(0, 1.5fr); align-items: start">
+<div style="display: flex; flex-direction: column"><strong>{{w.title}}</strong><span class="muted" style="font-size: 13px">{{w.kind}}</span></div>
+<span><span class="chip" style="color: {{w.fg}}">{{w.stage}}</span></span>
+<span style="color: {{w.failFg}}">{{w.fail}}</span>
+<span class="num">{{w.rework}}</span>
+<span style="color: {{w.blockFg}}">{{w.blocker}}</span>
+<span>{{w.action}}</span>
+</div>
+</sc-for>
+</div></div>
+</section>
+</div>
+</sc-if>
+
+<!-- TIMELINE -->
+<sc-if value="{{isTimeline}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; flex-direction: column; gap: 20px">
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 16px">
+<section class="card" style="padding: 16px 20px; display: flex; gap: 14px; align-items: flex-start">
+<span class="icon" style="background: #1F2C44; color: #6EA8FF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7 8l5-5 5 5"/><path d="M5 21h14"/></svg></span>
+<div style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px"><h2 style="font-size: 16px">Deployments</h2><span class="note">From GitLab, Phase 4</span></div>
+<div>Last: callback handler build to staging, Oct 2 14:00</div>
+<div class="muted" style="font-size: 13px">Production: N/A. No production deployment recorded.</div>
+</div>
+</section>
+<section class="card" style="padding: 16px 20px; display: flex; gap: 14px; align-items: flex-start">
+<span class="icon" style="background: #3A3020; color: #F5B85C"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5"/><path d="M12 18h.01"/></svg></span>
+<div style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px"><h2 style="font-size: 16px">Incidents</h2><span class="note">From 02-Work/Incidents, Phase 2</span></div>
+<div>0 open. 1 in the last 30 days: duplicate rows in the staging settlement file, Oct 1</div>
+<div class="muted" style="font-size: 13px">Incident report completed Oct 5.</div>
+</div>
+</section>
+</div>
+
+<section class="card">
+<div class="card-head"><h2>What happened on this project, newest first?</h2><span class="note">Jira, GitLab and Calendar rows need Phase 4. Incident rows need Phase 2</span></div>
+<div class="segs" role="group" aria-label="Filter by type" style="margin: 0 20px 14px">
+<sc-for list="{{typeSegs}}" as="f" hint-placeholder-count="9">
+<button class="seg {{f.cls}}" aria-pressed="{{f.pressed}}" onClick="{{f.go}}">{{f.label}} <span class="num">{{f.n}}</span></button>
+</sc-for>
+</div>
+<div class="scroll"><div style="min-width: 680px">
+<div class="row head" style="grid-template-columns: 120px 130px minmax(0, 1fr) 80px"><span>Date</span><span>Type</span><span>Title</span><span>Source</span></div>
+<sc-for list="{{shownEvents}}" as="e" hint-placeholder-count="12">
+<div class="row" style="grid-template-columns: 120px 130px minmax(0, 1fr) 80px">
+<span class="num muted">{{e.when}}</span>
+<span style="font-weight: 600">{{e.type}}</span>
+<span>{{e.title}}</span>
+<span class="muted">{{e.source}}</span>
+</div>
+</sc-for>
+</div></div>
+<sc-if value="{{noEvents}}" hint-placeholder-val="{{false}}"><div class="empty">No activity of this type yet.</div></sc-if>
+</section>
+</div>
+</sc-if>
+
+<!-- ARCHITECTURE -->
+<sc-if value="{{isArch}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; flex-direction: column; gap: 20px">
+<section class="card">
+<div class="card-head"><h2>How does a payment callback flow through IPP?</h2><span class="note">Needs an architecture note per project, Phase 2, not in the plan yet</span></div>
+<div style="display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px; padding: 0 20px 20px">
+<div class="scroll" style="flex: 2 1 560px; min-width: 0">
+<div style="position: relative; width: 936px; height: 280px">
+<svg width="71" height="8" viewBox="0 0 71 8" preserveAspectRatio="none" style="position: absolute; left: 192px; top: 72px; width: 71px; height: 8px; overflow: visible; fill: none; stroke: #7D7D90; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-11" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#7D7D90" stroke="none" style="stroke: none; fill: #7D7D90; fill: context-stroke"/></marker></defs><path d="M 0 4 L 67 4" marker-end="url(#dc-arrow-head-filled-11)"></path></svg>
+<svg width="71" height="8" viewBox="0 0 71 8" preserveAspectRatio="none" style="position: absolute; left: 432px; top: 72px; width: 71px; height: 8px; overflow: visible; fill: none; stroke: #7D7D90; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-12" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#7D7D90" stroke="none" style="stroke: none; fill: #7D7D90; fill: context-stroke"/></marker></defs><path d="M 0 4 L 67 4" marker-end="url(#dc-arrow-head-filled-12)"></path></svg>
+<svg width="8" height="71" viewBox="0 0 8 71" preserveAspectRatio="none" style="position: absolute; left: 344px; top: 112px; width: 8px; height: 71px; overflow: visible; fill: none; stroke: #7D7D90; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-13" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#7D7D90" stroke="none" style="stroke: none; fill: #7D7D90; fill: context-stroke"/></marker></defs><path d="M 4 0 L 4 67" marker-end="url(#dc-arrow-head-filled-13)"></path></svg>
+<svg width="8" height="71" viewBox="0 0 8 71" preserveAspectRatio="none" style="position: absolute; left: 584px; top: 112px; width: 8px; height: 71px; overflow: visible; fill: none; stroke: #7D7D90; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-14" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#7D7D90" stroke="none" style="stroke: none; fill: #7D7D90; fill: context-stroke"/></marker></defs><path d="M 4 0 L 4 67" marker-end="url(#dc-arrow-head-filled-14)"></path></svg>
+<svg width="71" height="8" viewBox="0 0 71 8" preserveAspectRatio="none" style="position: absolute; left: 672px; top: 216px; width: 71px; height: 8px; overflow: visible; fill: none; stroke: #7D7D90; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-15" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#7D7D90" stroke="none" style="stroke: none; fill: #7D7D90; fill: context-stroke"/></marker></defs><path d="M 0 4 L 67 4" marker-end="url(#dc-arrow-head-filled-15)"></path></svg>
+<button class="nodebtn" style="left: 24px; top: 40px; background: {{n1.bg}}; border: {{n1.bw}} {{n1.bs}} {{n1.bc}}" onClick="{{n1.pick}}"><span><b>Provider callback</b><br>External</span></button>
+<button class="nodebtn" style="left: 264px; top: 40px; background: {{n2.bg}}; border: {{n2.bw}} {{n2.bs}} {{n2.bc}}" onClick="{{n2.pick}}"><span><b>Callback handler</b><br>IPP service</span></button>
+<button class="nodebtn" style="left: 504px; top: 40px; background: {{n4.bg}}; border: {{n4.bw}} {{n4.bs}} {{n4.bc}}" onClick="{{n4.pick}}"><span><b>Wallet service</b><br>IPP service</span></button>
+<button class="nodebtn" style="left: 264px; top: 184px; background: {{n3.bg}}; border: {{n3.bw}} {{n3.bs}} {{n3.bc}}" onClick="{{n3.pick}}"><span><b>Idempotency key store</b><br>Proposed, not built</span></button>
+<button class="nodebtn" style="left: 504px; top: 184px; background: {{n5.bg}}; border: {{n5.bw}} {{n5.bs}} {{n5.bc}}" onClick="{{n5.pick}}"><span><b>Settlement file job</b><br>IPP batch job</span></button>
+<button class="nodebtn" style="left: 744px; top: 184px; background: {{n6.bg}}; border: {{n6.bw}} {{n6.bs}} {{n6.bc}}" onClick="{{n6.pick}}"><span><b>Bank SFTP</b><br>External</span></button>
+<div class="lbl" style="left: 208px; top: 48px; width: 40px">POST</div>
+<div class="lbl" style="left: 440px; top: 48px; width: 56px">reserve</div>
+<div class="lbl" style="left: 360px; top: 140px; width: 72px; text-align: left">check key</div>
+<div class="lbl" style="left: 600px; top: 140px; width: 104px; text-align: left">posted debits</div>
+<div class="lbl" style="left: 688px; top: 192px; width: 40px">file</div>
+</div>
+</div>
+<div class="inset" style="flex: 1 1 300px; min-width: 0; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 2px"><h3 style="font-size: 16px">{{node.name}}</h3><span class="muted" style="font-size: 13px">{{node.kind}}. Select another box to switch.</span></div>
+<div><div class="sec-t">Purpose</div><div>{{node.purpose}}</div></div>
+<div><div class="sec-t">Related decisions</div>
+<sc-for list="{{node.decisions}}" as="x" hint-placeholder-count="1"><div>{{x}}</div></sc-for></div>
+<div><div class="sec-t">Related tasks</div>
+<sc-for list="{{node.tasks}}" as="x" hint-placeholder-count="1"><div>{{x}}</div></sc-for></div>
+<div><div class="sec-t">Open risks</div>
+<sc-for list="{{node.risks}}" as="x" hint-placeholder-count="1"><div>{{x}}</div></sc-for></div>
+</div>
+</div>
+</section>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(460px, 100%), 1fr)); gap: 20px; align-items: start">
+<section class="card">
+<div class="card-head"><h2>Technical risks</h2><span class="note">Judged by the architect, not computed</span></div>
+<sc-for list="{{risks}}" as="r" hint-placeholder-count="4">
+<div class="row" style="grid-template-columns: 90px minmax(0, 1fr); align-items: start">
+<span><span class="chip" style="color: {{r.fg}}">{{r.level}}</span></span>
+<div style="display: flex; flex-direction: column"><span>{{r.text}}</span><span class="muted" style="font-size: 13px">Affects: {{r.node}}</span></div>
+</div>
+</sc-for>
+</section>
+<section class="card">
+<div class="card-head"><h2>Open architecture decisions</h2></div>
+<sc-for list="{{openDecisions}}" as="d" hint-placeholder-count="3">
+<div class="row" style="grid-template-columns: 130px minmax(0, 1fr); align-items: start">
+<span><span class="chip" style="color: {{d.fg}}">{{d.status}}</span></span>
+<div style="display: flex; flex-direction: column"><span>{{d.title}}</span><span class="muted" style="font-size: 13px">{{d.detail}}</span></div>
+</div>
+</sc-for>
+</section>
+</div>
+</div>
+</sc-if>
+
+<!-- DOCUMENTS -->
+<sc-if value="{{isDocs}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; flex-direction: column; gap: 20px">
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 20px; align-items: start">
+<sc-for list="{{docGroups}}" as="g" hint-placeholder-count="3">
+<section class="card">
+<div class="card-head"><h2>{{g.label}}</h2><span class="note">{{g.note}}</span></div>
+<div style="padding: 0 16px 16px; display: flex; flex-direction: column; gap: 10px">
+<sc-for list="{{g.docs}}" as="d" hint-placeholder-count="2">
+<div class="inset" style="padding: 14px; display: flex; gap: 12px; align-items: flex-start">
+<span class="icon sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/></svg></span>
+<div style="display: flex; flex-direction: column; gap: 4px; min-width: 0; align-items: flex-start"><strong>{{d.title}}</strong><span class="muted" style="font-size: 13px">{{d.meta}}</span><span class="chip" style="color: {{d.fg}}; background: #1B1B24 !important">{{d.type}}</span></div>
+</div>
+</sc-for>
+</div>
+</section>
+</sc-for>
+</div>
+<div class="note">Documents need notes with a state and a type, Phase 2, not in the plan yet.</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(460px, 100%), 1fr)); gap: 20px; align-items: start">
+<section class="card">
+<div class="card-head"><h2>Decisions</h2><span class="note">From <span class="mono">05-Knowledge/Decisions</span></span></div>
+<sc-for list="{{decisionsAll}}" as="d" hint-placeholder-count="2">
+<div class="row" style="grid-template-columns: 110px minmax(0, 1fr) 56px">
+<span><span class="chip" style="color: {{d.fg}}">{{d.status}}</span></span>
+<span>{{d.title}}</span>
+<span class="num muted">{{d.when}}</span>
+</div>
+</sc-for>
+</section>
+<section class="card">
+<div class="card-head"><h2>Lessons</h2><span class="note">From <span class="mono">05-Knowledge/Lessons</span></span></div>
+<sc-for list="{{lessons}}" as="l" hint-placeholder-count="1">
+<div class="row" style="grid-template-columns: minmax(0, 1fr)">
+<div style="display: flex; flex-direction: column"><strong>{{l.title}}</strong><span class="muted" style="font-size: 13px">{{l.lesson}}</span></div>
+</div>
+</sc-for>
+</section>
+</div>
+
+<section class="card">
+<div class="card-head"><h2>What am I learning because of this project?</h2><span style="display: inline-flex; align-items: center; gap: 12px"><span class="note">Needs learning topics linked to projects, Phase 3</span><a class="btn small" href="Upskilling.dc.html">Open Upskilling</a></span></div>
+<sc-for list="{{learning}}" as="l" hint-placeholder-count="2">
+<div class="row" style="grid-template-columns: 30px minmax(0, 1fr)">
+<span class="icon sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h10"/></svg></span>
+<div style="display: flex; flex-direction: column"><strong>{{l.title}}</strong><span class="muted" style="font-size: 13px">{{l.meta}}</span></div>
+</div>
+</sc-for>
+</section>
+
+<section class="card">
+<div class="card-head"><h2>How does one piece of work connect?</h2><span class="note">One example trail, not the whole graph</span></div>
+<div style="padding: 0 20px 20px; display: flex; flex-direction: column; gap: 10px">
+<div class="trail">
+<sc-for list="{{trail}}" as="t" hint-placeholder-count="6">
+<div class="tw">
+<div class="tnode">
+<span class="muted" style="font-size: 12px; font-weight: 600">{{t.kind}}</span>
+<strong>{{t.title}}</strong>
+<span class="muted" style="font-size: 12px">{{t.note}}</span>
+</div>
+<sc-if value="{{t.hasNext}}" hint-placeholder-val="{{true}}"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></sc-if>
+</div>
+</sc-for>
+</div>
+<div class="muted" style="font-size: 13px">Each link is a <span class="mono">[[wikilink]]</span> in the Markdown, so the chain also works inside Obsidian.</div>
+</div>
+</section>
+</div>
+</sc-if>
+
+</main>
+</div>
+</div>
+
+<sc-if value="{{hasToast}}" hint-placeholder-val="{{false}}">
+<div role="status" style="position: fixed; right: 20px; bottom: 20px; max-width: 420px; padding: 10px 14px; background: #F3F3F8; color: #0F0F14; border-radius: 10px; font-size: 13px">{{toast}}</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1480}}'>
+class Component extends DCLogic {
+  state = { tab: 'overview', node: 'handler', evType: 'all', toast: '' };
+
+  say(msg) {
+    this.setState({ toast: msg });
+    clearTimeout(this._t);
+    this._t = setTimeout(() => this.setState({ toast: '' }), 4500);
+  }
+
+  renderVals() {
+    const s = this.state;
+    const RED = '#FF7D73', GREEN = '#5ED39A', BLUE = '#6EA8FF', VIOLET = '#D2A6FF', GREY = '#A3A3B5', AMBER = '#F5B85C', ACC = '#9B8CFF';
+    const note = ' Prototype only, nothing was written.';
+
+    const tabDefs = [['overview', 'Overview'], ['workflow', 'Workflow'], ['timeline', 'Timeline'], ['architecture', 'Architecture'], ['documents', 'Documents and knowledge']];
+    const tabs = tabDefs.map((t) => ({ label: t[1], cls: s.tab === t[0] ? 'on' : '', pressed: s.tab === t[0], go: () => this.setState({ tab: t[0] }) }));
+
+    // Tasks of this project, same as Main.dc.html
+    const tasks = [{ s: 'planned' }, { s: 'in-progress' }, { s: 'blocked' }, { s: 'done' }];
+    const order = ['inbox', 'planned', 'in-progress', 'review', 'blocked', 'done'];
+    const col = { 'inbox': '#7D7D90', 'planned': GREY, 'in-progress': BLUE, 'review': VIOLET, 'blocked': RED, 'done': GREEN };
+    const counts = order.map((k) => ({ status: k, n: tasks.filter((t) => t.s === k).length, fg: col[k] }));
+    let acc = 0;
+    const stops = [];
+    counts.filter((c) => c.n > 0).forEach((c) => {
+      const a = (acc / tasks.length) * 360, b = ((acc + c.n) / tasks.length) * 360;
+      stops.push(c.fg + ' ' + a + 'deg ' + (b - 2) + 'deg, #1B1B24 ' + (b - 2) + 'deg ' + b + 'deg');
+      acc += c.n;
+    });
+    const donutBg = 'conic-gradient(' + stops.join(', ') + ')';
+
+    const blockers = [{ title: 'Load test wallet reservation path', waitsOn: 'the staging database refresh', owner: 'infra', since: 'Oct 5' }];
+
+    const nextRest = [
+      { text: 'Accept or reject the idempotency key decision', owner: 'raymark' },
+      { text: 'Ask infra for the staging database refresh date', owner: 'raymark asks, infra owns' },
+      { text: 'Write the settlement file rerun runbook', owner: 'raymark, due today' }
+    ];
+
+    const decisionsAll = [
+      { title: 'Use idempotency keys on payment callbacks', status: 'proposed', fg: VIOLET, when: 'Oct 5' },
+      { title: 'Settlement reruns by full file replace', status: 'superseded', fg: GREY, when: 'Sep 18' }
+    ];
+    const lessons = [{ title: 'A retry on a business rejection duplicates the send', lesson: 'Retry only transient failures. Classify the failure before adding a retry.' }];
+    const tickets = [
+      { key: 'IPP-214', title: 'Duplicate settlement rows on retried callback', status: 'In QA', fg: BLUE, task: 'Reproduce duplicate settlement rows' },
+      { key: 'IPP-221', title: 'Confirm provider retry window', status: 'Open', fg: GREY, task: 'no task yet' }
+    ];
+    const learning = [
+      { title: 'Idempotent request handling', meta: 'Learning topic from the duplicate settlement rows. Applies to the callback handler.' },
+      { title: 'Retry classification: transient versus business failures', meta: 'Lesson captured Oct 5. Practice: apply it in the retry change.' }
+    ];
+
+    const events = [
+      { d: 'Oct 6 13:05', type: 'Task', title: 'Updated: Add retry with backoff to payment callback handler', source: 'vault' },
+      { d: 'Oct 6 11:40', type: 'Merge request', title: 'Draft opened: Retry transient callback failures only', source: 'GitLab' },
+      { d: 'Oct 6 09:30', type: 'Meeting', title: 'IPP daily standup', source: 'Calendar' },
+      { d: 'Oct 5 17:06', type: 'Decision', title: 'Superseded: Settlement reruns by full file replace', source: 'vault' },
+      { d: 'Oct 5 17:05', type: 'Decision', title: 'Proposed: Use idempotency keys on payment callbacks', source: 'vault' },
+      { d: 'Oct 5 16:55', type: 'Knowledge', title: 'Lesson: A retry on a business rejection duplicates the send', source: 'vault' },
+      { d: 'Oct 5 16:48', type: 'Task', title: 'Done: Reproduce duplicate settlement rows', source: 'vault' },
+      { d: 'Oct 5 14:30', type: 'Task', title: 'Blocked: Load test wallet reservation path, waiting on staging database refresh', source: 'vault' },
+      { d: 'Oct 5 10:15', type: 'Ticket', title: 'IPP-214 Duplicate settlement rows, moved to In QA', source: 'Jira' },
+      { d: 'Oct 2 16:10', type: 'Task', title: 'Created: Write runbook for settlement file rerun', source: 'vault' },
+      { d: 'Oct 2 14:00', type: 'Deployment', title: 'Callback handler build deployed to staging', source: 'GitLab' },
+      { d: 'Oct 1 18:20', type: 'Incident', title: 'Duplicate rows in the staging settlement file', source: 'vault' }
+    ];
+    const recent = events.slice(0, 5).map((e) => ({ when: e.d, title: e.title, source: e.source }));
+    const types = ['all', 'Task', 'Decision', 'Knowledge', 'Ticket', 'Merge request', 'Meeting', 'Deployment', 'Incident'];
+    const typeSegs = types.map((k) => ({
+      label: k === 'all' ? 'All types' : k, n: k === 'all' ? events.length : events.filter((e) => e.type === k).length,
+      cls: s.evType === k ? 'on' : '', pressed: s.evType === k, go: () => this.setState({ evType: k })
+    }));
+    const shown = events.filter((e) => s.evType === 'all' || e.type === s.evType).map((e) => ({ when: e.d, type: e.type, title: e.title, source: e.source }));
+
+    // Milestones: day 5..15 mapped to 10%..90%
+    const pos = (day) => (10 + (day - 5) * 8) + '%';
+    const ticks = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].map((d) => ({ left: pos(d), text: d === 6 ? 'Today' : String(d), fw: d === 6 ? 700 : 400, fg: d === 6 ? ACC : GREY }));
+    const milestones = [
+      { left: pos(6), top: '16px', title: 'Settlement rerun runbook due', sub: 'Oct 6, task due date', fill: ACC, fg: ACC },
+      { left: pos(7), top: '104px', title: 'Retry fix due', sub: 'Oct 7, task due date', fill: ACC, fg: ACC },
+      { left: pos(9), top: '16px', title: 'Load test due', sub: 'Oct 9, blocked', fill: '#3A2422', fg: RED },
+      { left: pos(14), top: '104px', title: 'Production release', sub: 'Oct 14, Estimated', fill: '#1B1B24', fg: GREY }
+    ];
+
+    const items = [
+      { title: 'Add retry with backoff to payment callback handler', kind: 'Task, in-progress', stage: 'Implementation', fg: BLUE, fail: 'Testing failed: retried callback wrote the settlement row twice', failFg: RED, rework: '1', blocker: 'None', blockFg: GREY, action: 'Add the idempotency-key check before the write, rerun the staging test. raymark' },
+      { title: 'Load test wallet reservation path', kind: 'Task, blocked', stage: 'Testing', fg: RED, fail: 'N/A', failFg: GREY, rework: '0', blocker: 'Staging database refresh', blockFg: RED, action: 'Ask infra for a refresh date. raymark asks, infra owns' },
+      { title: 'Use idempotency keys on payment callbacks', kind: 'Decision, proposed', stage: 'Architecture', fg: VIOLET, fail: 'N/A', failFg: GREY, rework: '0', blocker: 'Pending your approval', blockFg: VIOLET, action: 'Accept or reject the decision. raymark' },
+      { title: 'Write runbook for settlement file rerun', kind: 'Task, planned', stage: 'Planning', fg: GREY, fail: 'N/A', failFg: GREY, rework: '0', blocker: 'None', blockFg: GREY, action: 'Start the draft, due today. raymark' },
+      { title: 'Reproduce duplicate settlement rows', kind: 'Task, done', stage: 'Complete', fg: GREEN, fail: 'N/A', failFg: GREY, rework: '0', blocker: 'None', blockFg: GREY, action: 'None' }
+    ];
+
+    const nodes = {
+      provider: { name: 'Provider callback', kind: 'External system', purpose: 'The payment provider posts an event to IPP when a payment succeeds, fails or is reversed. It retries when it does not get a 200.', decisions: ['Ask the provider for a stable event id (change request, draft)'], tasks: ['None directly'], risks: ['Provider retries are outside our control, so every duplicate must be absorbed on our side.'] },
+      handler: { name: 'Callback handler', kind: 'IPP service', purpose: 'Receives provider callbacks, checks the idempotency key, reserves the wallet and writes the settlement row.', decisions: ['Use idempotency keys on payment callbacks (proposed)', 'A retry on a business rejection duplicates the send (lesson)'], tasks: ['Add retry with backoff to payment callback handler (in-progress, rework 1)'], risks: ['Retried callback wrote the settlement row twice on staging.', 'Retrying a business rejection duplicates the send.'] },
+      store: { name: 'Idempotency key store', kind: 'Proposed, not built', purpose: 'Remembers each callback key for a fixed time so a repeated callback is answered without writing again.', decisions: ['Use idempotency keys on payment callbacks (proposed)', 'Key store location and expiry (open question)'], tasks: ['None yet. Created after the decision is accepted.'], risks: ['A key that expires before the provider stops retrying lets a duplicate through.'] },
+      wallet: { name: 'Wallet service', kind: 'IPP service', purpose: 'Reserves and debits the wallet balance for a payment.', decisions: ['None recorded'], tasks: ['Load test wallet reservation path (blocked, staging database refresh)'], risks: ['Reservation path is untested at expected peak.'] },
+      job: { name: 'Settlement file job', kind: 'IPP batch job', purpose: 'Builds the daily settlement file from posted debits and delivers it to the bank.', decisions: ['Settlement reruns by full file replace (superseded)'], tasks: ['Write runbook for settlement file rerun (planned)', 'Reproduce duplicate settlement rows (done)'], risks: ['No written rerun procedure once idempotency keys exist.'] },
+      bank: { name: 'Bank SFTP', kind: 'External system', purpose: 'Receives the settlement file. A wrong or duplicate file here is a financial error, not a bug.', decisions: ['None recorded'], tasks: ['None directly'], risks: ['Duplicate rows reach the bank if a file is built before the fix ships.'] }
+    };
+    const node = nodes[s.node];
+    const nv = (k, proposed, external) => ({
+      bc: s.node === k ? ACC : (proposed ? '#7D7D90' : '#2F2F3D'), bs: proposed && s.node !== k ? 'dashed' : 'solid', bw: s.node === k ? '2px' : '1px',
+      bg: external ? '#15151C' : '#242430', pick: () => this.setState({ node: k })
+    });
+
+    const risks = [
+      { level: 'High', fg: RED, text: 'A retried callback can write a settlement row twice until idempotency keys ship.', node: 'Callback handler' },
+      { level: 'Medium', fg: AMBER, text: 'A key that expires before the provider stops retrying lets a duplicate through.', node: 'Idempotency key store' },
+      { level: 'Medium', fg: AMBER, text: 'The reservation path has not been measured at expected peak.', node: 'Wallet service' },
+      { level: 'Medium', fg: AMBER, text: 'No written way to rerun a settlement file safely once keys exist.', node: 'Settlement file job' }
+    ];
+    const openDecisions = [
+      { status: 'proposed', fg: VIOLET, title: 'Use idempotency keys on payment callbacks', detail: 'Vault note, proposed Oct 5. Waiting for your approval.' },
+      { status: 'Not recorded', fg: GREY, title: 'Where idempotency keys live and how long they last', detail: 'Open question from the proposal. No decision note yet.' },
+      { status: 'Not recorded', fg: GREY, title: 'How settlement files are rerun once keys exist', detail: 'The old rule was superseded. No replacement note yet.' }
+    ];
+
+    const TD = BLUE, CR = AMBER, IR = RED;
+    const docGroups = [
+      { label: 'Draft', note: '2 documents', docs: [
+        { title: 'Callback idempotency key store', type: 'Technical design', fg: TD, meta: 'Updated Oct 6' },
+        { title: 'Provider sends a stable event id on every callback', type: 'Change request', fg: CR, meta: 'Updated Oct 5. For the provider account manager' }] },
+      { label: 'In review', note: '1 document', docs: [
+        { title: 'Retry policy for payment callbacks', type: 'Technical design', fg: TD, meta: 'With QA since Oct 3' }] },
+      { label: 'Done', note: '2 documents', docs: [
+        { title: 'Duplicate settlement rows on retried callback', type: 'Incident report', fg: IR, meta: 'Completed Oct 5' },
+        { title: 'Settlement file format and delivery', type: 'Technical design', fg: TD, meta: 'Completed Sep 18' }] }
+    ];
+    const trail0 = [
+      { kind: 'Project', title: 'IPP', note: 'Vault' },
+      { kind: 'Task', title: 'Reproduce duplicate settlement rows', note: 'Vault, done Oct 5' },
+      { kind: 'Ticket', title: 'IPP-214 Duplicate settlement rows', note: 'Jira, Phase 4' },
+      { kind: 'Document', title: 'Incident report: duplicate settlement rows', note: 'Vault, Phase 2' },
+      { kind: 'Decision', title: 'Use idempotency keys on payment callbacks', note: 'Vault, proposed' },
+      { kind: 'Knowledge', title: 'A retry on a business rejection duplicates the send', note: 'Vault, lesson' }
+    ];
+    const trail = trail0.map((t, i) => ({ kind: t.kind, title: t.title, note: t.note, hasNext: i < trail0.length - 1 }));
+
+    return {
+      tabs: tabs, isOverview: s.tab === 'overview', isWorkflow: s.tab === 'workflow', isTimeline: s.tab === 'timeline', isArch: s.tab === 'architecture', isDocs: s.tab === 'documents',
+      taskTotal: tasks.length, openCount: tasks.filter((t) => t.s !== 'done').length, counts: counts, donutBg: donutBg,
+      blockers: blockers, blockerCount: blockers.length, nextRest: nextRest, tickets: tickets, learning: learning,
+      decisionsRecent: decisionsAll, decisionsAll: decisionsAll, lessons: lessons, recent: recent, ticks: ticks, milestones: milestones,
+      items: items, typeSegs: typeSegs, shownEvents: shown, noEvents: shown.length === 0,
+      node: node, n1: nv('provider', false, true), n2: nv('handler', false, false), n3: nv('store', true, false), n4: nv('wallet', false, false), n5: nv('job', false, false), n6: nv('bank', false, true),
+      risks: risks, openDecisions: openDecisions, docGroups: docGroups, trail: trail,
+      qaTask: () => this.say('Would create 02-Work/Tasks/Untitled task.md with project: IPP.' + note),
+      qaDecision: () => this.say('Would create 05-Knowledge/Decisions/Untitled decision.md with project: IPP.' + note),
+      qaFollow: () => this.say('Would create 02-Work/Follow-ups/Untitled follow-up.md linked to [[IPP]].' + note),
+      qaDoc: () => this.say('Would create 04-Documents/Untitled document.md with project: IPP.' + note),
+      toast: s.toast, hasToast: !!s.toast
+    };
+  }
+}
+</script>
+</body>
+</html>
