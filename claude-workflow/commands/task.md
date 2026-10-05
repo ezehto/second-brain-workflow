@@ -26,21 +26,26 @@ the title (or, with `status:`, the title or path of an existing task).
 
 ## Steps for both forms
 
-Do these in order. Do not skip ahead.
+Do these in order. Do not skip ahead. Use Bash only for the `env` call and for
+plain `ls` commands, each as its own call with nothing added (no `cd`, `;`,
+`&&`, pipes, loops or variables). Read every file with the Read tool, one file
+per call.
 
 1. Load the `second-brain` skill with the Skill tool, before anything else. Follow
    it for every rule this file does not state.
-2. Resolve the vault path and today's date as the skill's "Vault path and
-   today's date" section says, before you read anything in the vault. Run each
-   shell command exactly as the skill writes it, one command per Bash call, with
-   nothing added before or after it (no pipes, no `;`, no `&&`, no
-   redirection). If that section tells you to stop, stop at once: write
-   nothing, and tell the user which setting stopped you, by its name.
+2. Run the skill's `env` call, as its "Vault path and today's date" section
+   says, before you read anything in the vault: exactly as written there, once,
+   as a single Bash call with nothing added before or after it. If it prints a
+   line starting `refused:`, report that line to the user, write nothing, and
+   stop. Otherwise use its `vault`, `today` and `now` lines; `<vault>` below
+   means the `vault` line. Run no other command to find a path, a date or a
+   time.
 3. Continue with the steps for the form you found.
 
 ## New task
 
-1. Check every option before writing anything. On any problem below, write
+1. Check every option before writing anything. Relative dates resolve
+   against `today`. On any problem below, write
    nothing, say what is wrong, and stop.
    - `priority:` must be `low`, `medium` or `high`.
    - `due:` follows the skill's "Dates given to a command" rule. A date that is
@@ -51,25 +56,23 @@ Do these in order. Do not skip ahead.
      as `reference/links.md` says ("Project values and slugs"). No match: list
      the known projects by title and ask. More than one match: list them and
      ask.
-2. Read the time of day once, as the skill's "Time of day" rule says, for the
-   `id`.
-3. Sanitise the title into a file name (`reference/naming.md`). List
+2. Sanitise the title into a file name (`reference/naming.md`). List
    `02-Work/Tasks` with `ls "<vault>/02-Work/Tasks"`. If a file of that name
    exists, ignoring case, write nothing and ask for a different title.
-4. If a project was given, decide its link as `reference/links.md` "Emitted
+3. If a project was given, decide its link as `reference/links.md` "Emitted
    links" says. To see every note's stem, run `ls -R "<vault>"` once and read
    `<vault>/.sbignore` if it exists; skip the ignored paths that
    `reference/conventions.md` lists. The value is
    `project: "[[<Project title>]]"`, or the folder-qualified form when the stem
    is not unique.
-5. Read the template `<vault>/08-System/Templates/task.md` and render it as
-   `reference/templates.md` says. Then set only the keys the user gave:
+4. Read the template `<vault>/08-System/Templates/task.md` and render it as
+   `reference/templates.md` says, with `now` as the `id`. Then set only the keys the user gave:
    `project`, `due` (as `YYYY-MM-DD`) and `priority`, each on its existing
    template line. Every other key, heading and line stays exactly as the
    template has it. If the template has no line for a key the user gave, write
    nothing and tell the user.
-6. Write the note with the Write tool to `<vault>/02-Work/Tasks/<file name>`.
-7. Reply with the vault-relative path and the values you set. If `due:` was a
+5. Write the note with the Write tool to `<vault>/02-Work/Tasks/<file name>`.
+6. Reply with the vault-relative path and the values you set. If `due:` was a
    relative expression, state the date it resolved to as `YYYY-MM-DD`.
 
 ## Status change
