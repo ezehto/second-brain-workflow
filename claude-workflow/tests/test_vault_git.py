@@ -2016,7 +2016,7 @@ def test_nested_repository_in_an_ignored_folder_is_allowed(vg, vault, capsys):
 def test_nested_repository_message_offers_gitignore(vg, vault, capsys):
     make_repo(vault / "projects" / "inner")
     code, _, err = run(vg, capsys, "commit-eod", TODAY)
-    assert code == 1 and ".gitignore" in err and "projects/inner/" in err
+    assert code == 1 and "add the line /projects/inner/ to the vault's .gitignore" in err
     assert "mv " in err
 
 
@@ -2052,3 +2052,103 @@ def test_detached_head_warns_that_commits_would_be_left_behind(vg, vault, capsys
     git(vault, "checkout", "-q", "--detach")
     code, _, err = run(vg, capsys, "commit-eod", TODAY)
     assert code == 1 and "switch main" in err and "left behind" in err
+
+
+# ============================================ review round 4: final items
+
+
+@pytest.mark.parametrize("folder", ["*", "[ab]", "!keep", "#notes", "a?b", "x\\y"])
+def test_gitignore_line_is_offered_only_for_ordinary_names(vg, vault, capsys, folder):
+    make_repo(vault / folder)
+    code, _, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 1 and "nested git repository" in err
+    assert ".gitignore" not in err
+    assert "mv " in err
+
+
+def test_gitignore_line_is_anchored_for_ordinary_names(vg, vault, capsys):
+    make_repo(vault / "Projects 2026" / "my_repo.v2-old")
+    code, _, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 1
+    assert "add the line /Projects 2026/my_repo.v2-old/ to the vault's .gitignore" in err
+
+
+def _message(repo):
+    return git(repo, "log", "-1", "--format=%B").rstrip("\n") + "\n"
+
+
+def test_marked_lines_are_recorded_as_a_trailer(vg, vault, capsys):
+    (vault / "note.md").write_text(
+        "intro\n"
+        f"token: {FILLER} <!-- sbw: not-a-secret -->\n"
+        "plain\n"
+        f"pwd: {FILLER}  # sbw: not-a-secret\n")
+    code, out, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 0, err
+    assert _message(vault) == f"eod: {TODAY}\n\nUnscanned-lines: note.md:2, note.md:4\n"
+    assert run(vg, capsys, "head-subject") == (0, f"eod: {TODAY}\n", "")
+    assert FILLER not in _message(vault)
+
+
+def test_no_trailer_without_marked_lines(vg, vault, capsys):
+    (vault / "note.md").write_text("x\n")
+    assert run(vg, capsys, "commit-eod", TODAY)[0] == 0
+    assert _message(vault) == f"eod: {TODAY}\n"
+
+
+def test_amend_keeps_and_extends_the_trailer(vg, vault, capsys):
+    mark = "<!-- sbw: not-a-secret -->"
+    (vault / "a.md").write_text(f"token: {FILLER} {mark}\n")
+    assert run(vg, capsys, "commit-eod", TODAY)[0] == 0
+    (vault / "b.md").write_text(f"intro\nsecret: {FILLER} {mark}\n")
+    code, out, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 0, err
+    assert out.startswith(f"amended: eod: {TODAY}")
+    assert _message(vault) == f"eod: {TODAY}\n\nUnscanned-lines: a.md:1, b.md:2\n"
+    assert "a.md:1, b.md:2" in out
+    assert subjects(vault) == [f"eod: {TODAY}", "Initialize vault"]
+    # The amend rule compares the subject only, so a third run amends again.
+    (vault / "c.md").write_text("plain\n")
+    code, out, _ = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 0 and out.startswith(f"amended: eod: {TODAY}")
+    assert _message(vault).endswith("Unscanned-lines: a.md:1, b.md:2\n")
+    assert len(subjects(vault)) == 2
+
+
+def test_trailer_lists_ten_then_how_many_more(vg, vault, capsys):
+    mark = "<!-- sbw: not-a-secret -->"
+    (vault / "n.md").write_text("".join(f"token: {FILLER} {mark}\n" for _ in range(12)))
+    assert run(vg, capsys, "commit-eod", TODAY)[0] == 0
+    trailer = _message(vault).splitlines()[-1]
+    assert trailer.startswith("Unscanned-lines: n.md:1, ")
+    assert "n.md:10, and 2 more" in trailer and "n.md:11" not in trailer
+
+
+def test_trailer_withholds_a_name_the_scan_withholds(vg, vault, capsys):
+    name = "token=Zq8vLm3Kp9Wx.md"
+    (vault / "02-Work").mkdir()
+    (vault / "02-Work" / name).write_text(f"token: {FILLER} <!-- sbw: not-a-secret -->\n")
+    code, out, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 1  # the name itself still refuses
+    assert "Zq8vLm3Kp9Wx" not in out + err
+    labels = vg._scan(vg.open_vault(True))[1]
+    assert labels == ["02-Work/<name withheld>:1"]
+
+
+def test_mount_inside_git_is_refused(vg, vault, capsys, monkeypatch):
+    real_lstat = os.lstat
+    mounted = str(vault / ".git" / "refs")
+
+    def lstat(path, *args, **kwargs):
+        result = real_lstat(path, *args, **kwargs)
+        if os.fsdecode(path) == mounted:
+            values = list(result)
+            values[stat.ST_DEV] = result.st_dev + 1
+            return os.stat_result(values)
+        return result
+
+    monkeypatch.setattr(os, "lstat", lstat)
+    (vault / "a.md").write_text("x\n")
+    code, _, err = run(vg, capsys, "commit-eod", TODAY)
+    assert code == 1 and "different filesystem" in err and err.count("\n") == 1
+    assert subjects(vault) == ["Initialize vault"]

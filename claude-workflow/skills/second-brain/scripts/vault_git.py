@@ -391,6 +391,7 @@ def _walk_git_dir(gitdir: str):
     followed. Objects are exempt: git hard-links them itself and never
     rewrites one."""
     objects = gitdir + "/objects"
+    device = os.lstat(gitdir).st_dev
     stack = [gitdir]
     while stack:
         with os.scandir(stack.pop()) as entries:
@@ -398,6 +399,10 @@ def _walk_git_dir(gitdir: str):
                 if entry.is_symlink():
                     return entry.path, "symbolic"
                 if entry.is_dir(follow_symlinks=False):
+                    # A mount inside .git is not a link, but git would write
+                    # onto another filesystem through it.
+                    if os.lstat(entry.path).st_dev != device:
+                        return entry.path, "mount"
                     stack.append(entry.path)
                 elif entry.is_file(follow_symlinks=False):
                     if entry.stat(follow_symlinks=False).st_nlink > 1 and \
@@ -411,6 +416,10 @@ def _check_no_links(vault: str) -> None:
     if found is None:
         return
     link, kind = found
+    if kind == "mount":
+        raise Refusal(f"{_escape(link)} is on a different filesystem (a mount inside .git),"
+                      " so git would write outside the vault; unmount it in a terminal:"
+                      f" {_shell('umount', link)}")
     if kind == "symbolic":
         raise Refusal(f"{_escape(link)} is a symbolic link, which git would follow out of"
                       f" the vault; inspect it, then remove it in a terminal: {_shell('rm', link)}")
@@ -630,11 +639,15 @@ def _check_no_nested_repo(repo: Repo) -> None:
                     if _is_ignored(repo, rel):
                         break
                     move = _shell("mv", current, os.path.dirname(repo.path))
+                    # A .gitignore line is offered only for ordinary names: "*",
+                    # "[ab]", "!x" or "#x" would mean something else there.
+                    ignore = ""
+                    if re.fullmatch(r"[A-Za-z0-9 ._/-]+", rel):
+                        ignore = f", or add the line /{rel}/ to the vault's .gitignore"
                     raise Refusal(
                         f"a nested git repository is at {_escape(rel)}; git would record"
                         " it as a pointer, not its files. Move it out of the vault in a"
-                        f" terminal ({move}), or add the line {_escape(rel)}/ to the"
-                        " vault's .gitignore")
+                        f" terminal ({move}){ignore}")
                 if entry.is_dir(follow_symlinks=False):
                     stack.append(entry.path)
 
@@ -864,18 +877,19 @@ def _name_kinds(path: str):
     return None, []
 
 
-def _scan(repo: Repo):
-    """Scan the added lines and added file names.
-    Returns (entries for a refusal, labels of marked lines)."""
+def _scan(repo: Repo, base: str = None):
+    """Scan the added lines and added file names of the index against base
+    (default HEAD). Returns (entries for a refusal, labels of marked lines)."""
+    against = [base] if base else []
     _, numstat = repo.run(["diff", "--cached", *DIFF_SAFETY, "--numstat", "--no-renames",
-                           "-z"])
+                           "-z", *against])
     binary = frozenset(_decode(rec.split(b"\t", 2)[2]) for rec in numstat.split(b"\0")
                        if rec.startswith(b"-\t-\t"))
     _, diff = repo.run(["diff", "--cached", *DIFF_SAFETY, "--src-prefix=a/",
-                        "--dst-prefix=b/", "--text", "--no-renames", "--unified=1"])
+                        "--dst-prefix=b/", "--text", "--no-renames", "--unified=1", *against])
     found, marked = scan_diff(diff, binary)
     _, added = repo.run(["diff", "--cached", *DIFF_SAFETY, "--name-only",
-                         "--diff-filter=A", "--no-renames", "-z"])
+                         "--diff-filter=A", "--no-renames", "-z", *against])
     hidden, entries = {}, []
     for raw in added.split(b"\0"):
         name = _decode(raw)
@@ -938,13 +952,14 @@ def commit_eod(repo: Repo, date: str) -> int:
     if has_head and _index_equals(repo, "HEAD"):
         print(nothing)
         return 0
-    undone = False
+    undone, parent = False, None
     if amend:
         code, _ = repo.run(["rev-parse", "--verify", "--quiet", "HEAD^1^{commit}"],
                            ok=(0, 1))
+        parent = "HEAD^1" if code == 0 else None
         # Everything changed today was undone: the day's commit is amended to
         # match the tree, the one case where an empty amend is allowed.
-        undone = _index_equals(repo, "HEAD^1" if code == 0 else None)
+        undone = _index_equals(repo, parent)
     entries, marked = _scan(repo)
     if entries:
         listed = ", ".join(entries[:MAX_LISTED])
@@ -953,9 +968,21 @@ def commit_eod(repo: Repo, date: str) -> int:
         raise Refusal(f"the secret scan matched: {listed}. Nothing was committed and the"
                       " changes stay staged. Ask the user to remove the value, or, if it"
                       " is not a secret, to mark the line themselves; then run /eod again")
+    if amend:
+        # The trailer covers the amended commit's whole diff against its
+        # parent, so an earlier run's marked lines are kept.
+        if parent is None:
+            _, empty = repo.run(["hash-object", "-t", "tree", "/dev/null"])
+            parent = _decode(empty).strip()
+        marked = _scan(repo, base=parent)[1]
+    listed = ", ".join(marked[:MAX_LISTED])
+    if len(marked) > MAX_LISTED:
+        listed += f", and {len(marked) - MAX_LISTED} more"
     _check_no_links(repo.path)  # again, immediately before git writes under .git
     args = ["commit", "--quiet", "--no-verify", "--no-gpg-sign", "--cleanup=verbatim",
             "-m", message]
+    if marked:
+        args += ["-m", f"Unscanned-lines: {listed}"]
     if amend:
         args += ["--amend", "--no-post-rewrite"]
     if undone:
@@ -967,9 +994,6 @@ def commit_eod(repo: Repo, date: str) -> int:
     else:
         print(f"{'amended' if amend else 'committed'}: {message}")
     if marked:
-        listed = ", ".join(marked[:MAX_LISTED])
-        if len(marked) > MAX_LISTED:
-            listed += f", and {len(marked) - MAX_LISTED} more"
         print(f"lines the user marked not-a-secret were committed unscanned: {listed}")
     return 0
 

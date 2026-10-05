@@ -1076,7 +1076,15 @@ Rules the script enforces itself, whatever the caller says:
     content, `# sbw: not-a-secret` at the end of the line is accepted too. A
     successful commit that contains added lines carrying the marker says so
     and lists them (`file:line`, never the text), so a marker cannot pass
-    unnoticed.
+    unnoticed. The same list is written into the commit message body as a
+    trailer, `Unscanned-lines: note.md:2, note.md:4` (the subject stays
+    exactly `eod: YYYY-MM-DD`), so it is visible in `git log` whatever a
+    session reports.
+  - *Withheld names.* A file name the scan flags is withheld only in the
+    secret-scan refusal and the marked-lines report. `status`, `staged-diff`
+    and every other refusal print paths as they are.
+  - *Mounts.* A directory under `.git` on a different filesystem from `.git`
+    itself is refused.
   - *All undone.* When everything changed today was undone again, the day's
     commit is amended to match the tree (an empty amend is allowed in this one
     case) and the output says so; it is not reported as "nothing to commit",
