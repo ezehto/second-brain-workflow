@@ -654,8 +654,9 @@ commands, the backend and the e2e stack.
   case, a dot segment, a doubled slash or a symlink anywhere in the path cannot
   pass. A `SECOND_BRAIN_TODAY` that is not a valid `YYYY-MM-DD` date also stops
   the command.
-  The backend logs a warning at startup and reports `test_mode: true` and the
-  pinned date in `/api/index/status/`. `web-app/scripts/check_compose.sh` fails if
+  The backend logs a warning at startup and reports `test_mode` in
+  `/api/index/status/` as `{"today": "<pinned date>"}` when test mode is on and
+  `null` otherwise. `web-app/scripts/check_compose.sh` fails if
   `.env` or `.env.example` sets either variable; only `.env.e2e` and the test
   harness set them.
 - **Who uses it:** the command harness (P1-10) sets both, with the fixture's

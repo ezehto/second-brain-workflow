@@ -1,0 +1,1869 @@
+openapi: 3.0.3
+info:
+  title: Second Brain API
+  version: 1.0.0
+  description: Session-authenticated JSON API over the indexed vault. Unsafe methods
+    need the CSRF token header. The committed openapi.yaml is the contract (plan section
+    5).
+paths:
+  /api/auth/csrf/:
+    get:
+      operationId: auth_csrf
+      description: Sets the `csrftoken` cookie. No body is returned.
+      summary: Set the CSRF cookie
+      tags:
+      - auth
+      responses:
+        '204':
+          description: No response body
+        '501':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/auth/login/:
+    post:
+      operationId: auth_login
+      description: 'Starts a session. No session is needed, but **CSRF is required**:
+        send the `X-CSRFToken` header with the value of the cookie set by `GET /api/auth/csrf/`.
+        Throttled to 5 attempts per minute. A wrong username or password gives the
+        same 400 either way.'
+      summary: Session login
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '501':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/auth/logout/:
+    post:
+      operationId: auth_logout
+      summary: End the session
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+        '501':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/auth/me/:
+    get:
+      operationId: auth_me
+      summary: Current user name
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+          description: ''
+        '501':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/captures/:
+    post:
+      operationId: captures_create
+      description: Creates a `capture` note from `text`.
+      summary: Quick capture
+      tags:
+      - captures
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CaptureRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteSummary'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '501':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/captures/triage/:
+    post:
+      operationId: captures_triage
+      description: Checks `expected_hash` first, then writes the target note, then
+        edits the capture. If the capture edit fails, the `409` or `422` body carries
+        `created_target`; retry with `existing_target` set to that path, which skips
+        creation, passes the path through the writer's path confinement (`400` when
+        it fails) and checks the target exists before editing the capture. `classification`
+        is required unless the action is `dismiss`.
+      summary: Triage a capture
+      tags:
+      - captures
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TriageRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TriageResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartialTriageError'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartialTriageError'
+          description: ''
+        '501':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/dashboard/:
+    get:
+      operationId: dashboard
+      description: Today's tasks, in progress, blocked, overdue, today's standup,
+        recent activity, active projects, the inbox count and a small index summary.
+      summary: Dashboard aggregates
+      tags:
+      - dashboard
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dashboard'
+          description: ''
+        '501':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/health/:
+    get:
+      operationId: health
+      description: Liveness plus database reachability. The body never says more than
+        ok or error.
+      summary: Liveness and database reachability
+      tags:
+      - health
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+          description: ''
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+          description: ''
+  /api/index/refresh/:
+    post:
+      operationId: index_refresh
+      description: Returns the summary of the pass; read `GET /api/index/status/`
+        for state.
+      summary: Run one sync pass now
+      tags:
+      - index
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshSummary'
+          description: ''
+        '501':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/index/status/:
+    get:
+      operationId: index_status
+      summary: Index status
+      tags:
+      - index
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IndexStatus'
+          description: ''
+        '501':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/notes/:
+    get:
+      operationId: notes_list
+      description: Filters combine with AND. Ordering defaults to `-modified`; every
+        ordering ends with `path`. Paginated with `page` and `page_size` (default
+        50, at most 200).
+      summary: List notes
+      parameters:
+      - in: query
+        name: due_after
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: due_before
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: has_parse_error
+        schema:
+          type: boolean
+      - in: query
+        name: ordering
+        schema:
+          enum:
+          - -modified
+          - due
+          - title
+          - path
+          type: string
+          minLength: 1
+        description: |-
+          Default `-modified`. Every ordering ends with `path`.
+
+          * `-modified` - -modified
+          * `due` - due
+          * `title` - title
+          * `path` - path
+      - in: query
+        name: overdue
+        schema:
+          type: boolean
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+      - in: query
+        name: path_prefix
+        schema:
+          type: string
+          maxLength: 200
+          minLength: 1
+      - in: query
+        name: priority
+        schema:
+          enum:
+          - low
+          - medium
+          - high
+          type: string
+          minLength: 1
+        description: |-
+          * `low` - low
+          * `medium` - medium
+          * `high` - high
+      - in: query
+        name: project
+        schema:
+          type: string
+          maxLength: 200
+          minLength: 1
+        description: Project slug.
+      - in: query
+        name: status
+        schema:
+          type: array
+          items:
+            type: string
+        description: Repeatable.
+      - in: query
+        name: tag
+        schema:
+          type: string
+          maxLength: 255
+          minLength: 1
+      - in: query
+        name: type
+        schema:
+          type: string
+          maxLength: 255
+          minLength: 1
+      tags:
+      - notes
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedNoteSummaryList'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '501':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+    post:
+      operationId: notes_create
+      description: '`409` on a same-folder name collision; `422` for an unknown project.
+        Implemented in P1-28.'
+      summary: Create a note from a template
+      tags:
+      - notes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateNoteRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteSummary'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '501':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/notes/lookup/:
+    get:
+      operationId: notes_lookup
+      description: Exactly one of `path` and `id`. An `id` matching several notes
+        returns `409` with the candidate paths.
+      summary: One note by path or id
+      parameters:
+      - in: query
+        name: id
+        schema:
+          type: string
+          maxLength: 255
+          minLength: 1
+        description: The `id` frontmatter value.
+      - in: query
+        name: path
+        schema:
+          type: string
+          maxLength: 200
+          minLength: 1
+        description: Vault-relative path.
+      tags:
+      - notes
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteDetail'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AmbiguousLookupError'
+          description: ''
+        '501':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/notes/status/:
+    post:
+      operationId: notes_status
+      description: Validates the status against the vocabulary of the note's type.
+        `409` on a hash mismatch, `422` on malformed frontmatter or a status outside
+        the vocabulary. Implemented in P1-28.
+      summary: Change a note's status
+      tags:
+      - notes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StatusChangeRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteDetail'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '501':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/projects/:
+    get:
+      operationId: projects_list
+      description: Project notes with slug, status and open-task count. Not paginated.
+      summary: Projects
+      tags:
+      - projects
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProjectSummary'
+          description: ''
+        '501':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/projects/{slug}/:
+    get:
+      operationId: projects_detail
+      description: The project note, its open tasks, decisions and recent notes.
+      summary: One project
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - projects
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectDetail'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '501':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/schema/:
+    get:
+      operationId: schema_retrieve
+      description: |-
+        OpenApi3 schema for this API. Format can be selected via content negotiation.
+
+        - YAML: application/vnd.oai.openapi
+        - JSON: application/vnd.oai.openapi+json
+      parameters:
+      - in: query
+        name: format
+        schema:
+          type: string
+          enum:
+          - json
+          - yaml
+      - in: query
+        name: lang
+        schema:
+          type: string
+          enum:
+          - af
+          - ar
+          - ar-dz
+          - ast
+          - az
+          - be
+          - bg
+          - bn
+          - br
+          - bs
+          - ca
+          - ckb
+          - cs
+          - cy
+          - da
+          - de
+          - dsb
+          - el
+          - en
+          - en-au
+          - en-gb
+          - eo
+          - es
+          - es-ar
+          - es-co
+          - es-mx
+          - es-ni
+          - es-ve
+          - et
+          - eu
+          - fa
+          - fi
+          - fr
+          - fy
+          - ga
+          - gd
+          - gl
+          - he
+          - hi
+          - hr
+          - hsb
+          - hu
+          - hy
+          - ia
+          - id
+          - ig
+          - io
+          - is
+          - it
+          - ja
+          - ka
+          - kab
+          - kk
+          - km
+          - kn
+          - ko
+          - ky
+          - lb
+          - lt
+          - lv
+          - mk
+          - ml
+          - mn
+          - mr
+          - ms
+          - my
+          - nb
+          - ne
+          - nl
+          - nn
+          - os
+          - pa
+          - pl
+          - pt
+          - pt-br
+          - ro
+          - ru
+          - sk
+          - sl
+          - sq
+          - sr
+          - sr-latn
+          - sv
+          - sw
+          - ta
+          - te
+          - tg
+          - th
+          - tk
+          - tr
+          - tt
+          - udm
+          - ug
+          - uk
+          - ur
+          - uz
+          - vi
+          - zh-hans
+          - zh-hant
+      tags:
+      - schema
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/vnd.oai.openapi:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/yaml:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/vnd.oai.openapi+json:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/search/:
+    get:
+      operationId: search
+      description: Full-text search (`simple` configuration) plus trigram title match.
+        Ties are ordered by `path`. `400` when `q` is missing or blank. Not paginated.
+      summary: Search the vault
+      parameters:
+      - in: query
+        name: q
+        schema:
+          type: string
+          maxLength: 500
+          minLength: 1
+        description: Search text.
+        required: true
+      tags:
+      - search
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '501':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/standups/today/:
+    get:
+      operationId: standups_today_get
+      description: '`200` with `exists: true` and `untouched` when the note exists;
+        `404` with `exists: false` and the carry-forward preview when it does not.'
+      summary: Today's daily note
+      tags:
+      - standups
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandupExisting'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandupMissing'
+          description: ''
+        '501':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+    post:
+      operationId: standups_today_start
+      description: 'Runs one sync pass under the advisory lock, then creates today''s
+        note with carry-forward (`201`, `created: true`), fills it if untouched (`200`,
+        `filled: true`) or returns it unchanged if touched (`200`, `filled: false`).'
+      summary: Start today's standup
+      tags:
+      - standups
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StartStandupResponse'
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StartStandupResponse'
+          description: ''
+        '501':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/standups/today/append/:
+    post:
+      operationId: standups_today_append
+      description: '`text` is the bare line; the writer adds the list marker by the
+        section''s rule. `409` on a hash mismatch, `404` when today''s note does not
+        exist, `422` when the section heading cannot be found.'
+      summary: Append to a standup section
+      tags:
+      - standups
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppendStandupRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteDetail'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '501':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+components:
+  schemas:
+    ActionEnum:
+      enum:
+      - task
+      - decision
+      - lesson
+      - project
+      - keep
+      - dismiss
+      type: string
+      description: |-
+        * `task` - task
+        * `decision` - decision
+        * `lesson` - lesson
+        * `project` - project
+        * `keep` - keep
+        * `dismiss` - dismiss
+    AmbiguousLookupError:
+      type: object
+      properties:
+        detail:
+          type: string
+        candidates:
+          type: array
+          items:
+            type: string
+          description: Paths of the notes a `?id=` lookup matched.
+      required:
+      - candidates
+      - detail
+    AppendStandupRequest:
+      type: object
+      properties:
+        section:
+          $ref: '#/components/schemas/SectionEnum'
+        text:
+          type: string
+          description: 'The bare line: the writer adds the list marker for the section.'
+        expected_hash:
+          type: string
+          pattern: ^[0-9a-f]{64}$
+      required:
+      - expected_hash
+      - section
+      - text
+    Backlink:
+      type: object
+      properties:
+        path:
+          type: string
+        title:
+          type: string
+      required:
+      - path
+      - title
+    CaptureRequest:
+      type: object
+      properties:
+        text:
+          type: string
+      required:
+      - text
+    ClassificationEnum:
+      enum:
+      - task
+      - problem
+      - decision
+      - learning-topic
+      - note
+      - project
+      - ticket
+      - architecture-idea
+      - question
+      - thought
+      type: string
+      description: |-
+        * `task` - task
+        * `problem` - problem
+        * `decision` - decision
+        * `learning-topic` - learning-topic
+        * `note` - note
+        * `project` - project
+        * `ticket` - ticket
+        * `architecture-idea` - architecture-idea
+        * `question` - question
+        * `thought` - thought
+    CreateNoteRequest:
+      type: object
+      properties:
+        type:
+          $ref: '#/components/schemas/TypeEnum'
+        title:
+          type: string
+          maxLength: 200
+        project:
+          type: string
+          description: Project slug or title.
+          maxLength: 200
+        priority:
+          $ref: '#/components/schemas/PriorityEnum'
+        due:
+          type: string
+          format: date
+        status:
+          allOf:
+          - $ref: '#/components/schemas/NoteStatusEnum'
+          description: |-
+            From the vocabulary of `type` (plan section 2.3); default per type.
+
+            * `inbox` - inbox
+            * `planned` - planned
+            * `in-progress` - in-progress
+            * `blocked` - blocked
+            * `review` - review
+            * `done` - done
+            * `cancelled` - cancelled
+            * `active` - active
+            * `paused` - paused
+            * `archived` - archived
+            * `proposed` - proposed
+            * `accepted` - accepted
+            * `superseded` - superseded
+            * `rejected` - rejected
+            * `triaged` - triaged
+            * `dismissed` - dismissed
+        body:
+          type: string
+      required:
+      - title
+      - type
+    Dashboard:
+      type: object
+      properties:
+        today:
+          type: string
+          format: date
+          description: The vault's today (honours the test clock).
+        today_tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/NoteSummary'
+        in_progress:
+          type: array
+          items:
+            $ref: '#/components/schemas/NoteSummary'
+        blocked:
+          type: array
+          items:
+            $ref: '#/components/schemas/NoteSummary'
+        overdue:
+          type: array
+          items:
+            $ref: '#/components/schemas/NoteSummary'
+        standup:
+          $ref: '#/components/schemas/StandupToday'
+        recent_activity:
+          type: array
+          items:
+            $ref: '#/components/schemas/NoteSummary'
+        active_projects:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProjectSummary'
+        inbox_count:
+          type: integer
+          minimum: 0
+        index:
+          $ref: '#/components/schemas/IndexSummary'
+      required:
+      - active_projects
+      - blocked
+      - in_progress
+      - inbox_count
+      - index
+      - overdue
+      - recent_activity
+      - standup
+      - today
+      - today_tasks
+    Error:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    Health:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/HealthStatusEnum'
+      required:
+      - status
+    HealthStatusEnum:
+      enum:
+      - ok
+      - error
+      type: string
+      description: |-
+        * `ok` - ok
+        * `error` - error
+    IndexProblem:
+      type: object
+      properties:
+        path:
+          type: string
+        detail:
+          type: string
+      required:
+      - detail
+      - path
+    IndexProblems:
+      type: object
+      properties:
+        parse_errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/IndexProblem'
+        missing_ids:
+          type: array
+          items:
+            $ref: '#/components/schemas/IndexProblem'
+        duplicate_ids:
+          type: array
+          items:
+            $ref: '#/components/schemas/IndexProblem'
+        ambiguous_links:
+          type: array
+          items:
+            $ref: '#/components/schemas/IndexProblem'
+        unknown_project_slugs:
+          type: array
+          items:
+            $ref: '#/components/schemas/IndexProblem'
+        duplicate_project_slugs:
+          type: array
+          items:
+            $ref: '#/components/schemas/IndexProblem'
+        unknown_statuses:
+          type: array
+          items:
+            $ref: '#/components/schemas/IndexProblem'
+        invalid_dates:
+          type: array
+          items:
+            $ref: '#/components/schemas/IndexProblem'
+      required:
+      - ambiguous_links
+      - duplicate_ids
+      - duplicate_project_slugs
+      - invalid_dates
+      - missing_ids
+      - parse_errors
+      - unknown_project_slugs
+      - unknown_statuses
+    IndexStatus:
+      type: object
+      properties:
+        last_pass_at:
+          type: string
+          format: date-time
+          nullable: true
+        duration_ms:
+          type: integer
+          minimum: 0
+          nullable: true
+        counts_by_type:
+          type: object
+          additionalProperties:
+            type: integer
+            minimum: 0
+        problems:
+          $ref: '#/components/schemas/IndexProblems'
+        test_mode:
+          allOf:
+          - $ref: '#/components/schemas/PinnedDate'
+          nullable: true
+          description: Set only when plan section 2.12 test mode is on.
+      required:
+      - counts_by_type
+      - duration_ms
+      - last_pass_at
+      - problems
+      - test_mode
+    IndexSummary:
+      type: object
+      properties:
+        last_pass_at:
+          type: string
+          format: date-time
+          nullable: true
+        problem_count:
+          type: integer
+          minimum: 0
+      required:
+      - last_pass_at
+      - problem_count
+    LoginRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+      required:
+      - password
+      - username
+    Me:
+      type: object
+      properties:
+        username:
+          type: string
+      required:
+      - username
+    NoteDetail:
+      type: object
+      description: One note in full.
+      properties:
+        id:
+          type: string
+          nullable: true
+          description: The `id` frontmatter value; null for a note without one.
+        path:
+          type: string
+          description: Vault-relative path.
+        type:
+          type: string
+          description: A known type, `note`, or an unknown type as written.
+        title:
+          type: string
+        status:
+          type: string
+          nullable: true
+          description: Stored as written, even outside the type's vocabulary.
+        priority:
+          type: string
+          nullable: true
+          description: Stored as written; one of low/medium/high when valid.
+        project:
+          type: string
+          nullable: true
+          description: Project slug as written.
+        due:
+          type: string
+          format: date
+          nullable: true
+          description: Null when absent or unreadable.
+        blocked_by:
+          type: string
+          nullable: true
+        decided:
+          type: string
+          format: date
+          nullable: true
+          description: 'Decisions: set when the status became accepted.'
+        tags:
+          type: array
+          items:
+            type: string
+        created:
+          type: string
+          format: date
+          nullable: true
+        modified:
+          type: string
+          format: date-time
+          description: Local time with the vault's offset.
+        parse_error:
+          type: string
+          nullable: true
+        frontmatter:
+          type: object
+          additionalProperties: {}
+          description: The parsed frontmatter mapping.
+        body:
+          type: string
+        content_hash:
+          type: string
+          description: Send back as `expected_hash` when writing.
+        backlinks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Backlink'
+          description: Notes that link here.
+        links:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/ResolvedLink'
+          description: Each link target as written in the body, mapped to where it
+            resolves.
+      required:
+      - backlinks
+      - blocked_by
+      - body
+      - content_hash
+      - created
+      - decided
+      - due
+      - frontmatter
+      - id
+      - links
+      - modified
+      - parse_error
+      - path
+      - priority
+      - project
+      - status
+      - tags
+      - title
+      - type
+    NoteStatusEnum:
+      enum:
+      - inbox
+      - planned
+      - in-progress
+      - blocked
+      - review
+      - done
+      - cancelled
+      - active
+      - paused
+      - archived
+      - proposed
+      - accepted
+      - superseded
+      - rejected
+      - triaged
+      - dismissed
+      type: string
+      description: |-
+        * `inbox` - inbox
+        * `planned` - planned
+        * `in-progress` - in-progress
+        * `blocked` - blocked
+        * `review` - review
+        * `done` - done
+        * `cancelled` - cancelled
+        * `active` - active
+        * `paused` - paused
+        * `archived` - archived
+        * `proposed` - proposed
+        * `accepted` - accepted
+        * `superseded` - superseded
+        * `rejected` - rejected
+        * `triaged` - triaged
+        * `dismissed` - dismissed
+    NoteSummary:
+      type: object
+      description: Promoted fields of one indexed note.
+      properties:
+        id:
+          type: string
+          nullable: true
+          description: The `id` frontmatter value; null for a note without one.
+        path:
+          type: string
+          description: Vault-relative path.
+        type:
+          type: string
+          description: A known type, `note`, or an unknown type as written.
+        title:
+          type: string
+        status:
+          type: string
+          nullable: true
+          description: Stored as written, even outside the type's vocabulary.
+        priority:
+          type: string
+          nullable: true
+          description: Stored as written; one of low/medium/high when valid.
+        project:
+          type: string
+          nullable: true
+          description: Project slug as written.
+        due:
+          type: string
+          format: date
+          nullable: true
+          description: Null when absent or unreadable.
+        blocked_by:
+          type: string
+          nullable: true
+        decided:
+          type: string
+          format: date
+          nullable: true
+          description: 'Decisions: set when the status became accepted.'
+        tags:
+          type: array
+          items:
+            type: string
+        created:
+          type: string
+          format: date
+          nullable: true
+        modified:
+          type: string
+          format: date-time
+          description: Local time with the vault's offset.
+        parse_error:
+          type: string
+          nullable: true
+      required:
+      - blocked_by
+      - created
+      - decided
+      - due
+      - id
+      - modified
+      - parse_error
+      - path
+      - priority
+      - project
+      - status
+      - tags
+      - title
+      - type
+    PaginatedNoteSummaryList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/NoteSummary'
+    PartialTriageError:
+      type: object
+      properties:
+        detail:
+          type: string
+        created_target:
+          type: string
+          description: Path of the target note a triage created before the capture
+            edit failed. Retry with it as `existing_target`.
+      required:
+      - detail
+    PinnedDate:
+      type: object
+      properties:
+        today:
+          type: string
+          format: date
+          description: The pinned date.
+      required:
+      - today
+    PriorityEnum:
+      enum:
+      - low
+      - medium
+      - high
+      type: string
+      description: |-
+        * `low` - low
+        * `medium` - medium
+        * `high` - high
+    ProjectDetail:
+      type: object
+      properties:
+        project:
+          $ref: '#/components/schemas/ProjectSummary'
+        note:
+          $ref: '#/components/schemas/NoteDetail'
+        open_tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/NoteSummary'
+        decisions:
+          type: array
+          items:
+            $ref: '#/components/schemas/NoteSummary'
+        recent_notes:
+          type: array
+          items:
+            $ref: '#/components/schemas/NoteSummary'
+          description: By modified time, then path.
+      required:
+      - decisions
+      - note
+      - open_tasks
+      - project
+      - recent_notes
+    ProjectSummary:
+      type: object
+      properties:
+        slug:
+          type: string
+        title:
+          type: string
+        path:
+          type: string
+        status:
+          type: string
+          nullable: true
+        goal:
+          type: string
+          nullable: true
+        open_task_count:
+          type: integer
+          minimum: 0
+        modified:
+          type: string
+          format: date-time
+      required:
+      - goal
+      - modified
+      - open_task_count
+      - path
+      - slug
+      - status
+      - title
+    RefreshSummary:
+      type: object
+      description: The summary of one sync pass (the indexer's `PassSummary`).
+      properties:
+        duration_ms:
+          type: integer
+          minimum: 0
+          description: The indexer's `duration_s`, converted to milliseconds.
+        scanned:
+          type: integer
+        read:
+          type: integer
+        added:
+          type: integer
+        changed:
+          type: integer
+        removed:
+          type: integer
+        moved:
+          type: integer
+        over_budget:
+          type: boolean
+        index_parse_errors:
+          type: integer
+          description: Index-wide total after the pass.
+        index_duplicate_ids:
+          type: integer
+          description: Index-wide total after the pass.
+        index_missing_ids:
+          type: integer
+          description: Index-wide total after the pass.
+      required:
+      - added
+      - changed
+      - duration_ms
+      - index_duplicate_ids
+      - index_missing_ids
+      - index_parse_errors
+      - moved
+      - over_budget
+      - read
+      - removed
+      - scanned
+    ResolvedLink:
+      type: object
+      properties:
+        path:
+          type: string
+          nullable: true
+        state:
+          $ref: '#/components/schemas/StateEnum'
+      required:
+      - path
+      - state
+    SearchResponse:
+      type: object
+      properties:
+        query:
+          type: string
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchResult'
+      required:
+      - query
+      - results
+    SearchResult:
+      type: object
+      properties:
+        path:
+          type: string
+        type:
+          type: string
+        title:
+          type: string
+        project:
+          type: string
+          nullable: true
+          description: The note's project slug.
+        snippet:
+          type: string
+          description: Plain text, never HTML.
+        source:
+          $ref: '#/components/schemas/SourceEnum'
+      required:
+      - path
+      - project
+      - snippet
+      - source
+      - title
+      - type
+    SectionEnum:
+      enum:
+      - Done
+      - Today
+      - Blockers
+      - Decisions / Updates
+      - Follow-ups
+      - Related Tasks / Projects
+      type: string
+      description: |-
+        * `Done` - Done
+        * `Today` - Today
+        * `Blockers` - Blockers
+        * `Decisions / Updates` - Decisions / Updates
+        * `Follow-ups` - Follow-ups
+        * `Related Tasks / Projects` - Related Tasks / Projects
+    SourceEnum:
+      enum:
+      - vault
+      type: string
+      description: '* `vault` - vault'
+    StandupExisting:
+      type: object
+      description: Today's daily note exists.
+      properties:
+        exists:
+          $ref: '#/components/schemas/StandupExistingExistsEnum'
+        note:
+          $ref: '#/components/schemas/NoteDetail'
+        untouched:
+          type: boolean
+      required:
+      - exists
+      - note
+      - untouched
+    StandupExistingExistsEnum:
+      type: boolean
+      enum:
+      - true
+    StandupMissing:
+      type: object
+      description: 'Today''s daily note does not exist: what starting the standup
+        would write.'
+      properties:
+        exists:
+          $ref: '#/components/schemas/StandupMissingExistsEnum'
+        preview:
+          $ref: '#/components/schemas/StandupPreview'
+      required:
+      - exists
+      - preview
+    StandupMissingExistsEnum:
+      type: boolean
+      enum:
+      - false
+    StandupPreview:
+      type: object
+      description: The six standup sections as lines of Markdown.
+      properties:
+        Done:
+          type: array
+          items:
+            type: string
+        Today:
+          type: array
+          items:
+            type: string
+        Blockers:
+          type: array
+          items:
+            type: string
+        Decisions / Updates:
+          type: array
+          items:
+            type: string
+        Follow-ups:
+          type: array
+          items:
+            type: string
+        Related Tasks / Projects:
+          type: array
+          items:
+            type: string
+      required:
+      - Blockers
+      - Decisions / Updates
+      - Done
+      - Follow-ups
+      - Related Tasks / Projects
+      - Today
+    StandupToday:
+      oneOf:
+      - $ref: '#/components/schemas/StandupExisting'
+      - $ref: '#/components/schemas/StandupMissing'
+    StartStandupResponse:
+      type: object
+      properties:
+        created:
+          type: boolean
+          description: 'True on 201: a new note with carry-forward.'
+        filled:
+          type: boolean
+          description: An untouched note was filled (true) or a touched one returned
+            unchanged.
+        note:
+          $ref: '#/components/schemas/NoteDetail'
+        untouched:
+          type: boolean
+      required:
+      - created
+      - filled
+      - note
+      - untouched
+    StateEnum:
+      enum:
+      - resolved
+      - ambiguous
+      - unresolved
+      type: string
+      description: |-
+        * `resolved` - resolved
+        * `ambiguous` - ambiguous
+        * `unresolved` - unresolved
+    StatusChangeRequest:
+      type: object
+      properties:
+        path:
+          type: string
+          maxLength: 200
+        status:
+          allOf:
+          - $ref: '#/components/schemas/NoteStatusEnum'
+          description: |-
+            Must belong to the vocabulary of the note's type; checked against the note.
+
+            * `inbox` - inbox
+            * `planned` - planned
+            * `in-progress` - in-progress
+            * `blocked` - blocked
+            * `review` - review
+            * `done` - done
+            * `cancelled` - cancelled
+            * `active` - active
+            * `paused` - paused
+            * `archived` - archived
+            * `proposed` - proposed
+            * `accepted` - accepted
+            * `superseded` - superseded
+            * `rejected` - rejected
+            * `triaged` - triaged
+            * `dismissed` - dismissed
+        expected_hash:
+          type: string
+          pattern: ^[0-9a-f]{64}$
+        evidence:
+          type: string
+          description: Appended under `## Notes` when the status becomes `done`.
+      required:
+      - expected_hash
+      - path
+      - status
+    TriageRequest:
+      type: object
+      properties:
+        path:
+          type: string
+          maxLength: 200
+        expected_hash:
+          type: string
+          description: Checked before a target note is created, not only before the
+            capture edit.
+          pattern: ^[0-9a-f]{64}$
+        action:
+          $ref: '#/components/schemas/ActionEnum'
+        classification:
+          allOf:
+          - $ref: '#/components/schemas/ClassificationEnum'
+          description: |-
+            Required for every action but `dismiss`, which may omit it when the capture has no classification.
+
+            * `task` - task
+            * `problem` - problem
+            * `decision` - decision
+            * `learning-topic` - learning-topic
+            * `note` - note
+            * `project` - project
+            * `ticket` - ticket
+            * `architecture-idea` - architecture-idea
+            * `question` - question
+            * `thought` - thought
+        title:
+          type: string
+          maxLength: 200
+        project:
+          type: string
+          maxLength: 200
+        existing_target:
+          type: string
+          description: 'Retry after a partial failure: a vault-relative `.md` path
+            of the target already created. Skips creation and only edits the capture.'
+          maxLength: 200
+      required:
+      - action
+      - expected_hash
+      - path
+    TriageResponse:
+      type: object
+      properties:
+        capture:
+          $ref: '#/components/schemas/NoteDetail'
+        target:
+          allOf:
+          - $ref: '#/components/schemas/NoteSummary'
+          nullable: true
+          description: The note created or reused; null for `keep` and `dismiss`.
+      required:
+      - capture
+      - target
+    TypeEnum:
+      enum:
+      - task
+      - project
+      - decision
+      - lesson
+      type: string
+      description: |-
+        * `task` - task
+        * `project` - project
+        * `decision` - decision
+        * `lesson` - lesson
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid

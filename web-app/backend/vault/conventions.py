@@ -54,7 +54,40 @@ DEFAULT_STATUS = {
     "capture": "inbox",
 }
 
+# Every status word of every vocabulary, once, in first-seen order (the API's status enum).
+ALL_STATUSES = tuple(dict.fromkeys(word for words in STATUSES.values() for word in words))
+
 PRIORITIES = ("low", "medium", "high")
+
+# Types `POST /api/notes/` can create (C17).
+CREATABLE_TYPES = ("task", "project", "decision", "lesson")
+
+# Triage classifications (2.13): the brief's nine kinds plus `project`.
+CLASSIFICATIONS = (
+    "task",
+    "problem",
+    "decision",
+    "learning-topic",
+    "note",
+    "project",
+    "ticket",
+    "architecture-idea",
+    "question",
+    "thought",
+)
+
+# What `POST /api/captures/triage/` can do with a capture (2.13).
+TRIAGE_ACTIONS = ("task", "decision", "lesson", "project", "keep", "dismiss")
+
+# The six daily-note headings, in order (design D).
+STANDUP_HEADINGS = (
+    "Done",
+    "Today",
+    "Blockers",
+    "Decisions / Updates",
+    "Follow-ups",
+    "Related Tasks / Projects",
+)
 
 # Keys read with the date rule of 2.10.
 DATE_KEYS = ("created", "due", "decided")

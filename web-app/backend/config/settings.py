@@ -104,6 +104,22 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Second Brain API",
+    "DESCRIPTION": (
+        "Session-authenticated JSON API over the indexed vault. Unsafe methods need the CSRF "
+        "token header. The committed openapi.yaml is the contract (plan section 5)."
+    ),
+    "VERSION": "1.0.0",
+    "SCHEMA_PATH_PREFIX": "/api",
+    "SERVE_INCLUDE_SCHEMA": True,
+    "SERVE_PERMISSIONS": ["rest_framework.permissions.IsAuthenticated"],
+    "ENUM_NAME_OVERRIDES": {
+        "HealthStatusEnum": ["ok", "error"],
+        "NoteStatusEnum": "vault.conventions.ALL_STATUSES",
+    },
+}
+
 # SameSite=Lax; the session cookie is HttpOnly (the CSRF cookie must stay readable by the
 # client). SECURE_* settings wait for a later task: the stack is HTTP on localhost.
 SESSION_COOKIE_SAMESITE = "Lax"
