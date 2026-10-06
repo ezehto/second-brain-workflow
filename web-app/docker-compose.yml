@@ -1,0 +1,22 @@
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in web-app/.env}
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in web-app/.env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in web-app/.env}
+      TZ: ${TZ:-Asia/Manila}
+    volumes:
+      # postgres 18+ keeps data under /var/lib/postgresql (versioned subdirectory)
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+    # No published port: only other services on the Compose network reach the database.
+
+volumes:
+  pgdata:
