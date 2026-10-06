@@ -18,6 +18,12 @@ export function isForToday(task: NoteSummary, today: IsoDate): boolean {
   return task.status === 'in-progress' || task.status === 'review' || (task.status === 'planned' && !!task.due && task.due <= today)
 }
 
+/** Order by priority, then earliest due date, then title. */
+export const byPriorityDueTitle = (a: NoteSummary, b: NoteSummary) =>
+  priorityRank(a.priority) - priorityRank(b.priority) ||
+  (a.due ?? '9999').localeCompare(b.due ?? '9999') ||
+  a.title.localeCompare(b.title)
+
 export const PRIORITY_RANK: Record<Priority, number> = { high: 0, medium: 1, low: 2 }
 
 /** Rank for sorting; no priority, or one outside high/medium/low, sorts after `low`. */

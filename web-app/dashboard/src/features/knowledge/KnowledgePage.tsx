@@ -11,10 +11,10 @@ import { StatusChip } from '@/components/StatusChip'
 import { projectLookup } from '@/domain/projects'
 import { useToday } from '@/lib/clock'
 import { formatWhen, NOT_AVAILABLE } from '@/lib/dates'
-import { useProjectContext } from '@/lib/projectContext'
+import { useProjectContext, useProjectHref } from '@/lib/projectContext'
 import { routes } from '@/lib/routes'
 import { SplitPane } from '@/features/notes/SplitPane'
-import { useMinWidth } from '@/features/notes/useMediaQuery'
+import { useMinWidth } from '@/lib/viewport'
 import { filterLessons, LESSON_STATUSES, parseListParams, tagsOf } from './filters'
 import { ListRow, NoteLink } from './parts'
 import { useReaderPane } from './useReaderPane'
@@ -28,6 +28,7 @@ const ALL = 'all'
  * are URL parameters; a row opens the note in the split pane from 1024 up.
  */
 export function KnowledgePage() {
+  const href = useProjectHref()
   const client = useApi()
   const today = useToday()
   const [params] = useSearchParams()
@@ -80,7 +81,7 @@ export function KnowledgePage() {
                 <Card>
                   <CardHead title="Lessons" count={shown.length} />
                   {shown.length === 0 ? (
-                    <EmptyState className="border-t border-line pt-3" action={<Link to={routes.knowledge}>Clear filters</Link>}>
+                    <EmptyState className="border-t border-line pt-3" action={<Link to={href.link(routes.knowledge)}>Clear filters</Link>}>
                       No lessons match these filters.
                     </EmptyState>
                   ) : (

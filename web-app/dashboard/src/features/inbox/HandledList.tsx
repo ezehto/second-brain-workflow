@@ -20,7 +20,7 @@ export function HandledList({ items }: { items: Handled[] }) {
           <CardRow key={`${item.path}-${item.outcome}`} lines={2} className="grid-cols-[minmax(0,1fr)_auto]" {...{ role: 'listitem' }}>
             <div className="flex min-w-0 flex-col">
               <span className="t-body truncate">{item.text}</span>
-              <span className="t-caption truncate text-muted-ink">
+              <span className="t-small truncate text-muted-ink">
                 {item.outcome === 'converted' ? 'Wrote' : 'Set status: dismissed in'} {item.written}
               </span>
             </div>

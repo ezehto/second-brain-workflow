@@ -15,15 +15,16 @@ import { StatusChip } from '@/components/StatusChip'
 import { projectHealth, projectProgress } from '@/domain/health'
 import { NoteReader } from '@/features/notes/NoteReader'
 import { SplitPane } from '@/features/notes/SplitPane'
-import { useMinWidth, useSplitLayout } from '@/features/notes/useMediaQuery'
+import { useMinWidth, useSplitLayout } from '@/lib/viewport'
 import { useToday } from '@/lib/clock'
 import { NOT_AVAILABLE } from '@/lib/dates'
-import { routes, tasksHref } from '@/lib/routes'
+import { routes } from '@/lib/routes'
 import { LATER_TABS, LaterTabContent, type LaterTab } from './LaterTabs'
 import { DecisionsTab, NotesTab } from './NoteTabs'
 import { Overview } from './Overview'
 import { projectCounts } from './domain'
 import { TasksTab } from './TasksTab'
+import { useProjectHref } from '@/lib/projectContext'
 
 const TABS = [
   { value: 'overview', label: 'Overview' },
@@ -35,12 +36,13 @@ type Tab = (typeof TABS)[number]['value'] | LaterTab
 const ALL_TABS: readonly string[] = [...TABS, ...LATER_TABS].map((t) => t.value)
 
 function NotFound({ slug }: { slug: string }) {
+  const href = useProjectHref()
   return (
     <Card>
       <div className="px-3 pt-3">
         <h2 className="t-panel font-semibold">Project not found</h2>
       </div>
-      <EmptyState className="pt-1" action={<Link to={routes.projects}>Back to all projects</Link>}>
+      <EmptyState className="pt-1" action={<Link to={href.link(routes.projects)}>Back to all projects</Link>}>
         No project has the slug {slug}. It may have been renamed or deleted in Obsidian.
       </EmptyState>
     </Card>
@@ -48,6 +50,7 @@ function NotFound({ slug }: { slug: string }) {
 }
 
 function Loaded({ detail, tasks, tab }: { detail: ProjectDetail; tasks: NoteSummary[]; tab: Tab }) {
+  const href = useProjectHref()
   const today = useToday()
   const [params, setParams] = useSearchParams()
   const split = useSplitLayout()
@@ -89,16 +92,16 @@ function Loaded({ detail, tasks, tab }: { detail: ProjectDetail; tasks: NoteSumm
       </header>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatTile compact icon="tasks" tone="progress" value={counts.open} label="Open" to={tasksHref({ project: project.slug, status: 'open' })} />
-        <StatTile compact icon="blocked" tone="blocked" value={counts.blocked} label="Blocked" to={tasksHref({ project: project.slug, status: 'blocked' })} />
-        <StatTile compact icon="flag" tone="blocked" value={counts.overdue} label="Overdue" to={tasksHref({ project: project.slug, status: 'open', overdue: true })} />
+        <StatTile compact icon="tasks" tone="progress" value={counts.open} label="Open" to={href.tasks({ project: project.slug, status: 'open' })} />
+        <StatTile compact icon="blocked" tone="blocked" value={counts.blocked} label="Blocked" to={href.tasks({ project: project.slug, status: 'blocked' })} />
+        <StatTile compact icon="flag" tone="blocked" value={counts.overdue} label="Overdue" to={href.tasks({ project: project.slug, status: 'open', overdue: true })} />
         <StatTile
           compact
           icon="tasks"
           tone="done"
           value={progress.total ? `${progress.done} of ${progress.total}` : NOT_AVAILABLE}
           label="Done"
-          to={tasksHref({ project: project.slug, status: 'done' })}
+          to={href.tasks({ project: project.slug, status: 'done' })}
         />
       </div>
       <div className="flex items-center gap-3">

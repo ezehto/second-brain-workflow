@@ -1,7 +1,6 @@
 import { Link } from 'react-router'
 import type { SearchResult } from '@/api/types'
-import { withProject } from '@/lib/projectContext'
-import { noteHref } from '@/lib/routes'
+import { useProjectHref } from '@/lib/projectContext'
 import { cn } from '@/lib/utils'
 import { Highlight } from './Highlight'
 
@@ -14,7 +13,6 @@ export function ResultRow({
   result,
   query,
   project,
-  context,
   selected,
   onSelect,
 }: {
@@ -22,10 +20,10 @@ export function ResultRow({
   query: string
   /** The note's project title, or null when it has none or is not known yet. */
   project: string | null
-  context: string | null
   selected: boolean
   onSelect?: (path: string) => void
 }) {
+  const href = useProjectHref()
   const titleClass = 'min-w-0 break-words text-left font-semibold text-ink underline-offset-2 hover:underline'
   return (
     <li className={cn('flex flex-col gap-1 border-b border-line px-3 py-3 last:border-b-0', selected && 'bg-inset')}>
@@ -36,7 +34,7 @@ export function ResultRow({
             {result.title}
           </button>
         ) : (
-          <Link to={withProject(noteHref(result.path), context)} className={cn(titleClass, 't-body')}>
+          <Link to={href.note(result.path)} className={cn(titleClass, 't-body')}>
             {result.title}
           </Link>
         )}

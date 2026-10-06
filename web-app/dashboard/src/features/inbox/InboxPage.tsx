@@ -7,11 +7,10 @@ import { useQuery } from '@/api/useQuery'
 import { Card, CardHead } from '@/components/Card'
 import { QueryBoundary } from '@/components/QueryBoundary'
 import { useToday } from '@/lib/clock'
-import { useProjectContext } from '@/lib/projectContext'
-import { noteHref } from '@/lib/routes'
+import { useProjectContext, useProjectHref } from '@/lib/projectContext'
 import { NoteReader } from '@/features/notes/NoteReader'
 import { SplitPane } from '@/features/notes/SplitPane'
-import { useSplitLayout } from '@/features/notes/useMediaQuery'
+import { useSplitLayout } from '@/lib/viewport'
 import { CaptureForm } from './CaptureForm'
 import { HandledList, type Handled } from './HandledList'
 import { InboxRow } from './InboxRow'
@@ -24,6 +23,7 @@ import { InboxRow } from './InboxRow'
  * (the `note` query parameter, as on Tasks), or on the note route below that.
  */
 export function InboxPage() {
+  const href = useProjectHref()
   const client = useApi()
   const today = useToday()
   const navigate = useNavigate()
@@ -44,7 +44,7 @@ export function InboxPage() {
   const inbox = useMemo(() => (captures.status === 'success' ? captures.data.filter((c) => c.status === 'inbox') : []), [captures])
 
   const select = (note: NoteDetail) => {
-    if (!split) return navigate(noteHref(note.path))
+    if (!split) return navigate(href.note(note.path))
     setParams(selectedPath === note.path ? {} : { note: note.path })
   }
 
@@ -67,7 +67,7 @@ export function InboxPage() {
                 empty={
                   <>
                     Inbox clear. Capture a thought above, or add a note to 00-Inbox in Obsidian.
-                    {project && <span className="t-caption mt-1 block">Captures belong to no project, so the project filter does not apply here.</span>}
+                    {project && <span className="t-small mt-1 block">Captures belong to no project, so the project filter does not apply here.</span>}
                   </>
                 }
               >

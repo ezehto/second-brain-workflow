@@ -5,8 +5,7 @@ import type { SearchResult } from '@/api/types'
 import { useQuery } from '@/api/useQuery'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { useDebouncedValue } from '@/features/search/useDebouncedValue'
-import { useProjectContext, withProject } from '@/lib/projectContext'
-import { noteHref } from '@/lib/routes'
+import { useProjectHref } from '@/lib/projectContext'
 import { cn } from '@/lib/utils'
 import { Icon, type IconName } from './Icon'
 import { NAV_GROUPS } from './nav'
@@ -80,9 +79,9 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
 }
 
 function PaletteBody({ onClose, onAction }: { onClose: () => void; onAction: () => void }) {
+  const href = useProjectHref()
   const client = useApi()
   const navigate = useNavigate()
-  const project = useProjectContext()
   const quick = useQuickActions()
   const listId = useId()
   const [text, setText] = useState('')
@@ -113,10 +112,10 @@ function PaletteBody({ onClose, onAction }: { onClose: () => void; onAction: () 
   function choose(entry: Entry) {
     if (entry.group === 'note') {
       onClose()
-      navigate(withProject(noteHref(entry.result.path), project))
+      navigate(href.note(entry.result.path))
     } else if ('to' in entry.go) {
       onClose()
-      navigate(withProject(entry.go.to, project))
+      navigate(href.link(entry.go.to))
     } else {
       onAction()
       onClose()
@@ -200,7 +199,7 @@ function PaletteBody({ onClose, onAction }: { onClose: () => void; onAction: () 
       <div id={`${listId}-list`} role="listbox" aria-label="Results" className="max-h-[min(60vh,420px)] overflow-y-auto py-1">
         {goEntries.length > 0 && (
           <div role="group" aria-labelledby={`${listId}-go`}>
-            <div id={`${listId}-go`} className="t-caption px-3 py-1 font-semibold text-muted-ink">
+            <div id={`${listId}-go`} className="t-small px-3 py-1 font-semibold text-muted-ink">
               Go to
             </div>
             <ul className="m-0 list-none p-0" role="presentation">
@@ -210,7 +209,7 @@ function PaletteBody({ onClose, onAction }: { onClose: () => void; onAction: () 
         )}
         {(noteEntries.length > 0 || (q && search.status === 'error')) && (
           <div role="group" aria-labelledby={`${listId}-notes`}>
-            <div id={`${listId}-notes`} className="t-caption px-3 py-1 font-semibold text-muted-ink">
+            <div id={`${listId}-notes`} className="t-small px-3 py-1 font-semibold text-muted-ink">
               Notes
             </div>
             <ul className="m-0 list-none p-0" role="presentation">

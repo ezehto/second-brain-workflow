@@ -2,7 +2,7 @@ import type { IsoDate } from '@/lib/clock'
 import { daysBetween, NOT_AVAILABLE } from '@/lib/dates'
 import { plural } from '@/lib/plural'
 import type { NoteSummary } from '@/api/types'
-import { isOpen, isOverdue, priorityRank } from './tasks'
+import { byPriorityDueTitle, isOpen, isOverdue, priorityRank } from './tasks'
 
 export type FocusGroup = 'overdue' | 'blocked' | 'due-today' | 'review'
 const GROUP_ORDER: FocusGroup[] = ['overdue', 'blocked', 'due-today', 'review']
@@ -60,4 +60,24 @@ export function todaysFocus(tasks: NoteSummary[], today: IsoDate, limit = 5): Fo
     )
     .slice(0, limit)
     .map(({ task, group }, i) => ({ rank: i + 1, task, group, reason: reasonOf(task, group, today) }))
+}
+
+/**
+ * Open tasks in Focus order: the Focus rule's groups first (overdue, blocked,
+ * due today, in review), then every other open task by priority, due date and
+ * title.
+ */
+export function focusOrdered(tasks: NoteSummary[], today: IsoDate): NoteSummary[] {
+  const open = tasks.filter(isOpen)
+  const focus = todaysFocus(open, today, open.length).map((item) => item.task)
+  const chosen = new Set(focus.map((t) => t.path))
+  return [...focus, ...open.filter((t) => !chosen.has(t.path)).sort(byPriorityDueTitle)]
+}
+
+/**
+ * The one "next item" rule of a project, on the Dashboard and on both project
+ * pages: the first Focus-ordered open task that is not a bare inbox item.
+ */
+export function nextTask(tasks: NoteSummary[], today: IsoDate): NoteSummary | null {
+  return focusOrdered(tasks, today).find((t) => t.status !== 'inbox') ?? null
 }

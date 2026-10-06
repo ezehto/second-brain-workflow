@@ -36,7 +36,7 @@ export function CaptureForm() {
     <Card>
       <form onSubmit={submit} className="flex flex-wrap items-end gap-3 px-3 py-3">
         <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-1">
-          <Label htmlFor={id} className="t-caption font-semibold text-muted-ink">
+          <Label htmlFor={id} className="t-small font-semibold text-muted-ink">
             Quick capture
           </Label>
           <Input id={id} value={text} onChange={(e) => setText(e.target.value)} placeholder="todo: ask infra about the staging database refresh" autoComplete="off" />

@@ -6,11 +6,11 @@ import { ProgressBar } from '@/components/ProgressBar'
 import { QueryBoundary } from '@/components/QueryBoundary'
 import { StatusChip } from '@/components/StatusChip'
 import { Button } from '@/components/ui/button'
-import { projectNextItem } from '@/domain/dashboard'
+import { nextTask } from '@/domain/focus'
 import { HEALTH_RULE, projectHealth, projectProgress } from '@/domain/health'
 import { useToday } from '@/lib/clock'
-import { withProject } from '@/lib/projectContext'
-import { noteHref, projectHref, routes } from '@/lib/routes'
+import { useProjectHref } from '@/lib/projectContext'
+import { routes } from '@/lib/routes'
 import { InfoTip } from './InfoTip'
 
 /** One ruled row per active project: health word with its reason, the blocked or next item, progress as counts. */
@@ -24,6 +24,7 @@ export function ActiveProjects({
   /** Project context: only this project (if active), or all active projects. */
   project: string | null
 }) {
+  const href = useProjectHref()
   const today = useToday()
   const visible = (list: ProjectSummary[]) => list.filter((p) => p.status === 'active' && (!project || p.slug === project))
   return (
@@ -31,7 +32,7 @@ export function ActiveProjects({
       <CardHead title="Active projects" count={projects.status === 'success' ? visible(projects.data).length : undefined}>
         <InfoTip label="How project health is decided" rule={HEALTH_RULE} />
         <Button asChild variant="secondary" size="sm">
-          <Link to={withProject(routes.projects, project)}>All projects</Link>
+          <Link to={href.link(routes.projects)}>All projects</Link>
         </Button>
       </CardHead>
       <QueryBoundary query={joinQueries(projects, tasks)} isEmpty={([list]) => visible(list).length === 0} empty="No active projects.">
@@ -40,12 +41,12 @@ export function ActiveProjects({
             const mine = all.filter((t) => t.project === p.slug)
             const health = projectHealth(p, mine, today)
             const progress = projectProgress(mine)
-            const item = projectNextItem(mine)
+            const item = nextTask(mine, today)
             return (
               <CardRow key={p.slug} lines={2} className="grid-cols-[minmax(0,1fr)_auto] py-1.5">
                 <div className="flex min-w-0 flex-col">
                   <div className="flex min-w-0 flex-wrap items-center gap-x-2">
-                    <Link to={projectHref(p.slug)} className="linkbtn t-body">
+                    <Link to={href.project(p.slug)} className="linkbtn t-body">
                       {p.title}
                     </Link>
                     <StatusChip label={health.label} tone={health.tone} />
@@ -54,9 +55,9 @@ export function ActiveProjects({
                   <span className="t-small truncate text-muted-ink">
                     {item ? (
                       <>
-                        {item.kind === 'blocked' ? 'Blocked: ' : 'Next: '}
-                        <Link to={noteHref(item.task.path)} className="linkbtn t-small font-normal">
-                          {item.task.title}
+                        {item.status === 'blocked' ? 'Blocked: ' : 'Next: '}
+                        <Link to={href.note(item.path)} className="linkbtn t-small font-normal">
+                          {item.title}
                         </Link>
                       </>
                     ) : (

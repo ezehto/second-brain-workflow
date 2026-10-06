@@ -1,6 +1,5 @@
 import type { HealthLabel } from '@/domain/health'
-import { todaysFocus } from '@/domain/focus'
-import { isOpen, isOverdue, priorityRank } from '@/domain/tasks'
+import { byPriorityDueTitle, isOpen, isOverdue } from '@/domain/tasks'
 import { TASK_STATUSES, type NoteSummary } from '@/api/types'
 import type { IsoDate } from '@/lib/clock'
 
@@ -11,28 +10,6 @@ export const HEALTH_SEVERITY: Record<HealthLabel, number> = {
   'Unknown, insufficient data': 2,
   'On track': 3,
   Completed: 4,
-}
-
-const byPriorityDueTitle = (a: NoteSummary, b: NoteSummary) =>
-  priorityRank(a.priority) - priorityRank(b.priority) ||
-  (a.due ?? '9999').localeCompare(b.due ?? '9999') ||
-  a.title.localeCompare(b.title)
-
-/**
- * Open tasks in Focus order: the Focus rule's groups first (overdue, blocked,
- * due today, in review), then every other open task by priority, due date and
- * title.
- */
-export function focusOrdered(tasks: NoteSummary[], today: IsoDate): NoteSummary[] {
-  const open = tasks.filter(isOpen)
-  const focus = todaysFocus(open, today, open.length).map((item) => item.task)
-  const chosen = new Set(focus.map((t) => t.path))
-  return [...focus, ...open.filter((t) => !chosen.has(t.path)).sort(byPriorityDueTitle)]
-}
-
-/** The task to do next in a project: the first Focus-ordered open task that is not a bare inbox item. */
-export function nextTask(tasks: NoteSummary[], today: IsoDate): NoteSummary | null {
-  return focusOrdered(tasks, today).find((t) => t.status !== 'inbox') ?? null
 }
 
 export interface ProjectCounts {

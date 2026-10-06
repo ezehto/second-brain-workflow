@@ -1,7 +1,6 @@
 import type { IsoDate } from '@/lib/clock'
 import { daysBetween, wallDate } from '@/lib/dates'
 import type { NoteSummary } from '@/api/types'
-import { isOpen, priorityRank } from './tasks'
 
 /** Tasks narrowed to a project (the context filter); null keeps everything. */
 export function inProject<T extends { project: string | null }>(notes: T[], project: string | null): T[] {
@@ -60,17 +59,4 @@ export interface DayCount {
 /** Done tasks per day over the last 7 days, oldest first, zero days included. */
 export function doneByDay(done: NoteSummary[], today: IsoDate): DayCount[] {
   return lastDays(today).map((date) => ({ date, count: done.filter((t) => wallDate(t.modified) === date).length }))
-}
-
-/**
- * The line a project row shows: its first blocked task, else its next open
- * one (high priority first, then the earliest due date).
- */
-export function projectNextItem(tasks: NoteSummary[]): { kind: 'blocked' | 'next'; task: NoteSummary } | null {
-  const blocked = blockedTasks(tasks)[0]
-  if (blocked) return { kind: 'blocked', task: blocked }
-  const next = tasks
-    .filter((t) => isOpen(t) && t.status !== 'inbox')
-    .sort((a, b) => priorityRank(a.priority) - priorityRank(b.priority) || (a.due ?? '9999').localeCompare(b.due ?? '9999') || a.title.localeCompare(b.title))[0]
-  return next ? { kind: 'next', task: next } : null
 }

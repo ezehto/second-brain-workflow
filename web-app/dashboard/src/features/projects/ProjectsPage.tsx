@@ -7,14 +7,14 @@ import type { NoteSummary, ProjectSummary } from '@/api/types'
 import { Card, CardHead, CardRow } from '@/components/Card'
 import { QueryBoundary } from '@/components/QueryBoundary'
 import { StatusChip } from '@/components/StatusChip'
+import { nextTask } from '@/domain/focus'
 import { projectHealth, type ProjectHealth } from '@/domain/health'
-import { useMinWidth } from '@/features/notes/useMediaQuery'
+import { useMinWidth } from '@/lib/viewport'
 import { useToday } from '@/lib/clock'
 import { NOT_AVAILABLE, formatWhen } from '@/lib/dates'
-import { useProjectContext } from '@/lib/projectContext'
-import { noteHref, projectHref } from '@/lib/routes'
+import { useProjectContext, useProjectHref } from '@/lib/projectContext'
 import { cn } from '@/lib/utils'
-import { HEALTH_SEVERITY, lastActivity, nextTask, projectCounts, type ProjectCounts } from './domain'
+import { HEALTH_SEVERITY, lastActivity, projectCounts, type ProjectCounts } from './domain'
 import { HealthRule } from './HealthRule'
 
 interface Row {
@@ -33,6 +33,7 @@ const TH = 't-small h-8 px-3 text-left font-semibold text-muted-ink'
 const TD = 'h-8 px-3 align-middle'
 
 function Table({ rows, selected, today }: { rows: Row[]; selected: string | null; today: string }) {
+  const href = useProjectHref()
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse">
@@ -52,7 +53,7 @@ function Table({ rows, selected, today }: { rows: Row[]; selected: string | null
           {rows.map(({ project, health, counts, next, last }) => (
             <tr key={project.slug} aria-current={selected === project.slug ? 'true' : undefined} className={cn('border-t border-line', selected === project.slug && 'bg-inset')}>
               <th scope="row" className={cn(TD, 'text-left font-normal')}>
-                <Link to={projectHref(project.slug)} className="linkbtn t-body whitespace-nowrap">
+                <Link to={href.project(project.slug)} className="linkbtn t-body whitespace-nowrap">
                   {project.title}
                 </Link>
               </th>
@@ -70,7 +71,7 @@ function Table({ rows, selected, today }: { rows: Row[]; selected: string | null
               <td className={cn(TD, 'text-right')}>{count(counts.overdue, true)}</td>
               <td className={cn(TD, 'max-w-72')}>
                 {next ? (
-                  <Link to={noteHref(next.path)} className="t-body block truncate">
+                  <Link to={href.note(next.path)} className="t-body block truncate">
                     {next.title}
                   </Link>
                 ) : (
@@ -88,13 +89,14 @@ function Table({ rows, selected, today }: { rows: Row[]; selected: string | null
 
 /** Phones: two-line rows (name and health, then the counts) so nothing is wider than the screen. */
 function PhoneList({ rows, selected }: { rows: Row[]; selected: string | null }) {
+  const href = useProjectHref()
   return (
     <ul className="m-0 list-none p-0">
       {rows.map(({ project, health, counts, next }) => (
         <li key={project.slug}>
           <CardRow lines={2} aria-current={selected === project.slug ? 'true' : undefined} className={cn('grid-cols-[minmax(0,1fr)_auto]', selected === project.slug && 'bg-inset')}>
             <div className="flex min-w-0 flex-col">
-              <Link to={projectHref(project.slug)} className="linkbtn t-body truncate">
+              <Link to={href.project(project.slug)} className="linkbtn t-body truncate">
                 {project.title}
               </Link>
               <span className="t-small truncate text-muted-ink">

@@ -4,6 +4,7 @@ import { Donut } from '@/components/Donut'
 import { PreviewBadge } from '@/components/PreviewBadge'
 import { StatusMenu } from '@/components/StatusMenu'
 import { TaskRow } from '@/components/TaskRow'
+import { focusOrdered } from '@/domain/focus'
 import { TASK_SEGMENT_COLOR, TONE_TEXT } from '@/domain/status'
 import { countByStatus, countUnknownStatus, isOpen } from '@/domain/tasks'
 import { useToday } from '@/lib/clock'
@@ -11,7 +12,6 @@ import { NOT_AVAILABLE, daysBetween, formatShortDate, formatWhen } from '@/lib/d
 import { plural } from '@/lib/plural'
 import { cn } from '@/lib/utils'
 import { previewProjectData } from '@/preview'
-import { focusOrdered } from './domain'
 import { NoteRow } from './NoteRow'
 
 const NEXT_LIMIT = 5
@@ -151,7 +151,7 @@ function Milestones({ slug }: { slug: string }) {
                 <span className="num t-small text-muted-ink">
                   {formatShortDate(m.date)}, {relativeDay(m.date, today)}
                 </span>
-                <span className={cn('t-caption font-semibold', TONE_TEXT[MILESTONE_TONE[m.state]])}>{MILESTONE_WORD[m.state]}</span>
+                <span className={cn('t-small font-semibold', TONE_TEXT[MILESTONE_TONE[m.state]])}>{MILESTONE_WORD[m.state]}</span>
               </li>
             ))}
           </ol>

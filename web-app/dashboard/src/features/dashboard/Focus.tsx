@@ -9,15 +9,15 @@ import { Button } from '@/components/ui/button'
 import { FOCUS_RULE, todaysFocus } from '@/domain/focus'
 import type { ProjectLookup } from '@/domain/projects'
 import { useToday } from '@/lib/clock'
-import { withProject } from '@/lib/projectContext'
-import { tasksHref } from '@/lib/routes'
+import { useProjectHref } from '@/lib/projectContext'
 import { InfoTip } from './InfoTip'
 
 /**
  * The hero panel: up to five tasks by a fixed, stated rule (the rule is in the
  * "i" tooltip). The first row is marked "Next". Status changes in place.
  */
-export function Focus({ tasks, projects, project }: { tasks: Query<NoteSummary[]>; projects: ProjectLookup; project: string | null }) {
+export function Focus({ tasks, projects }: { tasks: Query<NoteSummary[]>; projects: ProjectLookup }) {
+  const href = useProjectHref()
   const today = useToday()
   const items = tasks.status === 'success' ? todaysFocus(tasks.data, today) : []
   return (
@@ -25,7 +25,7 @@ export function Focus({ tasks, projects, project }: { tasks: Query<NoteSummary[]
       <CardHead title="Focus" count={tasks.status === 'success' ? items.length : undefined}>
         <InfoTip label="How focus is chosen" rule={FOCUS_RULE} />
         <Button asChild variant="secondary" size="sm">
-          <Link to={withProject(tasksHref(), project)}>All tasks</Link>
+          <Link to={href.tasks()}>All tasks</Link>
         </Button>
       </CardHead>
       <QueryBoundary query={tasks} rows={4} isEmpty={() => items.length === 0} empty="Nothing is overdue, blocked, due today or in review.">

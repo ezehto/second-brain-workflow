@@ -5,7 +5,7 @@ import { useQuery, type Query } from '@/api/useQuery'
 import { useShellDashboard } from '@/components/ShellData'
 import { inProject } from '@/domain/dashboard'
 import { projectLookup } from '@/domain/projects'
-import { useMinWidth } from '@/features/notes/useMediaQuery'
+import { useMinWidth } from '@/lib/viewport'
 import { useProjectContext } from '@/lib/projectContext'
 import { ActiveProjects } from './ActiveProjects'
 import { BlockedWaiting } from './BlockedWaiting'
@@ -49,7 +49,7 @@ export function DashboardPage() {
   const lookup = useMemo(() => projectLookup(projects.status === 'success' ? projects.data : undefined), [projects])
 
   const panels: Record<string, ReactNode> = {
-    focus: <Focus key="focus" tasks={tasks} projects={lookup} project={project} />,
+    focus: <Focus key="focus" tasks={tasks} projects={lookup} />,
     blocked: <BlockedWaiting key="blocked" tasks={tasks} projects={lookup} />,
     decisions: <DecisionsToMake key="decisions" decisions={decisions} projects={lookup} />,
     standup: <StandupPanel key="standup" dashboard={dashboard} projects={projects} tasks={allTasks} />,
@@ -76,7 +76,7 @@ export function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <StatTiles dashboard={dashboard} tasks={tasks} decisions={decisions} project={project} />
+      <StatTiles dashboard={dashboard} tasks={tasks} decisions={decisions} />
       <div className={`grid items-start gap-4 ${widths}`}>
         {layout.map((column) => (
           <div key={column.join('-')} className="flex min-w-0 flex-col gap-4">

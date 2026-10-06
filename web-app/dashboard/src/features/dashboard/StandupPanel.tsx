@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { parseDaily, previewSections } from '@/domain/daily'
 import { summarizeStandup } from '@/domain/standup'
 import { useToday } from '@/lib/clock'
+import { useProjectHref } from '@/lib/projectContext'
 import { plural } from '@/lib/plural'
 import { routes } from '@/lib/routes'
 import { AddLine } from '@/features/standup/AddLine'
@@ -36,6 +37,7 @@ export function StandupPanel({
   projects: Query<ProjectSummary[]>
   tasks: Query<NoteSummary[]>
 }) {
+  const href = useProjectHref()
   const client = useApi()
   const invalidate = useInvalidate()
   const toast = useToast()
@@ -72,7 +74,7 @@ export function StandupPanel({
     <Card aria-label="Standup today">
       <CardHead title="Standup today">
         <Button asChild variant="secondary" size="sm">
-          <Link to={routes.standups}>Open standup</Link>
+          <Link to={href.link(routes.standups)}>Open standup</Link>
         </Button>
       </CardHead>
       <QueryBoundary query={dashboard} rows={3}>
@@ -117,7 +119,7 @@ export function StandupPanel({
                       ))}
                       {lines.length > SHOWN && (
                         <CardRow className="min-h-8">
-                          <Link to={routes.standups} className="t-small">
+                          <Link to={href.link(routes.standups)} className="t-small">
                             {lines.length - SHOWN} more in the standup
                           </Link>
                         </CardRow>

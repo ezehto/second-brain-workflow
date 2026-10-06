@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router'
 import { useApi } from '@/api/ApiProvider'
 import { listAllNotes } from '@/api/listAll'
 import type { NoteSummary, SearchResponse } from '@/api/types'
-import { useQuery, type Query } from '@/api/useQuery'
+import { joinQueries, useQuery, type Query } from '@/api/useQuery'
 import { Card, CardHead } from '@/components/Card'
 import { EmptyState } from '@/components/EmptyState'
 import { Icon } from '@/components/Icon'
@@ -13,12 +13,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useToday } from '@/lib/clock'
 import { formatWhen } from '@/lib/dates'
-import { useProjectContext, withProject } from '@/lib/projectContext'
-import { noteHref } from '@/lib/routes'
+import { useProjectContext, useProjectHref } from '@/lib/projectContext'
 import { projectLookup } from '@/domain/projects'
 import { NoteReader } from '@/features/notes/NoteReader'
 import { SplitPane } from '@/features/notes/SplitPane'
-import { useSplitLayout } from '@/features/notes/useMediaQuery'
+import { useSplitLayout } from '@/lib/viewport'
 import { ResultRow } from './ResultRow'
 import { useDebouncedValue } from './useDebouncedValue'
 
@@ -83,6 +82,11 @@ export function SearchPage() {
   const lookup = useMemo(() => projectLookup(projects.status === 'success' ? projects.data : undefined), [projects])
   const projectOf = useMemo(() => new Map((notes.status === 'success' ? notes.data : []).map((n) => [n.path, n.project])), [notes])
 
+  // With a project context the results are narrowed by each note's project, which only the note list knows,
+  // so the boundary waits for it (and shows its error) instead of reporting "nothing matches" too early.
+  const noteGate: Query<NoteSummary[]> = context ? notes : { status: 'success', data: [], error: undefined, refetch: notes.refetch }
+  const gated = joinQueries(results, noteGate)
+
   const setParam = (key: string, value: string | null) =>
     setParams((prev) => {
       const p = new URLSearchParams(prev)
@@ -116,8 +120,8 @@ export function SearchPage() {
       {!q ? (
         <Recent notes={notes} context={context} today={today} lookup={lookup} />
       ) : (
-        <QueryBoundary query={results} rows={4}>
-          {(data) => {
+        <QueryBoundary query={gated} rows={4}>
+          {([data]) => {
             const inContext = data.results.filter((r) => !context || projectOf.get(r.path) === context)
             const counts = new Map<string, number>()
             inContext.forEach((r) => counts.set(r.type, (counts.get(r.type) ?? 0) + 1))
@@ -164,7 +168,6 @@ export function SearchPage() {
                           key={r.path}
                           result={r}
                           query={q}
-                          context={context}
                           project={projectOf.get(r.path) ? lookup.title(projectOf.get(r.path) ?? null) : null}
                           selected={split && r.path === openPath}
                           onSelect={split ? (path) => setParam('note', path) : undefined}
@@ -196,6 +199,7 @@ function Recent({
   today: string
   lookup: ReturnType<typeof projectLookup>
 }) {
+  const href = useProjectHref()
   return (
     <Card>
       <CardHead title="Recently modified" count={RECENT_COUNT} />
@@ -209,7 +213,7 @@ function Recent({
               .map((n) => (
                 <li key={n.path} className="flex min-h-9 flex-wrap items-center gap-x-3 gap-y-1 border-t border-line px-3 py-2">
                   <span className="t-small rounded-full bg-inset px-2 py-px font-semibold text-muted-ink">{n.type}</span>
-                  <Link to={withProject(noteHref(n.path), context)} className="t-body min-w-0 flex-1 font-semibold text-ink underline-offset-2 hover:underline">
+                  <Link to={href.note(n.path)} className="t-body min-w-0 flex-1 font-semibold text-ink underline-offset-2 hover:underline">
                     {n.title}
                   </Link>
                   <span className="t-small text-muted-ink">{n.project ? lookup.title(n.project) : null}</span>

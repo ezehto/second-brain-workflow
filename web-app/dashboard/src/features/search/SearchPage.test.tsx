@@ -157,4 +157,22 @@ describe('SearchPage', () => {
     expect(await screen.findByText(/No notes match|Nothing in this project matches/)).toBeInTheDocument()
     expect(screen.queryByText('Add retry with backoff to payment callback handler')).toBeNull()
   })
+
+  it('waits for the note list before saying nothing matches in a project, and shows its error', async () => {
+    let release: () => void = () => {}
+    const client = clientWith(async (q) => ({ query: q, results: HITS }))
+    const list = client.listNotes
+    client.listNotes = (params) => new Promise((resolve) => (release = () => resolve(list(params))))
+    const a = open('/search?q=retry&project=ipp', client)
+    await screen.findByText('Loading')
+    expect(screen.queryByText(/Nothing in this project matches/)).not.toBeInTheDocument()
+    release()
+    expect(await screen.findByText(/results? for "retry" in the vault/)).toBeInTheDocument()
+    a.unmount()
+
+    const failing = clientWith(async (q) => ({ query: q, results: HITS }))
+    failing.listNotes = () => Promise.reject(new Error('Notes failed'))
+    open('/search?q=retry&project=ipp', failing)
+    expect(await screen.findByRole('alert')).toHaveTextContent('Notes failed')
+  })
 })

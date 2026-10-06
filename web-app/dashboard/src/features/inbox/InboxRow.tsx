@@ -19,8 +19,8 @@ const SELECT_CLASS =
  * select; the single action button's label follows the chosen kind. A kind with
  * no Phase 1 target is written and kept (the row then offers only Dismiss).
  *
- * Every write sends the hash of the capture as shown. A 409 with
- * `created_target` means the target note exists but the capture could not be
+ * Every write sends the hash of the capture as shown. An error carrying
+ * `created_target` (whatever its status) means the target note exists but the capture could not be
  * edited: the row says so and offers Retry, which re-reads the capture and
  * resends with `existing_target` so nothing is created twice. Any other 409 is
  * a stale view: reload and say so.
@@ -94,7 +94,7 @@ export function InboxRow({
       }
       invalidate()
     } catch (error) {
-      if (error instanceof ApiError && error.status === 409 && error.body.created_target) {
+      if (error instanceof ApiError && error.body?.created_target) {
         setPartial({ target: error.body.created_target, action, classification: kind ?? '' })
       } else if (error instanceof ApiError && (error.status === 409 || error.status === 404)) {
         toast.show(`${text} changed in Obsidian, reloaded.`)
@@ -145,7 +145,7 @@ export function InboxRow({
           <button type="button" onClick={() => onSelect(note)} aria-pressed={selected} aria-label={`Open ${text}`} className="t-body min-h-6 cursor-pointer truncate border-0 bg-transparent p-0 text-left text-ink hover:underline">
             {text}
           </button>
-          <span className="t-caption truncate text-muted-ink">
+          <span className="t-small truncate text-muted-ink">
             Captured {capturedWhen(note, today)}
             {written ? ', classified by /triage' : ''}
           </span>
@@ -153,7 +153,7 @@ export function InboxRow({
 
         <div data-actions className="flex flex-wrap items-center gap-2">
           {classification && (written || kept) && (
-            <span className="t-caption inline-flex h-6 items-center rounded-full bg-inset px-2 font-semibold text-muted-ink">{classification}</span>
+            <span className="t-small inline-flex h-6 items-center rounded-full bg-inset px-2 font-semibold text-muted-ink">{classification}</span>
           )}
           {!written && !kept && (
             <>
@@ -171,7 +171,7 @@ export function InboxRow({
             </>
           )}
           {kept ? (
-            <span className="t-caption text-muted-ink">Kept in inbox until its phase exists</span>
+            <span className="t-small text-muted-ink">Kept in inbox until its phase exists</span>
           ) : (
             <>
               {converts && (
@@ -187,7 +187,7 @@ export function InboxRow({
               </Button>
             </>
           )}
-          <Button size="sm" variant="secondary" disabled={busy} onClick={() => void send('dismiss', classification || undefined)}>
+          <Button size="sm" variant="secondary" disabled={busy} onClick={() => void send('dismiss', written || undefined)}>
             Dismiss
           </Button>
         </div>

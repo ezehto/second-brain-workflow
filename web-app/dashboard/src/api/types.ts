@@ -6,7 +6,8 @@
  * missing: the UI shows `N/A` for them.
  *
  * Provisional contract change: `TriageRequest.classification` is optional, and
- * sent only for `dismiss` when a classification was written or chosen.
+ * sent only for `dismiss` when a classification was already written to the
+ * capture (a kind merely chosen in the UI is not sent).
  */
 
 export type NoteType = 'task' | 'project' | 'decision' | 'lesson' | 'capture' | 'daily' | 'note' | (string & {})
@@ -146,7 +147,11 @@ export interface IndexStatus {
   test_mode: { today: string } | null
 }
 
-/** `GET /api/search/?q=`. */
+/**
+ * `GET /api/search/?q=`. Provisional: results should also carry `project` (the
+ * note's project slug or null) so a project context can filter them without
+ * loading every note, and `snippet` should be plain text, not HTML.
+ */
 export interface SearchResult {
   path: string
   type: NoteType

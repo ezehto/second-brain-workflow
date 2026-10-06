@@ -1,7 +1,7 @@
 import { useSearchParams } from 'react-router'
 import type { NoteSummary } from '@/api/types'
 import { NoteReader } from '@/features/notes/NoteReader'
-import { useSplitLayout } from '@/features/notes/useMediaQuery'
+import { useSplitLayout } from '@/lib/viewport'
 import { withParam, type ListView } from './filters'
 
 /**

@@ -8,8 +8,8 @@ import { QueryBoundary } from '@/components/QueryBoundary'
 import { doneByDay, doneRecently, type DayCount } from '@/domain/dashboard'
 import { evidenceLine } from '@/domain/evidence'
 import { useToday } from '@/lib/clock'
+import { useProjectHref } from '@/lib/projectContext'
 import { formatShortDate } from '@/lib/dates'
-import { noteHref } from '@/lib/routes'
 
 const WEEKDAY = new Intl.DateTimeFormat('en-GB', { weekday: 'short', timeZone: 'UTC' })
 const BAR_MAX_PX = 48
@@ -59,6 +59,7 @@ function useEvidence(paths: string[]): Query<Record<string, string | null>> {
  * Only the note's modified time is stored, so the day is approximate.
  */
 export function DoneRecently({ tasks }: { tasks: Query<NoteSummary[]> }) {
+  const href = useProjectHref()
   const today = useToday()
   const done = tasks.status === 'success' ? doneRecently(tasks.data, today) : []
   const evidence = useEvidence(done.map((t) => t.path))
@@ -71,11 +72,11 @@ export function DoneRecently({ tasks }: { tasks: Query<NoteSummary[]> }) {
             {done.map((t) => (
               <CardRow key={t.path} lines={2} className="grid-cols-[minmax(0,1fr)_auto] py-1.5">
                 <div className="flex min-w-0 flex-col">
-                  <Link to={noteHref(t.path)} className="linkbtn t-body truncate">
+                  <Link to={href.note(t.path)} className="linkbtn t-body truncate">
                     {t.title}
                   </Link>
                   <span className="t-small truncate text-muted-ink">
-                    {evidence.status === 'success' ? (evidence.data[t.path] ?? 'No evidence recorded.') : ' '}
+                    {evidence.status === 'success' ? (evidence.data[t.path] ?? 'No evidence recorded.') : evidence.status === 'error' ? 'Evidence could not be loaded.' : ' '}
                   </span>
                 </div>
                 <span className="num t-caption text-muted-ink">{formatShortDate(t.modified)}</span>

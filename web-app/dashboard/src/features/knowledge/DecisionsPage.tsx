@@ -10,10 +10,10 @@ import { Segmented } from '@/components/Segmented'
 import { StatusMenu } from '@/components/StatusMenu'
 import { projectLookup } from '@/domain/projects'
 import { formatShortDate } from '@/lib/dates'
-import { useProjectContext } from '@/lib/projectContext'
+import { useProjectContext, useProjectHref } from '@/lib/projectContext'
 import { routes } from '@/lib/routes'
 import { SplitPane } from '@/features/notes/SplitPane'
-import { useMinWidth } from '@/features/notes/useMediaQuery'
+import { useMinWidth } from '@/lib/viewport'
 import { DECISION_STATUSES, filterDecisions, groupDecisions, parseListParams } from './filters'
 import { ListRow, NoteLink } from './parts'
 import { useReaderPane } from './useReaderPane'
@@ -28,6 +28,7 @@ const ALL = 'all'
  * `StatusMenu`, so a decision is accepted or rejected in place.
  */
 export function DecisionsPage() {
+  const href = useProjectHref()
   const client = useApi()
   const [params] = useSearchParams()
   const project = useProjectContext()
@@ -71,7 +72,7 @@ export function DecisionsPage() {
                 <Card>
                   <CardHead title="Decisions" count={shown.length} />
                   {groups.length === 0 ? (
-                    <EmptyState className="border-t border-line pt-3" action={<Link to={routes.decisions}>Clear filters</Link>}>
+                    <EmptyState className="border-t border-line pt-3" action={<Link to={href.link(routes.decisions)}>Clear filters</Link>}>
                       No decisions match these filters.
                     </EmptyState>
                   ) : (

@@ -2,8 +2,8 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 import type { NoteSummary } from '@/api/types'
 import { CardRow } from '@/components/Card'
-import { noteHref } from '@/lib/routes'
 import { cn } from '@/lib/utils'
+import { useProjectHref } from '@/lib/projectContext'
 
 /**
  * One note as a ruled row: the title is a link to the note. With `onOpen` a
@@ -25,11 +25,12 @@ export function NoteRow({
   selected?: boolean
   onOpen?: (note: NoteSummary) => void
 }) {
+  const href = useProjectHref()
   return (
     <CardRow aria-current={selected ? 'true' : undefined} className={cn('grid-cols-[minmax(0,1fr)_auto]', selected && 'bg-inset')}>
       <div className="flex min-w-0 items-baseline gap-2">
         <Link
-          to={noteHref(note.path)}
+          to={href.note(note.path)}
           className="linkbtn t-body truncate"
           onClick={(event) => {
             if (!onOpen || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return

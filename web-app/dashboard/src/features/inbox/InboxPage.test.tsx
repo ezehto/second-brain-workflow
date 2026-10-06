@@ -230,21 +230,32 @@ describe('InboxPage: converting', () => {
     const client = withBodies(mockClient())
     const calls: TriageRequest[] = []
     const real = client.triageCapture.bind(client)
+    // The first call really creates the target (the mock does that before it checks the hash), then fails with a 500.
     client.triageCapture = async (input) => {
       calls.push(input)
-      if (calls.length === 1) throw new ApiError(409, 'capture changed', { created_target: '02-Work/Tasks/Renew.md' })
-      return real({ ...input, existing_target: undefined, title: 'Renew' })
+      if (calls.length > 1) return real(input)
+      try {
+        return await real({ ...input, expected_hash: 'sha256:stale' })
+      } catch (error) {
+        throw new ApiError(500, 'disk error', { created_target: (error as ApiError).body.created_target })
+      }
     }
+    const tasks = async () => (await client.listNotes({ type: 'task', page_size: 100 })).count
+    const before = await tasks()
     open(client)
     await screen.findAllByRole('listitem')
     const row = rowOf(TLS)
     await user.click(row.getByRole('button', { name: 'Create task' }))
-    expect(await row.findByRole('alert')).toHaveTextContent('Created 02-Work/Tasks/Renew.md')
+    const alert = await row.findByRole('alert')
+    expect(alert).toHaveTextContent(/Created 02-Work\/Tasks\/.*\.md, but the capture could not be updated/)
+    expect(row.getByRole('button', { name: 'Create task' })).toBeDisabled()
+    expect(await tasks()).toBe(before + 1)
     await user.click(row.getByRole('button', { name: 'Retry' }))
     await waitFor(() => expect(calls).toHaveLength(2))
     expect(calls[0].existing_target).toBeUndefined()
-    expect(calls[1]).toMatchObject({ action: 'task', existing_target: '02-Work/Tasks/Renew.md' })
-    await waitFor(() => expect(row.queryByRole('alert')).not.toBeInTheDocument())
+    expect(calls[1]).toMatchObject({ action: 'task', existing_target: expect.stringMatching(/^02-Work\/Tasks\//) })
+    await waitFor(() => expect(screen.queryByRole('listitem', { name: new RegExp(TLS.slice(0, 20)) })).not.toBeInTheDocument())
+    expect(await tasks()).toBe(before + 1)
   })
 })
 
@@ -275,6 +286,19 @@ describe('InboxPage: keep and dismiss', () => {
     expect(row.getByText('thought')).toBeInTheDocument()
     expect(row.getByRole('button', { name: 'Dismiss' })).toBeInTheDocument()
     expect(row.queryByRole('button', { name: /Create|Keep/ })).not.toBeInTheDocument()
+  })
+
+  it('dismiss does not send a classification that was only chosen, not written', async () => {
+    const user = userEvent.setup()
+    const client = mockClient()
+    const calls = spyTriage(client)
+    open(client)
+    await screen.findAllByRole('listitem')
+    const row = rowOf('Should the standup list')
+    await user.selectOptions(row.getByRole('combobox'), 'question')
+    await user.click(row.getByRole('button', { name: 'Dismiss' }))
+    await waitFor(() => expect(calls).toHaveLength(1))
+    expect(calls[0].classification).toBeUndefined()
   })
 
   it('dismiss sends the classification only when one is written', async () => {

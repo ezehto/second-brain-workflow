@@ -29,7 +29,7 @@ const dashboard = (standup?: 'missing' | 'untouched' | 'touched'): Promise<Dashb
 
 describe('StatTiles', () => {
   it('shows six counts, each a link to its list', async () => {
-    renderInApp(<StatTiles dashboard={ok(await dashboard())} tasks={ok(tasks)} decisions={ok(decisions)} project={null} />)
+    renderInApp(<StatTiles dashboard={ok(await dashboard())} tasks={ok(tasks)} decisions={ok(decisions)} />)
     const link = (label: string) => screen.getByText(label).closest('a')!
     expect(link('For today')).toHaveTextContent('5')
     expect(link('For today')).toHaveAttribute('href', '/tasks?today=true')
@@ -45,33 +45,33 @@ describe('StatTiles', () => {
   })
   it('carries the project context in its links and counts only that project', async () => {
     const ipp = tasks.filter((t) => t.project === 'ipp')
-    renderInApp(<StatTiles dashboard={ok(await dashboard())} tasks={ok(ipp)} decisions={ok(decisions.filter((d) => d.project === 'ipp'))} project="ipp" />)
+    renderInApp(<StatTiles dashboard={ok(await dashboard())} tasks={ok(ipp)} decisions={ok(decisions.filter((d) => d.project === 'ipp'))} />, mockClient(), TODAY, '/?project=ipp')
     expect(screen.getByText('Blocked').closest('a')).toHaveAttribute('href', '/tasks?status=blocked&project=ipp')
     expect(screen.getByText('Blocked').closest('a')).toHaveTextContent('1')
     expect(screen.getByText('For today').closest('a')).toHaveTextContent('2')
     expect(screen.getByText('Decisions pending').closest('a')).toHaveTextContent('1')
   })
   it('counts from the task list, so it follows the injected today', async () => {
-    renderInApp(<StatTiles dashboard={ok(await dashboard())} tasks={ok([task('a', { due: '2026-10-01' }), task('b', { status: 'blocked' })])} decisions={ok([])} project={null} />)
+    renderInApp(<StatTiles dashboard={ok(await dashboard())} tasks={ok([task('a', { due: '2026-10-01' }), task('b', { status: 'blocked' })])} decisions={ok([])} />)
     expect(screen.getByText('Overdue').closest('a')).toHaveTextContent('1')
     expect(screen.getByText('Blocked').closest('a')).toHaveTextContent('1')
     expect(screen.getByText('Decisions pending').closest('a')).toHaveTextContent('0')
   })
   it('shows an error with a retry, and announces loading', () => {
     const q = failed<DashboardResponse>('Network down')
-    const { unmount } = renderInApp(<StatTiles dashboard={q} tasks={ok(tasks)} decisions={ok(decisions)} project={null} />)
+    const { unmount } = renderInApp(<StatTiles dashboard={q} tasks={ok(tasks)} decisions={ok(decisions)} />)
     expect(screen.getByRole('alert')).toHaveTextContent('Network down')
     screen.getByRole('button', { name: 'Try again' }).click()
     expect(q.refetch).toHaveBeenCalled()
     unmount()
-    renderInApp(<StatTiles dashboard={loading()} tasks={loading()} decisions={loading()} project={null} />)
+    renderInApp(<StatTiles dashboard={loading()} tasks={loading()} decisions={loading()} />)
     expect(screen.getByText('Loading')).toBeInTheDocument()
   })
 })
 
 describe('Focus', () => {
   it('lists the five by the stated rule as task rows with a status control, and marks only the first Next', () => {
-    renderInApp(<Focus tasks={ok(tasks)} projects={lookup} project={null} />)
+    renderInApp(<Focus tasks={ok(tasks)} projects={lookup} />)
     const rows = screen.getAllByRole('link').filter((a) => a.getAttribute('href')?.startsWith('/notes?path='))
     expect(rows).toHaveLength(5)
     expect(rows[0]).toHaveTextContent('Rotate staging API credentials')
@@ -82,36 +82,47 @@ describe('Focus', () => {
     expect(screen.getByRole('heading', { name: 'Focus' })).toBeInTheDocument()
   })
   it('has the rule in a tooltip trigger, named for assistive technology, and no accent fill', () => {
-    const { container } = renderInApp(<Focus tasks={ok(tasks)} projects={lookup} project={null} />)
+    const { container } = renderInApp(<Focus tasks={ok(tasks)} projects={lookup} />)
     expect(screen.getByRole('button', { name: /How focus is chosen: Chosen by a fixed rule, not by an AI/ })).toBeInTheDocument()
     expect(container.querySelector('[data-accent]')).toBeNull()
   })
   it('says so when nothing is pressing', () => {
-    renderInApp(<Focus tasks={ok([task('quiet')])} projects={lookup} project={null} />)
+    renderInApp(<Focus tasks={ok([task('quiet')])} projects={lookup} />)
     expect(screen.getByText('Nothing is overdue, blocked, due today or in review.')).toBeInTheDocument()
   })
   it('shows N/A for a task with no project and flags an unknown project', () => {
-    renderInApp(<Focus tasks={ok([task('a', { due: '2026-10-01' }), task('b', { due: '2026-10-02', project: 'ghost' })])} projects={lookup} project={null} />)
+    renderInApp(<Focus tasks={ok([task('a', { due: '2026-10-01' }), task('b', { due: '2026-10-02', project: 'ghost' })])} projects={lookup} />)
     expect(screen.getByText(/· N\/A/)).toBeInTheDocument()
     expect(screen.getByText(/· ghost \(unknown\)/)).toBeInTheDocument()
   })
   it('shows loading and error states', () => {
-    const { unmount } = renderInApp(<Focus tasks={loading()} projects={lookup} project={null} />)
+    const { unmount } = renderInApp(<Focus tasks={loading()} projects={lookup} />)
     expect(screen.getByText('Loading')).toBeInTheDocument()
     unmount()
-    renderInApp(<Focus tasks={failed('Boom')} projects={lookup} project={null} />)
+    renderInApp(<Focus tasks={failed('Boom')} projects={lookup} />)
     expect(screen.getByRole('alert')).toHaveTextContent('Boom')
   })
 })
 
 describe('BlockedWaiting', () => {
+  // Five overdue tasks fill Focus, so the blocked ones are not in it and are listed here.
+  const overdue = Array.from({ length: 5 }, (_, i) => task(`Late ${i}`, { due: '2026-10-01', priority: 'high' }))
   it('shows each blocked task with what it waits on and its age, without repeating a Blocked marker', () => {
-    renderInApp(<BlockedWaiting tasks={ok(tasks)} projects={lookup} />)
+    renderInApp(<BlockedWaiting tasks={ok([...overdue, ...tasks.filter((t) => t.status === 'blocked')])} projects={lookup} />)
     expect(screen.getByRole('heading', { name: 'Blocked and waiting' })).toBeInTheDocument()
     expect(screen.getByText('Waiting on the provider account manager · LoadUp')).toBeInTheDocument()
     expect(screen.getByText('Staging database refresh · IPP')).toBeInTheDocument()
     expect(screen.getAllByText('1 day')).toHaveLength(2)
     expect(screen.queryByText(/^Blocked:/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/shown in Focus/)).not.toBeInTheDocument()
+  })
+  it('does not repeat a task Focus shows, keeps the full count, and says how many are in Focus', () => {
+    renderInApp(<BlockedWaiting tasks={ok(tasks)} projects={lookup} />)
+    const card = screen.getByRole('region', { name: 'Blocked and waiting' })
+    expect(within(card).queryByText('Waiting on the provider account manager · LoadUp')).not.toBeInTheDocument()
+    expect(within(card).getByText('2')).toBeInTheDocument()
+    expect(within(card).getByText('2 shown in Focus')).toBeInTheDocument()
+    expect(within(card).getByText('Every blocked task is already shown in Focus.')).toBeInTheDocument()
   })
   it('says when nothing is blocked, and shows an error state', () => {
     const { unmount } = renderInApp(<BlockedWaiting tasks={ok([task('quiet')])} projects={lookup} />)
@@ -121,7 +132,8 @@ describe('BlockedWaiting', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Nope')
   })
   it('shows N/A for a blocker that was never written down', () => {
-    renderInApp(<BlockedWaiting tasks={ok([task('stuck', { status: 'blocked' })])} projects={lookup} />)
+    const late = Array.from({ length: 5 }, (_, i) => task(`Late ${i}`, { due: '2026-10-01' }))
+    renderInApp(<BlockedWaiting tasks={ok([...late, task('stuck', { status: 'blocked' })])} projects={lookup} />)
     expect(screen.getByText('N/A · N/A')).toBeInTheDocument()
   })
 })
@@ -155,6 +167,12 @@ describe('DoneRecently', () => {
     expect(await screen.findByText('Reproduced on staging: a retried callback wrote the row twice.')).toBeInTheDocument()
     expect(await screen.findByText('No evidence recorded.')).toBeInTheDocument()
   })
+  it('says so when the evidence cannot be read', async () => {
+    const client = mockClient()
+    client.lookupNote = () => Promise.reject(new Error('down'))
+    renderInApp(<DoneRecently tasks={ok(tasks)} />, client)
+    expect((await screen.findAllByText('Evidence could not be loaded.')).length).toBeGreaterThan(0)
+  })
   it('leaves out tasks done before the window and tasks not done', () => {
     const old = task('Ancient', { status: 'done', modified: '2026-09-01T10:00:00+08:00' })
     renderInApp(<DoneRecently tasks={ok([old, task('Open')])} />)
@@ -179,7 +197,7 @@ describe('ActiveProjects', () => {
     const row = (name: string) => screen.getByRole('link', { name }).closest('div[class*="min-h"]') as HTMLElement
     expect(row('LoadUp')).toHaveTextContent('Blocked')
     expect(row('LoadUp')).toHaveTextContent('1 blocked task')
-    expect(row('LoadUp')).toHaveTextContent('Blocked: Confirm rate limit with SMS provider')
+    expect(row('LoadUp')).toHaveTextContent('Next: Rotate staging API credentials')
     expect(row('LoadUp')).toHaveTextContent('0 of 4 done')
     expect(row('Second Brain')).toHaveTextContent('On track')
     expect(row('Second Brain')).toHaveTextContent('Next: Verify templates in Obsidian')
