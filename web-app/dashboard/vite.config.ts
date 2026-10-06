@@ -18,7 +18,7 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     allowedHosts: ['localhost', '127.0.0.1'],
-    watch: { usePolling: true, interval: 300 },
+    watch: { usePolling: true, interval: 1000 },
     proxy: {
       '/api': {
         target: process.env.API_PROXY_TARGET ?? 'http://backend:8000',

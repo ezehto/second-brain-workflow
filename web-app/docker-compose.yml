@@ -18,5 +18,19 @@ services:
     restart: unless-stopped
     # No published port: only other services on the Compose network reach the database.
 
+  frontend:
+    build: ./dashboard
+    init: true
+    environment:
+      TZ: ${TZ:-Asia/Manila}
+      VITE_API_MODE: mock
+    volumes:
+      - ./dashboard:/app
+      - node_modules:/app/node_modules
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-5173}:5173"
+    restart: unless-stopped
+
 volumes:
   pgdata:
+  node_modules:
