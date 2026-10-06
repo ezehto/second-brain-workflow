@@ -49,6 +49,14 @@ IMPLEMENTED = {
     ("post", "/api/auth/login/"),
     ("post", "/api/auth/logout/"),
     ("get", "/api/auth/me/"),
+    ("get", "/api/search/"),
+    ("get", "/api/index/status/"),
+    ("post", "/api/index/refresh/"),
+    ("get", "/api/notes/"),
+    ("get", "/api/notes/lookup/"),
+    ("get", "/api/projects/"),
+    ("get", "/api/projects/{slug}/"),
+    ("get", "/api/dashboard/"),
 }
 STUBBED = [entry for entry in SECTION_5 if entry not in IMPLEMENTED]
 STUBBED_SESSION = [entry for entry in STUBBED if entry[1] not in NO_SESSION_PATHS]

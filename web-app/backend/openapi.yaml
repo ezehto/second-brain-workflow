@@ -191,12 +191,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/Dashboard'
           description: ''
-        '501':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-          description: ''
   /api/health/:
     get:
       operationId: health
@@ -237,12 +231,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/RefreshSummary'
           description: ''
-        '501':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-          description: ''
   /api/index/status/:
     get:
       operationId: index_status
@@ -257,12 +245,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/IndexStatus'
-          description: ''
-        '501':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
           description: ''
   /api/notes/:
     get:
@@ -294,6 +276,7 @@ paths:
           - due
           - title
           - path
+          - -path
           type: string
           minLength: 1
         description: |-
@@ -303,6 +286,7 @@ paths:
           * `due` - due
           * `title` - title
           * `path` - path
+          * `-path` - -path
       - in: query
         name: overdue
         schema:
@@ -378,12 +362,6 @@ paths:
                 $ref: '#/components/schemas/PaginatedNoteSummaryList'
           description: ''
         '400':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-          description: ''
-        '501':
           content:
             application/json:
               schema:
@@ -485,12 +463,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/AmbiguousLookupError'
           description: ''
-        '501':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-          description: ''
   /api/notes/status/:
     post:
       operationId: notes_status
@@ -563,12 +535,6 @@ paths:
                 items:
                   $ref: '#/components/schemas/ProjectSummary'
           description: ''
-        '501':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-          description: ''
   /api/projects/{slug}/:
     get:
       operationId: projects_detail
@@ -592,12 +558,6 @@ paths:
                 $ref: '#/components/schemas/ProjectDetail'
           description: ''
         '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-          description: ''
-        '501':
           content:
             application/json:
               schema:
@@ -774,12 +734,6 @@ paths:
                 $ref: '#/components/schemas/SearchResponse'
           description: ''
         '400':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-          description: ''
-        '501':
           content:
             application/json:
               schema:

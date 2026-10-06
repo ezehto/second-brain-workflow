@@ -18,6 +18,7 @@ from vault.conventions import (
     STATUSES,
     TRIAGE_ACTIONS,
 )
+from vault.dates import frontmatter_date
 
 INDEX_PROBLEM_CATEGORIES = (
     "parse_errors",
@@ -29,7 +30,7 @@ INDEX_PROBLEM_CATEGORIES = (
     "unknown_statuses",
     "invalid_dates",
 )
-NOTE_ORDERINGS = ("-modified", "due", "title", "path")
+NOTE_ORDERINGS = ("-modified", "due", "title", "path", "-path")
 
 
 HASH_PATTERN = r"^[0-9a-f]{64}$"
@@ -40,6 +41,14 @@ TEXT_MAX = 255
 def expected_hash_field(**kwargs) -> serializers.RegexField:
     """A SHA-256 hex digest, as `content_hash` reports it."""
     return serializers.RegexField(HASH_PATTERN, **kwargs)
+
+
+def frontmatter_text(value) -> str | None:
+    """A scalar frontmatter value as text; None for null, blank, lists and mappings."""
+    if value is None or isinstance(value, list | dict):
+        return None
+    text = ("true" if value else "false") if isinstance(value, bool) else str(value)
+    return text.strip() or None
 
 
 class NotePagination(PageNumberPagination):
@@ -106,7 +115,9 @@ class NoteSummarySerializer(serializers.Serializer):
     """Promoted fields of one indexed note."""
 
     id = serializers.CharField(
-        allow_null=True, help_text="The `id` frontmatter value; null for a note without one."
+        source="note_id",
+        allow_null=True,
+        help_text="The `id` frontmatter value; null for a note without one.",
     )
     path = serializers.CharField(help_text="Vault-relative path.")
     type = serializers.CharField(help_text="A known type, `note`, or an unknown type as written.")
@@ -123,10 +134,21 @@ class NoteSummarySerializer(serializers.Serializer):
     decided = serializers.DateField(
         allow_null=True, help_text="Decisions: set when the status became accepted."
     )
-    tags = serializers.ListField(child=serializers.CharField())
+    tags = serializers.ListField(child=serializers.CharField(), source="tags.all")
     created = serializers.DateField(allow_null=True)
-    modified = serializers.DateTimeField(help_text="Local time with the vault's offset.")
+    modified = serializers.DateTimeField(
+        source="file_mtime", help_text="Local time with the vault's offset."
+    )
     parse_error = serializers.CharField(allow_null=True)
+
+    def to_representation(self, instance):
+        """`blocked_by` and `decided` have no column: they are read from the frontmatter."""
+        data = super().to_representation(instance)
+        frontmatter = instance.frontmatter
+        data["blocked_by"] = frontmatter_text(frontmatter.get("blocked_by"))
+        decided = frontmatter_date(frontmatter.get("decided"))
+        data["decided"] = decided.isoformat() if decided else None
+        return data
 
 
 class BacklinkSerializer(serializers.Serializer):
@@ -147,6 +169,7 @@ class NoteDetailSerializer(NoteSummarySerializer):
     content_hash = serializers.CharField(help_text="Send back as `expected_hash` when writing.")
     backlinks = BacklinkSerializer(many=True, help_text="Notes that link here.")
     links = serializers.DictField(
+        source="resolved_links",
         child=ResolvedLinkSerializer(),
         help_text="Each link target as written in the body, mapped to where it resolves.",
     )

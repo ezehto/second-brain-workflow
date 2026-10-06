@@ -4,6 +4,8 @@ from pathlib import Path
 
 import pytest
 
+pytest_plugins = ["api_support"]
+
 REAL_VAULT_MOUNT = Path("/vault")
 
 

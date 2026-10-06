@@ -1,6 +1,7 @@
-"""Notes: list, lookup, create and status change. Implemented in P1-26 and P1-28."""
+"""Notes: list and lookup (P1-26); create and status change are stubs until P1-28."""
 
 from drf_spectacular.utils import extend_schema
+from rest_framework import status
 from rest_framework.generics import GenericAPIView
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -17,7 +18,9 @@ from api.serializers import (
     NoteSummarySerializer,
     StatusChangeRequestSerializer,
 )
-from api.views.common import not_implemented
+from api.views.common import not_implemented, validation_detail
+from vault import clock, queries
+from vault.models import Note
 
 
 class NoteListCreateView(GenericAPIView):
@@ -36,11 +39,18 @@ class NoteListCreateView(GenericAPIView):
         responses={
             200: NoteSummarySerializer(many=True),
             400: ErrorSerializer,
-            501: ErrorSerializer,
         },
     )
     def get(self, request: Request) -> Response:
-        return not_implemented()
+        query = NoteListQuerySerializer(data=request.query_params)
+        if not query.is_valid():
+            return Response(validation_detail(query.errors), status=status.HTTP_400_BAD_REQUEST)
+        # An absent boolean would validate as False (HTML-input rule): keep only what was sent.
+        params = {k: v for k, v in query.validated_data.items() if k in request.query_params}
+        notes = queries.filter_notes(Note.objects.all(), params, clock.today())
+        notes = queries.order_notes(queries.with_tags(notes), params.get("ordering", "-modified"))
+        page = self.paginate_queryset(notes)
+        return self.get_paginated_response(NoteSummarySerializer(page, many=True).data)
 
     @extend_schema(
         operation_id="notes_create",
@@ -64,6 +74,10 @@ class NoteListCreateView(GenericAPIView):
 
 
 class NoteLookupView(APIView):
+    @staticmethod
+    def _bad_request(detail: str) -> Response:
+        return Response({"detail": detail}, status=status.HTTP_400_BAD_REQUEST)
+
     @extend_schema(
         operation_id="notes_lookup",
         tags=["notes"],
@@ -78,11 +92,30 @@ class NoteLookupView(APIView):
             400: ErrorSerializer,
             404: ErrorSerializer,
             409: AmbiguousLookupErrorSerializer,
-            501: ErrorSerializer,
         },
     )
     def get(self, request: Request) -> Response:
-        return not_implemented()
+        query = NoteLookupQuerySerializer(data=request.query_params)
+        if not query.is_valid():
+            return Response(validation_detail(query.errors), status=status.HTTP_400_BAD_REQUEST)
+        path, note_id = query.validated_data.get("path"), query.validated_data.get("id")
+        if (path is None) == (note_id is None):
+            return self._bad_request("Give exactly one of `path` and `id`.")
+        notes = queries.with_tags(
+            Note.objects.filter(path=path) if path else Note.objects.filter(note_id=note_id)
+        )
+        found = list(notes.order_by(queries.PATH_ORDER))
+        if not found:
+            return Response({"detail": "No such note."}, status=status.HTTP_404_NOT_FOUND)
+        if len(found) > 1:
+            return Response(
+                {
+                    "detail": f"{len(found)} notes have this id.",
+                    "candidates": [note.path for note in found],
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+        return Response(NoteDetailSerializer(queries.attach_detail(found[0])).data)
 
 
 class NoteStatusView(APIView):
