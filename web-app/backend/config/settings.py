@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
+    "django.contrib.postgres",
     "rest_framework",
     "drf_spectacular",
     "vault",
