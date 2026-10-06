@@ -376,6 +376,13 @@ class StartStandupResponseSerializer(serializers.Serializer):
     untouched = serializers.BooleanField()
 
 
+class AppendStandupResponseSerializer(serializers.Serializer):
+    note = NoteDetailSerializer()
+    section_created = serializers.BooleanField(
+        help_text="True when the heading was missing and was added to the note (2.4 rule 6)."
+    )
+
+
 class AppendStandupRequestSerializer(serializers.Serializer):
     section = serializers.ChoiceField(choices=STANDUP_HEADINGS)
     text = serializers.CharField(

@@ -406,7 +406,7 @@ def _replace_frontmatter(text: str, changes: dict[str, Any]) -> str:
     return head[:opening_end] + dumped + head[closing_start:] + text[len(head) :]
 
 
-def _normalise_heading(level: str, text: str) -> tuple[int, str]:
+def normalise_heading(level: str, text: str) -> tuple[int, str]:
     """(level, folded text) of an ATX heading's parts, as 2.4 rule 2 compares them."""
     return len(level), text.strip().rstrip("#").strip().casefold()
 
@@ -416,7 +416,7 @@ def _parse_heading(heading: str) -> tuple[int, str, str]:
     match = _HEADING_RE.fullmatch(heading.strip()) if isinstance(heading, str) else None
     if match is None:
         raise ValidationError(f"{_short(heading)} is not a heading such as '## Today'")
-    level, folded = _normalise_heading(*match.groups())
+    level, folded = normalise_heading(*match.groups())
     if not folded:
         raise ValidationError("the heading text is empty")
     display = match.group(2).strip().rstrip("#").strip()
@@ -427,7 +427,7 @@ def _parse_heading(heading: str) -> tuple[int, str, str]:
     return level, folded, display
 
 
-def _heading_positions(lines: list[str]) -> list[tuple[int, int, str]]:
+def heading_positions(lines: list[str]) -> list[tuple[int, int, str]]:
     """(index, level, folded text) of every ATX heading outside fenced code (2.4 rule 1)."""
     masked = mask_code("\n".join(lines)).split("\n")
     found = []
@@ -436,7 +436,7 @@ def _heading_positions(lines: list[str]) -> list[tuple[int, int, str]]:
             continue  # a fenced line
         match = _HEADING_RE.fullmatch(line.rstrip("\r"))
         if match is not None:
-            level, folded = _normalise_heading(*match.groups())
+            level, folded = normalise_heading(*match.groups())
             found.append((index, level, folded))
     return found
 
@@ -456,7 +456,7 @@ def _insert_under_heading(text: str, heading: str, new_lines: Sequence[str]) -> 
     blank = cr
     fresh = [line + cr for line in new_lines]
     lines = body.split("\n")
-    headings = _heading_positions(lines)
+    headings = heading_positions(lines)
     target = next((h for h in headings if h[1] == level and h[2] == folded), None)  # rule 3
     created = target is None
     if target is None:
@@ -563,12 +563,28 @@ class VaultWriter:
         spec = NoteSpec(type, title, project, priority, due, status, body)
         return self.create_many([spec])[0]
 
+    def create_daily(self, day: str | date, items: Mapping[str, Sequence[str]]) -> CreatedNote:
+        """Create the daily note for `day` from the template with carry-forward `items` in it.
+
+        One write: the template is rendered, `items` (as for `fill_untouched`) are inserted
+        under their headings in the rendered text, and the result is published. There is no
+        untouched check, so a template with `{{time}}` (a note that can never equal its own
+        rendering) is filled as well, and no half-made note is ever on disk.
+        """
+        title = day.isoformat() if isinstance(day, date) else day
+        return self._create_many([NoteSpec("daily", title)], carry=self._standup_entries(items))[0]
+
     def create_many(self, specs: Sequence[NoteSpec]) -> list[CreatedNote]:
         """Create several notes as one operation: one clock read, ids one second apart (C20).
 
         At most 50 notes. Every note is validated before the first is written. A failure while
         writing leaves the notes already written in place (nothing is deleted by the app).
         """
+        return self._create_many(specs)
+
+    def _create_many(
+        self, specs: Sequence[NoteSpec], carry: list[tuple[str, list[str]]] | None = None
+    ) -> list[CreatedNote]:
         if len(specs) > MAX_NOTES_PER_OPERATION:
             raise ValidationError(f"at most {MAX_NOTES_PER_OPERATION} notes per operation")
         for spec in specs:
@@ -584,7 +600,9 @@ class VaultWriter:
                 raise ValidationError(f"a body is limited to {MAX_BODY_BYTES} bytes")
         try:
             operation = _Operation(self.root, self._clock())
-            prepared = [self._prepare(spec, index, operation) for index, spec in enumerate(specs)]
+            prepared = [
+                self._prepare(spec, index, operation, carry) for index, spec in enumerate(specs)
+            ]
         except OSError as exc:
             logger.exception("reading the vault failed")
             raise WriterError(f"could not read the vault: {_describe(exc)}") from exc
@@ -750,24 +768,7 @@ class VaultWriter:
         and returned unchanged (`changed=False`, nothing written). A heading the note lacks is
         added (2.4 rule 6), in template order. The fill is one atomic write.
         """
-        known = {name.casefold(): name for name in conventions.STANDUP_HEADINGS}
-        wanted: list[tuple[str, list[str]]] = []
-        for name, lines in items.items():
-            if not isinstance(name, str) or name.casefold() not in known:
-                raise ValidationError(f"{_short(name)} is not a standup heading")
-            if isinstance(lines, str) or any(
-                not isinstance(line, str) or not line.strip() or "\n" in line or "\r" in line
-                for line in lines
-            ):
-                raise ValidationError(
-                    f"the items for {_short(name)} must be single non-blank lines"
-                )
-            if lines:
-                for line in lines:
-                    _prepare_lines(line, "")  # size, NUL, surrogate and structure checks
-                wanted.append((known[name.casefold()], list(lines)))
-        # Headings the note lacks are added in template order, whatever order `items` came in.
-        wanted.sort(key=lambda entry: conventions.STANDUP_HEADINGS.index(entry[0]))
+        wanted = self._standup_entries(items)
 
         def transform(text: str, note) -> tuple[str, bool]:
             stem = Path(rel_path).stem
@@ -788,6 +789,29 @@ class VaultWriter:
             return text, created
 
         return self._edit(rel_path, expected_hash, transform)
+
+    @staticmethod
+    def _standup_entries(items: Mapping[str, Sequence[str]]) -> list[tuple[str, list[str]]]:
+        """Validated carry-forward `items` as (heading, lines), non-empty, in template order."""
+        known = {name.casefold(): name for name in conventions.STANDUP_HEADINGS}
+        wanted: list[tuple[str, list[str]]] = []
+        for name, lines in items.items():
+            if not isinstance(name, str) or name.casefold() not in known:
+                raise ValidationError(f"{_short(name)} is not a standup heading")
+            if isinstance(lines, str) or any(
+                not isinstance(line, str) or not line.strip() or "\n" in line or "\r" in line
+                for line in lines
+            ):
+                raise ValidationError(
+                    f"the items for {_short(name)} must be single non-blank lines"
+                )
+            if lines:
+                for line in lines:
+                    _prepare_lines(line, "")  # size, NUL, surrogate and structure checks
+                wanted.append((known[name.casefold()], list(lines)))
+        # Headings a note lacks are added in template order, whatever order `items` came in.
+        wanted.sort(key=lambda entry: conventions.STANDUP_HEADINGS.index(entry[0]))
+        return wanted
 
     @staticmethod
     def _clean_changes(changes: dict[str, Any]) -> dict[str, Any]:
@@ -1017,7 +1041,11 @@ class VaultWriter:
     # --- Building a note ----------------------------------------------------------------------
 
     def _prepare(
-        self, spec: NoteSpec, index: int, operation: _Operation
+        self,
+        spec: NoteSpec,
+        index: int,
+        operation: _Operation,
+        carry: list[tuple[str, list[str]]] | None = None,
     ) -> tuple[str, str, CreatedNote]:
         note_type = spec.type
         if note_type not in conventions.KNOWN_TYPES:
@@ -1032,6 +1060,8 @@ class VaultWriter:
             self._refuse_duplicate_project(stem, operation)
         text = render(load_template(self.root, note_type), title=stem, when=at)
         text = self._apply_fields(text, spec, operation, rel)
+        for name, lines in carry or []:
+            text, _ = _insert_under_heading(text, f"## {name}", lines)
         if spec.body:
             text = text.rstrip("\n") + "\n\n" + _normalise_newlines(spec.body).strip("\n") + "\n"
         parsed = parse_note(rel, text.encode("utf-8"))

@@ -9,7 +9,7 @@ import shutil
 import subprocess
 import sys
 import threading
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 import pytest
@@ -83,6 +83,41 @@ def test_daily_note_goes_in_the_year_folder_created_on_demand(writer, vault):
     assert "# Standup - 2027-01-05" in text
     assert "created: 2026-10-20" in text
     assert "status" not in text.split("---")[1]
+
+
+def test_create_daily_writes_the_template_and_the_items_in_one_file(writer, vault):
+    items = {"Today": ["- [ ] a", "    - [ ] b"], "Blockers": ["- [[X]]"], "Done": []}
+    created = writer.create_daily(date(2027, 1, 5), items)
+    assert created.path == "01-Daily/2027/2027-01-05.md"
+    text = read(vault, created.path)
+    assert "## Done\n\n## Today\n\n- [ ] a\n    - [ ] b\n\n## Blockers\n\n- [[X]]\n\n" in text
+    assert text.startswith("---\ntype: daily\nid: ")
+    assert tree(vault) >= {created.path}
+    assert not [p for p in tree(vault) if "sbw-tmp" in p]
+
+
+def test_create_daily_fills_a_template_that_can_never_be_untouched(writer, vault):
+    template = vault / conventions.TEMPLATES_FOLDER / "daily.md"
+    template.write_text(template.read_text().replace("## Done", "At {{time}}\n\n## Done"))
+    created = writer.create_daily("2027-01-05", {"Today": ["- [ ] a"]})
+    text = read(vault, created.path)
+    assert "At " in text and "## Today\n\n- [ ] a\n" in text
+
+
+def test_create_daily_refuses_bad_items_and_writes_nothing(writer, vault):
+    before = tree(vault)
+    for items in ({"Nope": ["- x"]}, {"Today": ["two\nlines"]}, {"Today": [" "]}):
+        with pytest.raises(ValidationError):
+            writer.create_daily("2027-01-05", items)
+    with pytest.raises(SanitizeError):
+        writer.create_daily("tomorrow", {})
+    assert tree(vault) == before
+
+
+def test_create_daily_never_overwrites(writer):
+    writer.create_daily("2027-01-05", {})
+    with pytest.raises(ConflictError):
+        writer.create_daily("2027-01-05", {"Today": ["- [ ] a"]})
 
 
 def test_daily_defaults_to_today_and_rejects_a_non_date(writer):

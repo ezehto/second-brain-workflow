@@ -61,6 +61,9 @@ IMPLEMENTED = {
     ("post", "/api/notes/status/"),
     ("post", "/api/captures/"),
     ("post", "/api/captures/triage/"),
+    ("get", "/api/standups/today/"),
+    ("post", "/api/standups/today/"),
+    ("post", "/api/standups/today/append/"),
 }
 STUBBED = [entry for entry in SECTION_5 if entry not in IMPLEMENTED]
 STUBBED_SESSION = [entry for entry in STUBBED if entry[1] not in NO_SESSION_PATHS]

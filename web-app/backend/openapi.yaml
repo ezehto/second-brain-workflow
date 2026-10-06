@@ -745,17 +745,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/StandupMissing'
           description: ''
-        '501':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-          description: ''
     post:
       operationId: standups_today_start
       description: 'Runs one sync pass under the advisory lock, then creates today''s
         note with carry-forward (`201`, `created: true`), fills it if untouched (`200`,
-        `filled: true`) or returns it unchanged if touched (`200`, `filled: false`).'
+        `filled: true`) or returns it unchanged if touched (`200`, `filled: false`).
+        `409` when the note changed on disk while it was being filled.'
       summary: Start today's standup
       tags:
       - standups
@@ -774,7 +769,19 @@ paths:
               schema:
                 $ref: '#/components/schemas/StartStandupResponse'
           description: ''
-        '501':
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '422':
           content:
             application/json:
               schema:
@@ -785,7 +792,7 @@ paths:
       operationId: standups_today_append
       description: '`text` is the bare line; the writer adds the list marker by the
         section''s rule. `409` on a hash mismatch, `404` when today''s note does not
-        exist, `422` when the section heading cannot be found.'
+        exist, `422` when the text is refused.'
       summary: Append to a standup section
       tags:
       - standups
@@ -802,7 +809,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/NoteDetail'
+                $ref: '#/components/schemas/AppendStandupResponse'
           description: ''
         '400':
           content:
@@ -823,12 +830,6 @@ paths:
                 $ref: '#/components/schemas/Error'
           description: ''
         '422':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-          description: ''
-        '501':
           content:
             application/json:
               schema:
@@ -880,6 +881,18 @@ components:
       - expected_hash
       - section
       - text
+    AppendStandupResponse:
+      type: object
+      properties:
+        note:
+          $ref: '#/components/schemas/NoteDetail'
+        section_created:
+          type: boolean
+          description: True when the heading was missing and was added to the note
+            (2.4 rule 6).
+      required:
+      - note
+      - section_created
     Backlink:
       type: object
       properties:

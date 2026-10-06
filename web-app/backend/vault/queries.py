@@ -324,16 +324,13 @@ def is_untouched_daily(note: Note, today: date) -> bool:
 
 
 def standup_today(today: date, note: Note | None) -> dict:
-    """The dashboard's standup from today's daily note (None when it does not exist).
-
-    The carry-forward preview is built by the standup endpoint (P1-28/P1-30); until then the
-    preview here lists every section empty.
-    """
+    """Today's standup: the daily note (None when it does not exist) or the carry-forward
+    preview of what starting the standup would write (2.2)."""
     if note is None:
-        return {
-            "exists": False,
-            "preview": {heading: [] for heading in conventions.STANDUP_HEADINGS},
-        }
+        # Imported here: carry_forward uses this module's helpers.
+        from vault.carry_forward import preview
+
+        return {"exists": False, "preview": preview(today)}
     return {
         "exists": True,
         "note": attach_detail(note),

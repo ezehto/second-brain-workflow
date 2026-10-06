@@ -178,7 +178,7 @@ with the latest date strictly before today (weekends and gaps are handled).
 |---|---|
 | Done | Empty. Nothing is assumed complete. |
 | Today | 1. Task items: `- [ ] [[Task]]` for every task with status `in-progress`, then `review`, then `planned` with a valid `due` on or before today. Within each status: `due` ascending (no valid due last), then title, then path. 2. Then free-text items: every unchecked `- [ ]` item from `P`'s **Today** section that contains no wikilink to a task note, copied verbatim, in the order they appear in `P`. |
-| Blockers | `- [[Task]]` for every task with status `blocked`, followed by ` (blocked by: <value>)` when `blocked_by` is set. Ordered as task items in Today: `due` ascending (no valid due last), then title, then path. |
+| Blockers | `- [[Task]]` for every task with status `blocked`, followed by ` (blocked by: <value>)` when `blocked_by` is set. Ordered as task items in Today: `due` ascending (no valid due last), then title, then path. `blocked_by: [[Task]]` parses as a nested list, so a list of one item stands for that item (its text without brackets), and any other list is ignored. |
 | Decisions / Updates | Empty. |
 | Follow-ups | Every unchecked `- [ ]` item from `P`'s **Follow-ups** section, copied verbatim in the order they appear in `P`, **including items that link a task** (the task-link rule below applies to Today only). |
 | Related Tasks / Projects | `- [[Project]]` for each distinct resolved project of the task items placed under **Today and Blockers**, sorted by project title, then path. Projects of free-text items are not considered; unknown or duplicate project slugs are skipped. |

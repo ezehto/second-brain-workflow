@@ -170,7 +170,8 @@ def test_today_and_overdue_follow_the_manila_date(api, golden_index, monkeypatch
 def test_query_count_is_bounded(api, golden_index, settings, django_assert_max_num_queries):
     settings.VAULT_ROOT = str(golden_index)
     # session, user, open tasks + tags, project notes, recent + tags, inbox count, standup
-    # (absent: 1), index pass and the index problem count
+    # (absent: the 3 of the carry-forward preview), index pass and the index
+    # problem count
     with django_assert_max_num_queries(15):
         assert api.get("/api/dashboard/").status_code == 200
 
