@@ -13,9 +13,7 @@ Every rule comes from `vault.conventions`, `vault.parser`, `vault.links` or
 """
 
 import argparse
-import fnmatch
 import os
-import stat
 import sys
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
@@ -23,6 +21,7 @@ from datetime import date
 from pathlib import Path, PurePosixPath
 
 from vault import conventions
+from vault.ignore import iter_note_paths as note_paths
 from vault.links import find_wikilinks, normalize_target, resolve_link, split_wikilink
 from vault.parser import ParsedNote, parse_note
 from vault.slug import resolve_project
@@ -31,7 +30,6 @@ EXIT_OK = 0
 EXIT_FAILURES = 1
 EXIT_USAGE = 2
 
-SBIGNORE = ".sbignore"
 LINK_KEYS = ("project", "triaged_to")  # W3: frontmatter keys whose links must not be ambiguous
 
 
@@ -56,81 +54,7 @@ class Context:
 Check = Callable[[ParsedNote, Context], str | None]
 
 
-# --- Which files are notes (2.9 ignore rules) -----------------------------------------------
-
-
-def read_sbignore(root: Path) -> list[str]:
-    """The patterns of `<vault>/.sbignore` (2.9): UTF-8 with an optional BOM, LF or CRLF.
-
-    Lines are trimmed; blank lines and `#` comments are skipped. A missing file, or a
-    symlink (which could point outside the vault), means no patterns; any other read
-    error is raised.
-    """
-    path = root / SBIGNORE
-    if path.is_symlink():
-        return []
-    try:
-        text = path.read_bytes().decode("utf-8-sig", errors="replace")
-    except FileNotFoundError:
-        return []
-    lines = (line.strip() for line in text.splitlines())
-    return [line for line in lines if line and not line.startswith("#")]
-
-
-def is_ignored(path: str, patterns: list[str]) -> bool:
-    """2.9: a dot segment, the templates folder, a non-`.md` file, or an `.sbignore` match.
-
-    Patterns are shell wildcards (`*` also matches `/`) matched against the whole
-    vault-relative path, anchored at the root, case-insensitively. A pattern ending
-    in `/` ignores everything under any directory it matches; any other pattern
-    never ignores a directory's contents.
-    """
-    folded = path.casefold()
-    segments = folded.split("/")
-    if any(segment.startswith(".") for segment in segments):
-        return True
-    if not folded.endswith(".md"):
-        return True
-    if folded.startswith(conventions.TEMPLATES_FOLDER.casefold() + "/"):
-        return True
-    directories = ["/".join(segments[:depth]) for depth in range(1, len(segments))]
-    for pattern in (p.casefold() for p in patterns):
-        if pattern.endswith("/"):
-            if any(fnmatch.fnmatchcase(directory, pattern[:-1]) for directory in directories):
-                return True
-        elif fnmatch.fnmatchcase(folded, pattern):
-            return True
-    return False
-
-
-def _walk_error(error: OSError) -> None:
-    """os.walk `onerror`: a directory that vanished is skipped, any other error stops the run."""
-    if not isinstance(error, FileNotFoundError):
-        raise error
-
-
-def note_paths(root: Path) -> list[str]:
-    """Vault-relative paths (with `/`) of every non-ignored note, sorted.
-
-    A note is a regular file; symlinks are never notes and symlinked directories
-    are never entered (os.walk does not follow them). A directory that cannot be
-    listed raises its OSError, except one that vanished, which is skipped.
-    """
-    patterns = read_sbignore(root)
-    paths = []
-    for directory, subdirs, files in os.walk(root, onerror=_walk_error):
-        # Prune dot directories (.git can be huge); is_ignored holds the rule itself.
-        subdirs[:] = [name for name in subdirs if not name.startswith(".")]
-        for name in files:
-            full = Path(directory) / name
-            try:
-                is_regular = stat.S_ISREG(full.lstat().st_mode)
-            except FileNotFoundError:
-                continue  # vanished while listing
-            rel = full.relative_to(root).as_posix()
-            if is_regular and not is_ignored(rel, patterns):
-                paths.append(rel)
-    return sorted(paths)
+# --- Reading a note (the ignore rules live in vault.ignore) ----------------------------------
 
 
 def read_note(root: Path, rel: str) -> ParsedNote | None:

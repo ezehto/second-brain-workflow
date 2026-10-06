@@ -185,7 +185,8 @@ cmd_user() {
 
 cmd_down() {
   # Named volumes are scoped by project (sbw-e2e_*), so -v cannot touch the real web-app_* volumes.
-  compose down "$@"
+  # --profile '*' so profiled services (indexer, test, e2e) started by hand come down too.
+  compose --profile '*' down "$@"
 }
 
 case "$sub" in

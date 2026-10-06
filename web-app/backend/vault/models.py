@@ -35,6 +35,9 @@ class Note(models.Model):
     file_mtime = models.DateTimeField()  # timezone-aware
     file_size = models.PositiveBigIntegerField()
     parse_error = models.TextField(null=True, blank=True)
+    # Racy-file rule (plan 2.7): True until a later pass re-reads the file and finds the same
+    # digest and stat, so a second write that left (mtime, size) unchanged is still caught.
+    reread_next = models.BooleanField(default=True)
     # `simple` configuration: no stemming, so ticket keys and paths survive intact.
     search_vector = models.GeneratedField(
         expression=SearchVector(

@@ -47,13 +47,13 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # Same image as backend. manage.py sync_vault arrives in P1-21; until then the service
-  # prints one line and exits. Profile "indexer" keeps `up` from starting it.
+  # Same image as backend; polls the vault every INDEXER_POLL_SECONDS (read-only mount).
+  # Profile "indexer" keeps `up` from starting it until P1-41.
   indexer:
     build: ./backend
     image: second-brain-backend
     profiles: ["indexer"]
-    command: ["python", "-c", "print('indexer: manage.py sync_vault --watch arrives in P1-21')"]
+    command: ["python", "manage.py", "sync_vault", "--watch"]
     environment: *django-env
     volumes:
       - "${VAULT_PATH}:/vault:ro"
