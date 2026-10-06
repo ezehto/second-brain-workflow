@@ -6,7 +6,7 @@ import { EmptyState } from './EmptyState'
 /** Skeleton rows while a section loads. Announced once, not per row. */
 export function LoadingRows({ rows = 3 }: { rows?: number }) {
   return (
-    <div role="status" aria-live="polite" className="flex flex-col gap-3 px-5 pb-5">
+    <div role="status" aria-live="polite" className="flex flex-col gap-3 px-3 pb-3">
       <span className="sr-only">Loading</span>
       {Array.from({ length: rows }, (_, i) => (
         <div key={i} aria-hidden="true" className="h-4 animate-pulse rounded-full bg-inset" style={{ width: `${88 - i * 14}%` }} />

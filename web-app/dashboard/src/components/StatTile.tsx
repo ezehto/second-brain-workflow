@@ -6,36 +6,46 @@ import { Icon, type IconName } from './Icon'
 export type TileTone = StatusTone | 'brand'
 const BRAND_TINT = 'bg-brand-soft text-brand'
 
-/** A count with an icon chip and a label. Links to the list it counts. */
+/**
+ * A count with an icon chip and a label. Links to the list it counts.
+ * `compact` is the dense variant for the rebuilt Dashboard: 64px high, a 32px
+ * chip, the figure and the label each on one line.
+ */
 export function StatTile({
   icon,
   tone,
   value,
   label,
   to,
+  compact = false,
 }: {
   icon: IconName
   tone: TileTone
   value: number | string
   label: string
   to: string
+  compact?: boolean
 }) {
   return (
     <Link
       to={to}
-      className="flex items-center gap-3.5 rounded-card border border-line bg-surface px-[18px] py-4 text-left text-ink no-underline hover:border-brand-fill hover:text-ink"
+      className={cn(
+        'flex items-center border border-line bg-surface text-left text-ink no-underline hover:border-brand-fill hover:text-ink',
+        compact ? 'h-16 gap-3 rounded-card px-3' : 'gap-3.5 rounded-card px-[18px] py-4',
+      )}
     >
       <span
         className={cn(
-          'inline-flex size-[42px] flex-none items-center justify-center rounded-tile',
+          'inline-flex flex-none items-center justify-center',
+          compact ? 'size-8 rounded-lg' : 'size-[42px] rounded-tile',
           tone === 'brand' ? BRAND_TINT : TONE_TINT[tone],
         )}
       >
-        <Icon name={icon} className="size-5" />
+        <Icon name={icon} className={compact ? 'size-[18px]' : 'size-5'} />
       </span>
       <span className="flex min-w-0 flex-col">
-        <span className="num text-[26px] leading-[1.1] font-extrabold">{value}</span>
-        <span className="text-[13px] text-muted-ink">{label}</span>
+        <span className={cn('num font-bold', compact ? 't-page' : 'text-[26px] leading-[1.1]')}>{value}</span>
+        <span className={cn('truncate text-muted-ink', compact ? 't-small' : 'text-[13px]')}>{label}</span>
       </span>
     </Link>
   )

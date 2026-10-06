@@ -24,7 +24,9 @@
   --color-line: #2f2f3d;
   --color-ink: #f3f3f8;
   --color-muted-ink: #a3a3b5;
-  --color-faint: #7d7d90;
+  /* Lightened from #7d7d90, which measured 4.24:1 on cards and 3.8:1 on insets at 12px.
+     #8b8b9e is 5.44 on the rail, 5.11 on cards, 4.59 on insets. Brackets and group labels only. */
+  --color-faint: #8b8b9e;
 
   --color-brand: #9b8cff;
   --color-brand-hover: #bdb2ff;
@@ -46,9 +48,14 @@
   --color-tint-risk: #3a3020;
   --color-tint-done: #1e3329;
 
-  --radius-card: 1rem;
+  /* Weights are 400, 500, 600, 700. 800 is mapped to 700 so any leftover
+     font-extrabold renders at the cap. */
+  --font-weight-extrabold: 700;
+
+  /* Spacing scale: 4, 8, 12, 16, 24, 32 px (Tailwind 1, 2, 3, 4, 6, 8). Use no other step. */
+  --radius-card: 0.75rem; /* panels, 12px */
   --radius-tile: 0.75rem;
-  --radius-btn: 0.625rem;
+  --radius-btn: 0.5rem; /* controls, 8px */
 
   --breakpoint-rail: 52rem;
 }
@@ -133,15 +140,19 @@
     @apply font-sans;
   }
   body {
-    @apply bg-ground text-ink text-sm leading-normal antialiased;
+    @apply bg-ground text-ink antialiased;
     margin: 0;
+    font-size: 14px;
+    line-height: 20px;
   }
   h1,
   h2,
   h3 {
     margin: 0;
+    font-weight: 600;
+  }
+  h1 {
     font-weight: 700;
-    letter-spacing: -0.01em;
   }
   :focus-visible {
     outline: 2px solid var(--color-brand);
@@ -156,29 +167,60 @@
 }
 
 @layer components {
+  /*
+   * Type scale, size / line height. These are plain classes on purpose: a custom
+   * Tailwind font-size utility (text-small) is read by tailwind-merge as a colour
+   * and silently deletes the real text colour in cn(). Weights: 400, 500, 600, 700.
+   */
+  .t-caption {
+    font-size: 12px;
+    line-height: 16px; /* timestamps and counts only */
+  }
+  .t-small {
+    font-size: 13px;
+    line-height: 18px; /* secondary */
+  }
+  .t-body {
+    font-size: 14px;
+    line-height: 20px; /* body and row titles */
+  }
+  .t-panel {
+    font-size: 16px;
+    line-height: 22px; /* panel titles, 600 */
+  }
+  .t-page {
+    font-size: 20px;
+    line-height: 26px; /* page title, 700 */
+  }
+  .t-date {
+    font-size: 28px;
+    line-height: 34px; /* the date on Today only, 700 */
+  }
   /* Page title on the dashboard: the date. */
   .day {
-    font-size: clamp(24px, 3.2vw, 34px);
-    font-weight: 800;
+    font-size: 28px;
+    font-weight: 700;
     letter-spacing: -0.02em;
-    line-height: 1.15;
+    line-height: 34px;
   }
   .page-title {
-    font-size: 24px;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    line-height: 1.2;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 26px;
   }
   /* Literal vault text: paths, wikilink brackets, frontmatter values. */
   .mono {
     font-family: var(--font-mono);
     font-size: 12px;
+    line-height: 16px;
   }
   .num {
     font-variant-numeric: tabular-nums;
   }
   .note {
     font-size: 12px;
+    line-height: 16px;
     color: var(--color-muted-ink);
   }
   .linkbtn {

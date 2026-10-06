@@ -121,6 +121,7 @@ const PATHS = {
       <path d="M18 10.5c0 4-6 3-11 6.5" />
     </>
   ),
+  chevron: <path d="M6 9l6 6 6-6" />,
   menu: <path d="M4 7h16M4 12h16M4 17h16" />,
   close: <path d="M6 6l12 12M18 6L6 18" />,
   alert: (
