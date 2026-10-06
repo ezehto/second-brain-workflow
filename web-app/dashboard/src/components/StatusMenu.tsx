@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useApi, useInvalidate } from '@/api/ApiProvider'
 import { ApiError } from '@/api/client'
 import { STATUS_VOCABULARY, type NoteDetail, type NoteSummary } from '@/api/types'
@@ -16,14 +16,19 @@ import { useToast } from './Toast'
  * lists the vocabulary for the note's type (plan section 2.3).
  *
  * - The new status shows at once (optimistic) and is dropped if the write fails.
- * - A 409 means the note changed in Obsidian: everything refetches and the
- *   person is told it was reloaded. Any other error shows its message.
+ *   It also yields as soon as the note's own status changes, so a later change
+ *   made in Obsidian is never hidden behind it.
+ * - A 409 means the note changed in Obsidian, and a 404 that it was moved or
+ *   deleted: everything refetches and the person is told. Any other error shows
+ *   its message.
  * - Moving a task to done asks for optional evidence first, which the API
- *   appends under `## Notes`.
+ *   appends under `## Notes`. The typed text survives a failed write.
  *
  * Pass `contentHash` from a `NoteDetail` you are showing, so a stale view is
- * caught as a 409. Without it the hash is read just before the change, which
- * still protects the write but not the person's view.
+ * caught as a 409. Without it (list pages) the note is read just before the
+ * change: a status that differs from the one shown is treated as a 409 and
+ * nothing is written. After a write the returned hash is used until the prop
+ * catches up, so a second quick change does not conflict with the first.
  */
 export function StatusMenu({
   note,
@@ -38,30 +43,58 @@ export function StatusMenu({
   const invalidate = useInvalidate()
   const toast = useToast()
   const [optimistic, setOptimistic] = useState<{ from: string | null; status: string } | null>(null)
+  const [written, setWritten] = useState<{ prop: string | undefined; hash: string } | null>(null)
   const [askEvidence, setAskEvidence] = useState(false)
   const [evidence, setEvidence] = useState('')
   const [busy, setBusy] = useState(false)
+  const triggerRef = useRef<HTMLButtonElement>(null)
 
-  // The optimistic status only counts while the note still has the status it was set from;
-  // once the refetched note arrives with a different status, the real one wins.
+  // The vault's status wins as soon as it moves; the optimistic value only bridges the refetch.
+  // Reset during render (not in an effect) so a revert to the original status is never masked.
+  const [seenStatus, setSeenStatus] = useState(note.status)
+  if (seenStatus !== note.status) {
+    setSeenStatus(note.status)
+    setOptimistic(null)
+  }
+
   const shown = optimistic && optimistic.from === note.status ? optimistic.status : note.status
   const vocabulary = (STATUS_VOCABULARY as Record<string, readonly string[]>)[note.type]
   if (!vocabulary) return <StatusChip status={note.status} />
 
+  function reloaded(message: string) {
+    toast.show(message)
+    invalidate()
+  }
+
   async function change(status: string, withEvidence?: string) {
     setBusy(true)
+    const before = shown
     setOptimistic({ from: note.status, status })
     try {
-      const expected_hash = contentHash ?? (await client.lookupNote({ path: note.path })).content_hash
+      let expected_hash: string
+      if (contentHash !== undefined) {
+        expected_hash = written && written.prop === contentHash ? written.hash : contentHash
+      } else {
+        const fresh = await client.lookupNote({ path: note.path })
+        if (fresh.status !== before) {
+          setOptimistic(null)
+          reloaded(`${note.title} changed in Obsidian, reloaded.`)
+          return
+        }
+        expected_hash = fresh.content_hash
+      }
       const updated = await client.changeStatus({ path: note.path, status, expected_hash, evidence: withEvidence || undefined })
+      if (contentHash !== undefined) setWritten({ prop: contentHash, hash: updated.content_hash })
+      setEvidence('')
       onChanged?.(updated)
       toast.show(`Set status: ${status} in ${note.path}`)
       invalidate()
     } catch (error) {
       setOptimistic(null)
       if (error instanceof ApiError && error.status === 409) {
-        toast.show(`${note.title} changed in Obsidian, reloaded.`)
-        invalidate()
+        reloaded(`${note.title} changed in Obsidian, reloaded.`)
+      } else if (error instanceof ApiError && error.status === 404) {
+        reloaded('Note moved or deleted in Obsidian, reloaded.')
       } else {
         toast.show(error instanceof Error ? error.message : 'The status could not be changed.')
       }
@@ -71,9 +104,8 @@ export function StatusMenu({
   }
 
   function choose(status: string) {
-    if (status === shown) return
+    if (busy || status === shown) return
     if (note.type === 'task' && status === 'done') {
-      setEvidence('')
       setAskEvidence(true)
       return
     }
@@ -85,10 +117,11 @@ export function StatusMenu({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
+            ref={triggerRef}
             type="button"
-            disabled={busy}
+            aria-disabled={busy}
             aria-label={`Status: ${shown ?? 'N/A'}. Change status of ${note.title}`}
-            className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-btn px-1.5 hover:bg-inset disabled:opacity-60 max-rail:min-h-11"
+            className="-my-1 inline-flex h-8 cursor-pointer items-center gap-1 rounded-btn px-1 hover:bg-inset aria-disabled:opacity-60 max-rail:my-0 max-rail:min-h-11"
           >
             <StatusChip status={shown} />
             <Icon name="chevron" className="size-3.5 text-muted-ink" />
@@ -106,7 +139,13 @@ export function StatusMenu({
       </DropdownMenu>
 
       <Dialog open={askEvidence} onOpenChange={setAskEvidence}>
-        <DialogContent showCloseButton={false}>
+        <DialogContent
+          showCloseButton={false}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault()
+            triggerRef.current?.focus()
+          }}
+        >
           <form
             className="flex flex-col gap-3"
             onSubmit={(event) => {
@@ -116,11 +155,11 @@ export function StatusMenu({
             }}
           >
             <DialogHeader>
-              <DialogTitle className="t-panel font-semibold">Mark as done</DialogTitle>
-              <DialogDescription className="t-small text-muted-ink">{note.title}</DialogDescription>
+              <DialogTitle className="text-panel font-semibold">Mark as done</DialogTitle>
+              <DialogDescription className="text-small text-muted-ink">{note.title}</DialogDescription>
             </DialogHeader>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="status-evidence" className="t-caption font-semibold text-muted-ink">
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="status-evidence" className="text-caption font-semibold text-muted-ink">
                 Evidence (optional, added under Notes)
               </Label>
               <Textarea id="status-evidence" rows={3} value={evidence} onChange={(e) => setEvidence(e.target.value)} placeholder="What shows it is done" autoFocus />

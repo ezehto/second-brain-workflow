@@ -4,18 +4,22 @@ import { useApi } from '@/api/ApiProvider'
 import { useQuery } from '@/api/useQuery'
 import { ClockProvider, fixedClock, useClock } from '@/lib/clock'
 import { routes } from '@/lib/routes'
+import { hasTabBar, useViewport } from '@/lib/viewport'
+import { cn } from '@/lib/utils'
 import { indexProblemCount } from '@/domain/indexStatus'
-import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
+import { ContextSelect } from './ContextSelect'
 import { Header } from './Header'
-import { Icon } from './Icon'
 import { LoadingRows } from './QueryBoundary'
+import { CaptureFab, QuickActionsProvider } from './QuickActions'
+import { MobileTabBar, NavSheet } from './MobileTabBar'
 import { Rail } from './Rail'
 import { ShellDashboardContext } from './ShellData'
 
 /**
- * The frame every page sits in: rail, header, and the page outlet. Below the
- * rail breakpoint the rail becomes a drawer opened from a top bar.
+ * The frame every page sits in: navigation, top bar, the page outlet, and the
+ * creation dialogs. Navigation depends on width (see `useViewport`): a labelled
+ * rail, an icon rail, or a bottom tab bar. The content area is at most 1840px
+ * wide with a 24px gutter (16px on a phone) so pages can use three columns.
  *
  * The shell is also the single source of "today". It asks the server (the
  * dashboard aggregate, then the index status' test-mode date) and provides
@@ -27,52 +31,63 @@ import { ShellDashboardContext } from './ShellData'
 export function AppShell({ sampleData }: { sampleData: boolean }) {
   const client = useApi()
   const fallbackClock = useClock()
-  const [drawer, setDrawer] = useState(false)
+  const viewport = useViewport()
+  const [menu, setMenu] = useState(false)
 
   const dashboard = useQuery(useCallback(() => client.getDashboard(), [client]))
   const index = useQuery(useCallback(() => client.getIndexStatus(), [client]))
   const inbox = useQuery(useCallback(() => client.listNotes({ type: 'capture', status: ['inbox'], page_size: 1 }), [client]))
+  const blocked = useQuery(useCallback(() => client.listNotes({ type: 'task', status: ['blocked'], page_size: 1 }), [client]))
 
   const serverToday =
     dashboard.status === 'success' ? dashboard.data.today : index.status === 'success' ? index.data.test_mode?.today : undefined
   const clock = useMemo(() => (serverToday ? fixedClock(serverToday) : fallbackClock), [serverToday, fallbackClock])
   const todayKnown = dashboard.status !== 'loading'
 
+  // Counts show only above zero: captures to triage, blocked tasks, index problems.
   const counts = {
     [routes.inbox]: inbox.status === 'success' ? inbox.data.count : undefined,
+    [routes.tasks]: blocked.status === 'success' ? blocked.data.count : undefined,
     [routes.indexStatus]: index.status === 'success' ? indexProblemCount(index.data) : undefined,
   }
+
+  const tabBar = hasTabBar(viewport)
 
   return (
     <ClockProvider clock={clock}>
       <ShellDashboardContext.Provider value={dashboard}>
-        <div className="flex min-h-screen flex-col rail:flex-row">
-          <aside className="sticky top-0 hidden h-screen w-60 flex-none self-start overflow-y-auto border-r border-line bg-rail rail:block">
-            <Rail counts={counts} sampleData={sampleData} />
-          </aside>
+        <QuickActionsProvider>
+          <div className="flex min-h-screen">
+            {(viewport === 'wide' || viewport === 'compact') && (
+              <aside
+                className={cn(
+                  'sticky top-0 h-screen flex-none self-start overflow-y-auto border-r border-line bg-rail',
+                  viewport === 'wide' ? 'w-56' : 'w-14',
+                )}
+              >
+                <Rail variant={viewport === 'wide' ? 'full' : 'icon'} counts={counts} sampleData={sampleData} />
+              </aside>
+            )}
 
-          <div className="flex items-center gap-3 border-b border-line bg-rail px-4 py-2.5 rail:hidden">
-            <Button variant="secondary" size="icon" onClick={() => setDrawer(true)} aria-label="Open navigation">
-              <Icon name="menu" className="size-5" />
-            </Button>
-            <span aria-hidden="true" className="size-[22px] rounded-[7px] bg-brand-fill" />
-            <span className="text-[17px] font-extrabold">Second Brain</span>
-          </div>
-          <Dialog open={drawer} onOpenChange={setDrawer}>
-            <DialogContent className="top-0 left-0 h-full max-h-none w-72 max-w-[85vw] translate-x-0 translate-y-0 content-start gap-0 overflow-y-auto rounded-none border-0 border-r bg-rail p-0 sm:max-w-[85vw] rail:hidden">
-              <DialogTitle className="sr-only">Navigation</DialogTitle>
-              <DialogDescription className="sr-only">Pages of the dashboard</DialogDescription>
-              <Rail counts={counts} sampleData={sampleData} onNavigate={() => setDrawer(false)} />
-            </DialogContent>
-          </Dialog>
+            <div className="flex min-w-0 flex-1 flex-col">
+              <Header
+                index={index.status === 'success' ? index.data : undefined}
+                todayKnown={todayKnown}
+                viewport={viewport}
+                onOpenMenu={() => setMenu(true)}
+              />
+              <main className={cn('mx-auto flex w-full max-w-[1840px] flex-1 flex-col gap-4 px-4 pt-4 sm:px-6', tabBar ? 'pb-24' : 'pb-6')}>
+                {todayKnown ? <Outlet /> : <LoadingRows rows={4} />}
+              </main>
+            </div>
 
-          <div className="flex min-w-0 flex-1 flex-col">
-            <Header index={index.status === 'success' ? index.data : undefined} todayKnown={todayKnown} />
-            <main className="flex w-full max-w-[1360px] flex-1 flex-col gap-5 px-4 pt-3 pb-7 rail:px-7">
-              {todayKnown ? <Outlet /> : <LoadingRows rows={4} />}
-            </main>
+            {tabBar && <MobileTabBar counts={counts} sampleData={sampleData} extra={viewport === 'phone' ? <ContextSelect className="w-full" /> : undefined} />}
+            {viewport === 'phone' && <CaptureFab />}
+            {viewport === 'tablet' && (
+              <NavSheet open={menu} onOpenChange={setMenu} counts={counts} sampleData={sampleData} extra={<ContextSelect className="w-full" />} />
+            )}
           </div>
-        </div>
+        </QuickActionsProvider>
       </ShellDashboardContext.Provider>
     </ClockProvider>
   )

@@ -1,8 +1,14 @@
+import type React from 'react'
 import type { RouteObject } from 'react-router'
 import { AppShell } from '@/components/AppShell'
 import type { PageHandle } from '@/components/pageHandle'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { NotBuiltPage } from '@/features/placeholder/NotBuiltPage'
+import { IndexStatusPage } from '@/features/index-status'
+import { NotePage } from '@/features/notes'
+import { TimelinePage, UpskillingPage, WorkflowPage } from '@/features/preview'
+import { StandupPage } from '@/features/standup'
+import { TasksPage } from '@/features/tasks'
 import { formatDayTitle } from '@/lib/dates'
 import { routes } from '@/lib/routes'
 
@@ -14,6 +20,7 @@ const page = (title: string, subtitle: string): PageHandle => ({ title, subtitle
  */
 export function createRoutes({ sampleData }: { sampleData: boolean }): RouteObject[] {
   const placeholder = (path: string, handle: PageHandle): RouteObject => ({ path, element: <NotBuiltPage />, handle })
+  const real = (path: string, element: React.ReactElement, handle: PageHandle): RouteObject => ({ path, element, handle })
   return [
     {
       element: <AppShell sampleData={sampleData} />,
@@ -22,24 +29,24 @@ export function createRoutes({ sampleData }: { sampleData: boolean }): RouteObje
           index: true,
           element: <DashboardPage />,
           handle: {
-            display: true,
+            label: 'Today',
             title: ({ today }) => formatDayTitle(today),
             subtitle: ({ lastPass }) => (lastPass ? `Read from your vault at ${lastPass}, Manila time.` : 'Waiting for the first index pass.'),
           } satisfies PageHandle,
         },
-        placeholder(routes.standups, page('Standup', 'Daily notes and today\'s standup.')),
+        real(routes.standups, <StandupPage />, page('Standup', "Say it aloud from top to bottom, and write it into today's daily note.")),
         placeholder(routes.inbox, page('Inbox', 'Captures waiting to be sorted.')),
-        placeholder(routes.tasks, page('Tasks', 'Every task note in 02-Work/Tasks, filtered and grouped.')),
+        real(routes.tasks, <TasksPage />, page('Tasks', 'Every task note in 02-Work/Tasks, filtered and grouped.')),
         placeholder(routes.projects, page('Projects', 'Health comes from a stated rule, not a score.')),
         placeholder(`${routes.projects}/:slug`, page('Project', 'One project and its tasks, decisions and notes.')),
-        placeholder(routes.workflow, page('Workflow', 'Where work sits across projects.')),
-        placeholder(routes.timeline, page('Timeline', 'What changed, in order.')),
+        real(routes.workflow, <WorkflowPage />, page('Workflow', 'Where work sits across projects, and what a failure sends it back to.')),
+        real(routes.timeline, <TimelinePage />, page('Timeline', 'What changed, in order, across the vault and the tools to be connected.')),
         placeholder(routes.knowledge, page('Knowledge', 'Lessons from 05-Knowledge/Lessons.')),
         placeholder(routes.decisions, page('Decisions', 'Decisions recorded in 05-Knowledge/Decisions.')),
-        placeholder(routes.upskilling, page('Upskilling', 'What you are learning and what to learn next.')),
+        real(routes.upskilling, <UpskillingPage />, page('Upskilling', 'This week on the roadmap, and what real work says to learn next.')),
         placeholder(routes.search, page('Search', 'Results come from the vault index.')),
-        placeholder(routes.indexStatus, page('Index status', 'What the indexer read and what it could not.')),
-        placeholder('/notes', page('Note', 'One note from the vault.')),
+        real(routes.indexStatus, <IndexStatusPage />, page('Index status', 'What the indexer read on its last pass.')),
+        real('/notes', <NotePage />, page('Note', 'One note from the vault.')),
         placeholder('*', page('Page not found', 'There is nothing at this address.')),
       ],
     },

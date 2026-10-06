@@ -54,7 +54,7 @@ export const TONE_TINT: Record<StatusTone, string> = {
 
 /** Donut segment colours per task status (CSS colour values). */
 export const TASK_SEGMENT_COLOR: Record<TaskStatus, string> = {
-  inbox: '#7d7d90',
+  inbox: '#8b8b9e',
   planned: '#a3a3b5',
   'in-progress': '#6ea8ff',
   blocked: '#ff7d73',

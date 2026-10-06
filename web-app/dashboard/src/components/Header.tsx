@@ -1,97 +1,137 @@
-import { useCallback, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useMatches, useNavigate } from 'react-router'
 import { useApi } from '@/api/ApiProvider'
 import { useQuery } from '@/api/useQuery'
-import { useToday } from '@/lib/clock'
-import { NOT_AVAILABLE, formatTimeOfDay } from '@/lib/dates'
-import { projectHref, routes } from '@/lib/routes'
-import { indexProblemCount } from '@/domain/indexStatus'
+import type { IndexStatus } from '@/api/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { useToday } from '@/lib/clock'
+import { formatTimeOfDay } from '@/lib/dates'
+import { PROJECT_PARAM, useProjectContext } from '@/lib/projectContext'
+import { routes } from '@/lib/routes'
+import type { Viewport } from '@/lib/viewport'
+import { indexProblemCount } from '@/domain/indexStatus'
+import { useCommandPaletteShortcut } from './CommandPalette'
+import { ContextSelect } from './ContextSelect'
 import { Icon } from './Icon'
-import { QuickActions } from './QuickActions'
-import { Segmented } from './Segmented'
+import { NewMenu } from './QuickActions'
 import { resolveText, type PageHandle } from './pageHandle'
-import type { IndexStatus } from '@/api/types'
 
-/** Page title and subtitle, search, context switcher, index status, user, and the quick actions. */
-export function Header({ index, todayKnown }: { index: IndexStatus | undefined; todayKnown: boolean }) {
+/**
+ * The top bar: 52px (48px on a phone). Page title, with the date as the title
+ * on Today, and the route's subtitle under it; search with a Ctrl+K hint; the
+ * project context select; the New menu; an index pill (from 832px) only when the index has
+ * problems; the avatar. On a phone it shrinks to title, search icon and New,
+ * and the context select moves into the More sheet (also on a tablet, into the menu).
+ */
+export function Header({
+  index,
+  todayKnown,
+  viewport,
+  onOpenMenu,
+}: {
+  index: IndexStatus | undefined
+  todayKnown: boolean
+  viewport: Viewport
+  onOpenMenu: () => void
+}) {
   const client = useApi()
   const today = useToday()
   const navigate = useNavigate()
+  const project = useProjectContext()
   const handle = useMatches().at(-1)?.handle as PageHandle | undefined
   const [query, setQuery] = useState('')
-  const projects = useQuery(useCallback(() => client.listProjects(), [client]))
+  const searchRef = useRef<HTMLInputElement>(null)
   const me = useQuery(useCallback(() => client.me(), [client]))
+
+  const phone = viewport === 'phone'
+  const tablet = viewport === 'tablet'
+
+  // Ctrl+K: the Search package replaces this callback with the palette.
+  const focusSearch = useCallback(() => searchRef.current?.focus(), [])
+  useCommandPaletteShortcut(focusSearch)
 
   const lastPass = index?.last_pass_at ? formatTimeOfDay(index.last_pass_at) : null
   const ctx = { today, lastPass }
   // Until the server has said what day it is, a date title would be a guess.
   const title = handle && todayKnown ? resolveText(handle.title, ctx) : ''
   const subtitle = handle && todayKnown ? resolveText(handle.subtitle, ctx) : ''
+  const problems = index ? indexProblemCount(index) : 0
   const username = me.status === 'success' ? me.data.username : null
-  const problems = index ? indexProblemCount(index) : null
+
+  const tabLabel = handle && todayKnown ? (handle.label ?? title) : ''
+  useEffect(() => {
+    document.title = tabLabel ? `${tabLabel} · Second Brain` : 'Second Brain'
+  }, [tabLabel])
 
   function onSearch(event: FormEvent) {
     event.preventDefault()
-    const q = query.trim()
-    navigate(q ? `${routes.search}?q=${encodeURIComponent(q)}` : routes.search)
+    const params = new URLSearchParams()
+    if (query.trim()) params.set('q', query.trim())
+    if (project) params.set(PROJECT_PARAM, project)
+    const qs = params.toString()
+    navigate(qs ? `${routes.search}?${qs}` : routes.search)
   }
 
-  const active = projects.status === 'success' ? projects.data.filter((p) => p.status === 'active') : []
-
   return (
-    <header className="flex flex-col gap-4 px-4 pt-5 pb-2 rail:px-7">
-      <div className="flex flex-wrap items-start gap-4">
-        <div className="min-w-0 flex-[1_1_320px]">
-          <h1 className={handle?.display ? 'day' : 'page-title'}>{title}</h1>
-          <p className="m-0 text-muted-ink">{subtitle}</p>
-        </div>
-        <form role="search" onSubmit={onSearch} className="relative flex max-w-[380px] flex-[1_1_180px] items-center">
+    <header className="sticky top-0 z-30 flex h-12 items-center gap-3 border-b border-line bg-ground px-4 sm:h-[52px] rail:px-6">
+      {tablet && (
+        <Button variant="secondary" size="icon" onClick={onOpenMenu} aria-label="Open navigation">
+          <Icon name="menu" className="size-5" />
+        </Button>
+      )}
+
+      <div className="min-w-0 flex-1 sm:flex-none sm:basis-52 rail:basis-72">
+        <h1 className="page-title truncate">{title}</h1>
+        {!phone && <p className="t-small m-0 truncate text-muted-ink">{subtitle}</p>}
+      </div>
+
+      {phone ? (
+        <Button asChild variant="secondary" size="icon" aria-label="Search">
+          <Link to={project ? `${routes.search}?${PROJECT_PARAM}=${encodeURIComponent(project)}` : routes.search}>
+            <Icon name="search" className="size-[18px]" />
+          </Link>
+        </Button>
+      ) : (
+        <form role="search" onSubmit={onSearch} className="relative flex min-w-[140px] max-w-[420px] flex-[3_1_0] items-center">
           <label htmlFor="vault-search" className="sr-only">
             Search the vault
           </label>
           <span className="pointer-events-none absolute left-3 flex text-muted-ink">
-            <Icon name="search" className="size-[18px]" />
+            <Icon name="search" className="size-4" />
           </span>
-          <Input id="vault-search" type="search" placeholder="Search the vault" className="pl-[38px]" value={query} onChange={(e) => setQuery(e.target.value)} />
+          <Input
+            id="vault-search"
+            ref={searchRef}
+            type="search"
+            placeholder="Search the vault"
+            className="pr-14 pl-9"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          <kbd className="t-caption pointer-events-none absolute right-2 rounded border border-line px-1 font-sans text-muted-ink" aria-hidden="true">
+            Ctrl K
+          </kbd>
         </form>
-        <Segmented
-          label="Context"
-          value="all"
-          options={[
-            { value: 'all', label: 'All projects', href: routes.dashboard },
-            ...active.map((p) => ({ value: p.slug, label: p.title, href: projectHref(p.slug) })),
-          ]}
-        />
-        <Button asChild variant="secondary" size="sm">
+      )}
+
+      {!phone && <div className="flex-1" />}
+
+      {!phone && !tablet && <ContextSelect />}
+      <NewMenu iconOnly={phone} />
+      {!phone && !tablet && problems > 0 && (
+        <Button asChild variant="secondary" size="sm" className="bg-tint-blocked text-status-blocked hover:bg-tint-blocked">
           <Link to={routes.indexStatus}>
-            <span className="num">Indexed {lastPass ?? NOT_AVAILABLE}</span>
-            {problems !== null && (
-              <span className={`num rounded-full px-2 py-px text-xs font-bold ${problems ? 'bg-tint-blocked text-status-blocked' : 'bg-line text-ink'}`}>
-                <span className="sr-only">Problems: </span>
-                {problems}
-              </span>
-            )}
+            <span className="num">{problems}</span> index {problems === 1 ? 'problem' : 'problems'}
           </Link>
         </Button>
-        <div className="flex items-center gap-2.5">
-          <span title={username ?? undefined} className="inline-flex size-9 items-center justify-center rounded-full bg-brand-soft font-bold text-brand-hover">
-            <span aria-hidden="true">{username ? username[0].toUpperCase() : '?'}</span>
-            <span className="sr-only">{username ? `Signed in as ${username}` : 'User not available'}</span>
-          </span>
-          <span className="hidden text-muted-ink 2xl:inline" aria-hidden="true">
-            {username ?? NOT_AVAILABLE}
-          </span>
-        </div>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <QuickActions />
-        <div className="flex-1" />
-        <Button asChild size="sm">
-          <Link to={routes.standups}>Start standup</Link>
-        </Button>
-      </div>
+      )}
+      {!phone && (
+        <span title={username ?? undefined} className="inline-flex size-8 flex-none items-center justify-center rounded-full bg-brand-soft font-bold text-brand-hover">
+          <span aria-hidden="true">{username ? username[0].toUpperCase() : '?'}</span>
+          <span className="sr-only">{username ? `Signed in as ${username}` : 'User not available'}</span>
+        </span>
+      )}
     </header>
   )
 }

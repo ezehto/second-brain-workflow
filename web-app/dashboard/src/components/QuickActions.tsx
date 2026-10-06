@@ -1,4 +1,4 @@
-import { useCallback, useState, type FormEvent } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import { useApi, useInvalidate } from '@/api/ApiProvider'
 import { useQuery } from '@/api/useQuery'
 import type { Priority } from '@/api/types'
@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuShortcut, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -32,21 +33,87 @@ const ACTIONS: { kind: QuickActionKind; button: string; title: string; submit: s
 const NO_PROJECT = 'none'
 const FOLDER = { task: '02-Work/Tasks/', decision: '05-Knowledge/Decisions/', lesson: '05-Knowledge/Lessons/' } as const
 
-/** The five buttons that create something in the vault. Each opens a dialog. */
-export function QuickActions() {
+const QuickActionContext = createContext<{ open: (kind: QuickActionKind) => void } | null>(null)
+
+/** Opens one of the five creation dialogs from anywhere in the shell. */
+export function useQuickActions() {
+  const ctx = useContext(QuickActionContext)
+  if (!ctx) throw new Error('useQuickActions must be used inside <QuickActionsProvider>')
+  return ctx
+}
+
+const SHORTCUT: Record<string, QuickActionKind> = { t: 'task', f: 'followup', d: 'decision', n: 'lesson', c: 'capture' }
+const KEY_OF = Object.fromEntries(Object.entries(SHORTCUT).map(([key, kind]) => [kind, key.toUpperCase()])) as Record<QuickActionKind, string>
+
+function isTyping(target: EventTarget | null) {
+  const el = target as HTMLElement | null
+  return !!el && (['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName) || el.isContentEditable)
+}
+
+/**
+ * Holds the open creation dialog and the single-key shortcuts that open one
+ * (T task, F follow-up, D decision, N note, C capture). A shortcut never fires
+ * while typing, with a modifier held, or while another dialog is open.
+ */
+export function QuickActionsProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState<QuickActionKind | null>(null)
+  const value = useMemo(() => ({ open: setOpen }), [])
+
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.ctrlKey || event.metaKey || event.altKey || event.repeat || isTyping(event.target)) return
+      const kind = SHORTCUT[event.key.toLowerCase()]
+      if (!kind || document.querySelector('[role="dialog"], [role="menu"]')) return
+      event.preventDefault()
+      setOpen(kind)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [])
+
   return (
-    <>
-      <div role="toolbar" aria-label="Quick actions" className="flex flex-wrap items-center gap-2">
-        {ACTIONS.map((a) => (
-          <Button key={a.kind} variant="secondary" size="sm" onClick={() => setOpen(a.kind)}>
-            <Icon name="plus" className="size-4" />
-            {a.button}
-          </Button>
-        ))}
-      </div>
+    <QuickActionContext.Provider value={value}>
+      {children}
       {open && <QuickActionDialog kind={open} onClose={() => setOpen(null)} />}
-    </>
+    </QuickActionContext.Provider>
+  )
+}
+
+/** The "New" menu: the five creation dialogs, each with its shortcut shown. */
+export function NewMenu({ iconOnly = false }: { iconOnly?: boolean }) {
+  const { open } = useQuickActions()
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button size={iconOnly ? 'icon' : 'sm'} aria-label={iconOnly ? 'New' : undefined}>
+          <Icon name="plus" className="size-4" />
+          {!iconOnly && 'New'}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-52">
+        {ACTIONS.map((a) => (
+          <DropdownMenuItem key={a.kind} onSelect={() => open(a.kind)} className="min-h-8 max-rail:min-h-11">
+            {a.button}
+            <DropdownMenuShortcut aria-hidden="true">{KEY_OF[a.kind]}</DropdownMenuShortcut>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+/** The floating capture button on phone widths, within thumb reach above the tab bar. */
+export function CaptureFab() {
+  const { open } = useQuickActions()
+  return (
+    <button
+      type="button"
+      aria-label="Capture"
+      onClick={() => open('capture')}
+      className="fixed right-4 bottom-20 z-40 inline-flex size-12 cursor-pointer items-center justify-center rounded-full bg-brand-fill text-white shadow-lg hover:bg-brand-fill-hover"
+    >
+      <Icon name="plus" className="size-6" />
+    </button>
   )
 }
 

@@ -5,6 +5,7 @@ import { isOverdue } from '@/domain/tasks'
 import { useToday } from '@/lib/clock'
 import { formatShortDate } from '@/lib/dates'
 import { noteHref } from '@/lib/routes'
+import { cn } from '@/lib/utils'
 import { CardRow } from './Card'
 import { PriorityMark } from './PriorityMark'
 import { StatusChip } from './StatusChip'
@@ -19,28 +20,51 @@ import { StatusChip } from './StatusChip'
  * 48px two-line row, with the reason and project under the title.
  *
  * `status` defaults to a read-only chip; pass a `StatusMenu` to make it editable.
+ *
+ * `dense` makes a one-line row 32px (dense tables; the status control must fit
+ * in 32px). `onOpen` lets a page open the note in a split pane instead of
+ * navigating: a plain click on the title calls it, a modified click still
+ * follows the link. `selected` marks the row whose note is open.
  */
 export function TaskRow({
   task,
   project,
   reason,
   status,
+  dense,
+  selected,
+  onOpen,
 }: {
   task: NoteSummary
   /** Display name of the task's project, already resolved. */
   project?: string
   reason?: ReactNode
   status?: ReactNode
+  dense?: boolean
+  selected?: boolean
+  onOpen?: (task: NoteSummary) => void
 }) {
   const today = useToday()
   const overdue = isOverdue(task, today)
   const due = task.due ? formatShortDate(task.due) : null
   return (
-    <CardRow lines={reason ? 2 : 1} className="grid-cols-[1.75rem_minmax(0,1fr)_auto]">
+    <CardRow
+      lines={reason ? 2 : 1}
+      aria-current={selected ? 'true' : undefined}
+      className={cn('grid-cols-[1.75rem_minmax(0,1fr)_auto]', dense && !reason && 'min-h-8 py-0', selected && 'bg-inset')}
+    >
       <PriorityMark priority={task.priority} />
       <div className="flex min-w-0 flex-col">
         <div className="flex min-w-0 items-baseline gap-2">
-          <Link to={noteHref(task.path)} className="linkbtn t-body truncate">
+          <Link
+            to={noteHref(task.path)}
+            className="linkbtn t-body truncate"
+            onClick={(event) => {
+              if (!onOpen || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+              event.preventDefault()
+              onOpen(task)
+            }}
+          >
             {task.title}
           </Link>
           {!reason && project && <span className="t-small hidden truncate text-muted-ink sm:inline">{project}</span>}

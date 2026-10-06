@@ -22,6 +22,7 @@ import {
   FIXTURE_TODAY,
   captureFixtures,
   captureName,
+  dailyBodies,
   dailyFixtures,
   decisionFixtures,
   indexProblemFixtures,
@@ -69,7 +70,7 @@ export function createMockClient(options: MockClientOptions = {}): ApiClient {
     ...captureFixtures(),
   ]
   const projects: ProjectSummary[] = projectFixtures()
-  const bodies = new Map<string, string>()
+  const bodies = dailyBodies()
   // Revision per note path: every write increments it, and the content hash is built from it.
   const revisions = new Map<string, number>()
   const bump = (path: string) => revisions.set(path, (revisions.get(path) ?? 0) + 1)
@@ -393,7 +394,9 @@ export function createMockClient(options: MockClientOptions = {}): ApiClient {
         if (expected_hash !== `sha256:mock-standup-${standupRevision}`) throw new ApiError(409, `${standupPath} changed in Obsidian. Reload and try again.`)
         if (!text.trim()) throw new ApiError(422, 'Nothing to append.')
         if (standup === 'untouched') standup = 'touched'
-        ;(standupAdded[section as StandupSection] ??= []).push(text)
+        // The writer adds the list marker by the section's rule: a checkbox under Today and Follow-ups, a plain bullet elsewhere.
+        const marker = section === 'Today' || section === 'Follow-ups' ? '- [ ] ' : '- '
+        ;(standupAdded[section as StandupSection] ??= []).push(`${marker}${text.trim()}`)
         standupRevision += 1
         return detail(standupNote())
       }),

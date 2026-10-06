@@ -1,8 +1,14 @@
 import '@testing-library/jest-dom/vitest'
 import { cleanup } from '@testing-library/react'
-import { afterEach } from 'vitest'
+import { afterEach, beforeEach } from 'vitest'
+import { installMatchMedia, resetViewport } from './viewport'
 
-afterEach(() => cleanup())
+beforeEach(() => installMatchMedia())
+afterEach(() => {
+  cleanup()
+  resetViewport()
+  window.localStorage.clear()
+})
 
 // Radix Select and Dialog call browser APIs jsdom does not implement.
 Element.prototype.hasPointerCapture ??= () => false

@@ -13,8 +13,8 @@ describe('App', () => {
   })
 
   it('shows the Not built yet page inside the shell for a page that is not built', async () => {
-    renderApp('/tasks')
-    expect(await screen.findByRole('heading', { level: 1, name: 'Tasks' })).toBeInTheDocument()
+    renderApp('/inbox')
+    expect(await screen.findByRole('heading', { level: 1, name: 'Inbox' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Not built yet' })).toBeInTheDocument()
     expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument()
   })
@@ -36,7 +36,7 @@ describe('App', () => {
     }
 
     it('still renders another route inside the shell', async () => {
-      renderApp('/tasks', failingOnce())
+      renderApp('/inbox', failingOnce())
       expect(await screen.findByRole('heading', { name: 'Not built yet' })).toBeInTheDocument()
       expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument()
     })

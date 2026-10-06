@@ -30,10 +30,10 @@ export function StatusChip({
   return (
     <span
       className={cn(
-        't-caption inline-flex h-6 items-center gap-1.5 rounded-full font-semibold whitespace-nowrap',
+        't-caption inline-flex h-6 items-center gap-1 rounded-full font-semibold whitespace-nowrap',
         TONE_TEXT[resolved],
-        tinted ? 'bg-tint-blocked px-2.5' : 'bg-transparent px-0',
-        'in-data-[accent]:bg-inset in-data-[accent]:px-2.5',
+        tinted ? 'bg-tint-blocked px-2' : 'bg-transparent px-0',
+        'in-data-[accent]:bg-inset in-data-[accent]:px-2',
         className,
       )}
     >

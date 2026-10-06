@@ -178,6 +178,43 @@ export const dailyFixtures = (): NoteSummary[] =>
     modified: at(`${d} 17:50`),
   }))
 
+/** The six-section bodies of the past daily notes, from the prototype's `dailies()` data. */
+const DAILY_SECTIONS: Record<string, [string, string[]][]> = {
+  '2026-10-05': [
+    ['Done', ['- [x] [[Reproduce duplicate settlement rows]]', '- [x] Reviewed the callback logging merge request']],
+    ['Today', ['- [ ] [[Investigate missing OTP email]]', '- [ ] [[Fix N+1 query on account listing]]', '- [ ] Reply to QA about the UAT schedule']],
+    ['Blockers', ['- [[Confirm rate limit with SMS provider]] (blocked by: Waiting on the provider account manager)']],
+    ['Decisions / Updates', ['- [[Poll the vault instead of file watching]] accepted']],
+    ['Follow-ups', ['- [ ] Ask infra for the staging database refresh date']],
+    ['Related Tasks / Projects', ['- [[IPP]]', '- [[LoadUp]]']],
+  ],
+  '2026-10-02': [
+    ['Done', ['- [x] [[Enable Docker WSL integration]]']],
+    ['Today', ['- [ ] [[Investigate missing OTP email]]', '- [ ] [[Reproduce duplicate settlement rows]]']],
+    ['Blockers', []],
+    ['Decisions / Updates', ['- [[Keep OTP email on the existing SMTP relay]] accepted']],
+    ['Follow-ups', ['- [x] Send the relay log sample to the provider']],
+    ['Related Tasks / Projects', ['- [[IPP]]', '- [[LoadUp]]', '- [[Second Brain]]']],
+  ],
+  '2026-10-01': [
+    ['Done', []],
+    ['Today', ['- [ ] [[Investigate missing OTP email]]', '- [ ] Set up the new vault folders']],
+    ['Blockers', []],
+    ['Decisions / Updates', []],
+    ['Follow-ups', []],
+    ['Related Tasks / Projects', ['- [[LoadUp]]']],
+  ],
+}
+
+/** Note body per daily-note path, for the mock client to serve. */
+export const dailyBodies = (): Map<string, string> =>
+  new Map(
+    Object.entries(DAILY_SECTIONS).map(([date, sections]) => [
+      `01-Daily/${date.slice(0, 4)}/${date}.md`,
+      `# Standup - ${date}\n\n${sections.map(([heading, lines]) => `## ${heading}\n\n${lines.join('\n')}\n`).join('\n')}`,
+    ]),
+  )
+
 /** Index problems, from the prototype's Index status page. */
 export const indexProblemFixtures = (): Record<IndexProblemCategory, IndexProblem[]> => ({
   parse_errors: [{ path: '05-Knowledge/Lessons/Untitled.md', detail: 'Frontmatter: mapping values are not allowed here (line 3). Indexed as type note.' }],

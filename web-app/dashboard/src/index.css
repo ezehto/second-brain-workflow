@@ -41,7 +41,7 @@
   --color-status-done: #5ed39a;
   --color-status-review: #d2a6ff;
   --color-status-planned: #a3a3b5;
-  --color-status-cancelled: #7d7d90;
+  --color-status-cancelled: #8b8b9e;
 
   --color-tint-progress: #1f2c44;
   --color-tint-blocked: #3a2422;
@@ -52,12 +52,28 @@
      font-extrabold renders at the cap. */
   --font-weight-extrabold: 700;
 
+  /* Type scale, size / line height. Each is a real utility (text-caption ...), and
+     cn() in lib/utils.ts knows the names so they merge as font sizes, not colours. */
+  --text-caption: 12px; /* timestamps and counts only */
+  --text-caption--line-height: 16px;
+  --text-small: 13px; /* secondary */
+  --text-small--line-height: 18px;
+  --text-body: 14px; /* body and row titles */
+  --text-body--line-height: 20px;
+  --text-panel: 16px; /* panel titles, 600 */
+  --text-panel--line-height: 22px;
+  --text-page: 20px; /* page title, 700 */
+  --text-page--line-height: 26px;
+  --text-date: 28px; /* the date on Today only, 700 */
+  --text-date--line-height: 34px;
+
   /* Spacing scale: 4, 8, 12, 16, 24, 32 px (Tailwind 1, 2, 3, 4, 6, 8). Use no other step. */
   --radius-card: 0.75rem; /* panels, 12px */
   --radius-tile: 0.75rem;
   --radius-btn: 0.5rem; /* controls, 8px */
 
-  --breakpoint-rail: 52rem;
+  --breakpoint-rail: 52rem; /* 832: the rail, touch sizes below it */
+  --breakpoint-fullrail: 80rem; /* 1280: the rail gains labels */
 }
 
 :root {
@@ -167,34 +183,30 @@
 }
 
 @layer components {
-  /*
-   * Type scale, size / line height. These are plain classes on purpose: a custom
-   * Tailwind font-size utility (text-small) is read by tailwind-merge as a colour
-   * and silently deletes the real text colour in cn(). Weights: 400, 500, 600, 700.
-   */
+  /* Aliases of the --text-* tokens, kept for existing markup. New code uses text-body etc. */
   .t-caption {
-    font-size: 12px;
-    line-height: 16px; /* timestamps and counts only */
+    font-size: var(--text-caption);
+    line-height: var(--text-caption--line-height);
   }
   .t-small {
-    font-size: 13px;
-    line-height: 18px; /* secondary */
+    font-size: var(--text-small);
+    line-height: var(--text-small--line-height);
   }
   .t-body {
-    font-size: 14px;
-    line-height: 20px; /* body and row titles */
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
   }
   .t-panel {
-    font-size: 16px;
-    line-height: 22px; /* panel titles, 600 */
+    font-size: var(--text-panel);
+    line-height: var(--text-panel--line-height);
   }
   .t-page {
-    font-size: 20px;
-    line-height: 26px; /* page title, 700 */
+    font-size: var(--text-page);
+    line-height: var(--text-page--line-height);
   }
   .t-date {
-    font-size: 28px;
-    line-height: 34px; /* the date on Today only, 700 */
+    font-size: var(--text-date);
+    line-height: var(--text-date--line-height);
   }
   /* Page title on the dashboard: the date. */
   .day {

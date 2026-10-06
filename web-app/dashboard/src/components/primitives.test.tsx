@@ -3,7 +3,11 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { renderInApp } from '@/test/helpers'
 import { task } from '@/test/notes'
-import { buttonVariants } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { cn } from '@/lib/utils'
+import { TASK_SEGMENT_COLOR } from '@/domain/status'
+import { StatusMenu } from './StatusMenu'
 import { CardHead, CardRow } from './Card'
 import { PreviewBadge } from './PreviewBadge'
 import { PriorityMark } from './PriorityMark'
@@ -36,14 +40,23 @@ describe('PriorityMark', () => {
 })
 
 describe('PreviewBadge', () => {
+  const DETAIL = 'From Calendar, Phase 4. Sample data'
   it('is one labelled badge whose detail is available to keyboard and screen readers', async () => {
     const user = userEvent.setup()
-    renderInApp(<PreviewBadge detail="From Calendar, Phase 4. Sample data" />)
-    const badge = screen.getByText('Preview').closest('span')!
-    expect(badge).toHaveTextContent('Preview: From Calendar, Phase 4. Sample data')
+    renderInApp(<PreviewBadge detail={DETAIL} />)
+    const badge = screen.getByRole('button', { name: `Preview: ${DETAIL}` })
     await user.tab()
     expect(badge).toHaveFocus()
-    expect((await screen.findAllByText('From Calendar, Phase 4. Sample data')).length).toBeGreaterThan(0)
+    expect((await screen.findAllByText(DETAIL)).length).toBeGreaterThan(0)
+  })
+  it('opens the detail on tap, where there is no hover or focus', async () => {
+    const user = userEvent.setup()
+    renderInApp(<PreviewBadge detail={DETAIL} />)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Preview/ }))
+    expect(await screen.findByRole('dialog')).toHaveTextContent(DETAIL)
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })
 
@@ -144,5 +157,41 @@ describe('type scale classes', () => {
     expect(screen.getByText('P1').parentElement).toHaveClass('t-caption', 'text-ink')
     renderInApp(<StatusChip status="done" />)
     expect(screen.getByText('done')).toHaveClass('t-caption', 'text-status-done')
+  })
+  it('cn treats the scale names as font sizes: they replace a size and never a colour', () => {
+    expect(cn('text-sm', 'text-caption')).toBe('text-caption')
+    expect(cn('text-caption', 'text-sm')).toBe('text-sm')
+    expect(cn('text-white', 'text-caption')).toBe('text-white text-caption')
+    expect(cn('t-small', 'text-caption')).toBe('text-caption')
+    expect(cn('text-caption', 'text-ink')).toBe('text-caption text-ink')
+  })
+  it('a text-caption override on a Button keeps the size classes and the text colour', () => {
+    renderInApp(<Button size="sm" className="text-caption">Go</Button>)
+    const button = screen.getByRole('button', { name: 'Go' })
+    expect(button).toHaveClass('text-caption', 'h-8', 'px-2', 'text-white')
+    expect(button).not.toHaveClass('t-small')
+  })
+  it('a text-caption override on a Label replaces its base size', () => {
+    renderInApp(<Label className="text-caption">Name</Label>)
+    const label = screen.getByText('Name')
+    expect(label).toHaveClass('text-caption', 'font-medium')
+    expect(label).not.toHaveClass('text-body')
+  })
+})
+
+describe('segment colours', () => {
+  // CSS is not loaded in tests, so the token value from index.css (--color-status-cancelled) is pinned here.
+  it('the donut fill for inbox is the status-cancelled token', () => {
+    expect(TASK_SEGMENT_COLOR.inbox).toBe('#8b8b9e')
+  })
+})
+
+describe('editable row height', () => {
+  it('a TaskRow with a StatusMenu stays a 36px row: the trigger gives back its padding', async () => {
+    const note = task('Rotate credentials', { status: 'planned' })
+    renderInApp(<TaskRow task={note} status={<StatusMenu note={note} />} />)
+    const trigger = screen.getByRole('button', { name: /Change status/ })
+    expect(trigger).toHaveClass('h-8', '-my-1', 'max-rail:min-h-11')
+    expect(screen.getByText('Rotate credentials').closest('div[class*="min-h"]')).toHaveClass('min-h-9')
   })
 })

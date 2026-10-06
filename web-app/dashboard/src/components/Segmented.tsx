@@ -9,7 +9,7 @@ export interface SegmentedOption<V extends string = string> {
 }
 
 const SEG =
-  'inline-flex min-h-7 items-center rounded-full border-0 bg-transparent px-3 t-small font-semibold text-muted-ink no-underline hover:bg-line hover:text-ink max-rail:min-h-11'
+  'inline-flex min-h-8 items-center rounded-full border-0 bg-transparent px-3 t-small font-semibold text-muted-ink no-underline hover:bg-line hover:text-ink max-rail:min-h-11'
 const SEG_ON = 'bg-brand-fill text-white hover:bg-brand-fill hover:text-white'
 
 /**
@@ -28,7 +28,7 @@ export function Segmented<V extends string>({
   label: string
 }) {
   return (
-    <div role="group" aria-label={label} className="inline-flex flex-wrap gap-0.5 rounded-full bg-inset p-0.5">
+    <div role="group" aria-label={label} className="inline-flex flex-wrap gap-1 rounded-full bg-inset p-0.5">
       {options.map((o) => {
         const on = o.value === value
         if (o.href && !on) {

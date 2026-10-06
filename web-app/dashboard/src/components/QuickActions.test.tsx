@@ -6,22 +6,49 @@ import { useCallback } from 'react'
 import { useApi } from '@/api/ApiProvider'
 import { useQuery } from '@/api/useQuery'
 import { mockClient, renderInApp } from '@/test/helpers'
-import { QuickActions } from './QuickActions'
+import { NewMenu, QuickActionsProvider } from './QuickActions'
+
+const Harness = () => (
+  <QuickActionsProvider>
+    <NewMenu />
+  </QuickActionsProvider>
+)
+
+/** Opens one creation dialog the way a person does: the New menu, then the item. */
+async function openAction(user: ReturnType<typeof userEvent.setup>, name: string) {
+  await user.click(screen.getByRole('button', { name: 'New' }))
+  await user.click(await screen.findByRole('menuitem', { name }))
+}
 
 describe('QuickActions', () => {
-  it('has the five buttons', () => {
-    renderInApp(<QuickActions />)
-    const bar = screen.getByRole('toolbar', { name: 'Quick actions' })
-    expect(bar.querySelectorAll('button')).toHaveLength(5)
-    for (const name of ['Task', 'Follow-up', 'Decision', 'Note', 'Capture']) {
-      expect(screen.getByRole('button', { name })).toBeInTheDocument()
-    }
+  it('has the five actions in the New menu, each with its shortcut', async () => {
+    const user = userEvent.setup()
+    renderInApp(<Harness />)
+    await user.click(screen.getByRole('button', { name: 'New' }))
+    const items = await screen.findAllByRole('menuitem')
+    expect(items.map((i) => i.textContent)).toEqual(['TaskT', 'Follow-upF', 'DecisionD', 'NoteN', 'CaptureC'])
+  })
+
+  it('opens a dialog from its single-key shortcut, but not while typing', async () => {
+    const user = userEvent.setup()
+    renderInApp(
+      <>
+        <input aria-label="elsewhere" />
+        <Harness />
+      </>,
+    )
+    await user.click(screen.getByLabelText('elsewhere'))
+    await user.keyboard('t')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await user.click(document.body)
+    await user.keyboard('c')
+    expect(await screen.findByRole('dialog', { name: 'Capture' })).toBeInTheDocument()
   })
 
   it('captures a thought and names the file in a toast', async () => {
     const user = userEvent.setup()
-    renderInApp(<QuickActions />)
-    await user.click(screen.getByRole('button', { name: 'Capture' }))
+    renderInApp(<Harness />)
+    await openAction(user, 'Capture')
     const dialog = screen.getByRole('dialog', { name: 'Capture' })
     const button = dialog.querySelector('button[type=submit]') as HTMLButtonElement
     expect(button).toBeDisabled()
@@ -33,8 +60,8 @@ describe('QuickActions', () => {
 
   it('creates a task and names the Markdown file that is written', async () => {
     const user = userEvent.setup()
-    renderInApp(<QuickActions />)
-    await user.click(screen.getByRole('button', { name: 'Task' }))
+    renderInApp(<Harness />)
+    await openAction(user, 'Task')
     await user.type(screen.getByLabelText('Title (becomes the file name)'), 'Renew certificate')
     expect(screen.getByText('Writes 02-Work/Tasks/Renew certificate.md')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Create task' }))
@@ -43,8 +70,8 @@ describe('QuickActions', () => {
 
   it('adds a follow-up, creating the daily note first when it does not exist', async () => {
     const user = userEvent.setup()
-    renderInApp(<QuickActions />)
-    await user.click(screen.getByRole('button', { name: 'Follow-up' }))
+    renderInApp(<Harness />)
+    await openAction(user, 'Follow-up')
     await user.type(screen.getByLabelText('Follow-up'), 'Ask infra for the refresh date')
     await user.click(screen.getByRole('button', { name: 'Add follow-up' }))
     expect(await screen.findByRole('status')).toHaveTextContent(
@@ -55,8 +82,8 @@ describe('QuickActions', () => {
   it('fills an untouched standup with carry-forward before appending the line', async () => {
     const user = userEvent.setup()
     const client = mockClient({ standup: 'untouched' })
-    renderInApp(<QuickActions />, client)
-    await user.click(screen.getByRole('button', { name: 'Follow-up' }))
+    renderInApp(<Harness />, client)
+    await openAction(user, 'Follow-up')
     await user.type(screen.getByLabelText('Follow-up'), 'Ask infra')
     await user.click(screen.getByRole('button', { name: 'Add follow-up' }))
     expect(await screen.findByRole('status')).toHaveTextContent('Filled 01-Daily/2026/2026-10-06.md with carry-forward, then appended "- [ ] Ask infra"')
@@ -68,8 +95,8 @@ describe('QuickActions', () => {
   it('shows the 409 message and keeps the dialog open', async () => {
     const user = userEvent.setup()
     const client = mockClient()
-    renderInApp(<QuickActions />, client)
-    await user.click(screen.getByRole('button', { name: 'Task' }))
+    renderInApp(<Harness />, client)
+    await openAction(user, 'Task')
     await user.type(screen.getByLabelText('Title (becomes the file name)'), 'Rotate staging API credentials')
     await user.click(screen.getByRole('button', { name: 'Create task' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('A note with this name already exists in 02-Work/Tasks. Nothing was written.')
@@ -79,8 +106,8 @@ describe('QuickActions', () => {
 
   it('does not pre-select a project', async () => {
     const user = userEvent.setup()
-    renderInApp(<QuickActions />)
-    await user.click(screen.getByRole('button', { name: 'Task' }))
+    renderInApp(<Harness />)
+    await openAction(user, 'Task')
     expect(screen.getByRole('combobox', { name: 'Project' })).toHaveTextContent('No project')
   })
 
@@ -103,12 +130,12 @@ describe('QuickActions', () => {
     renderInApp(
       <>
         <Probe />
-        <QuickActions />
+        <Harness />
       </>,
       client,
     )
     await waitFor(() => expect(projectCalls).toBe(1))
-    await user.click(screen.getByRole('button', { name: 'Follow-up' }))
+    await openAction(user, 'Follow-up')
     await user.type(screen.getByLabelText('Follow-up'), 'Ask infra')
     await user.click(screen.getByRole('button', { name: 'Add follow-up' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('changed in Obsidian')

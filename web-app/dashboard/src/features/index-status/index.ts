@@ -1,0 +1,1 @@
+export { IndexStatusPage } from './IndexStatusPage'
