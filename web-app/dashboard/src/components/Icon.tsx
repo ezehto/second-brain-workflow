@@ -121,6 +121,12 @@ const PATHS = {
       <path d="M18 10.5c0 4-6 3-11 6.5" />
     </>
   ),
+  info: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v5M12 8v.01" />
+    </>
+  ),
   dots: <path d="M5 12h.01M12 12h.01M19 12h.01" />,
   chevron: <path d="M6 9l6 6 6-6" />,
   menu: <path d="M4 7h16M4 12h16M4 17h16" />,

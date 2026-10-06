@@ -159,7 +159,7 @@ export function StatusMenu({
               <DialogDescription className="text-small text-muted-ink">{note.title}</DialogDescription>
             </DialogHeader>
             <div className="flex flex-col gap-1">
-              <Label htmlFor="status-evidence" className="text-caption font-semibold text-muted-ink">
+              <Label htmlFor="status-evidence" className="text-small font-semibold text-muted-ink">
                 Evidence (optional, added under Notes)
               </Label>
               <Textarea id="status-evidence" rows={3} value={evidence} onChange={(e) => setEvidence(e.target.value)} placeholder="What shows it is done" autoFocus />

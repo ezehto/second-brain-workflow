@@ -94,7 +94,10 @@ select, dialog, tabs, tooltip, dropdown-menu, label, textarea).
 Export your page component(s) from `src/features/<name>/index.ts`. The
 orchestrator wires routes in `routes.tsx` after merge. Use the helpers in
 `lib/routes.ts` for every link (`routes`, `noteHref`, `projectHref`,
-`tasksHref`) and the documented Tasks URL contract. Pages get their title and
+`tasksHref`) and the documented Tasks URL contract, and get every internal
+link through `useProjectHref()` in `lib/projectContext.ts` (`href.note`,
+`href.project`, `href.tasks`, `href.link`) so the project context filter
+survives navigation. Pages get their title and
 subtitle through the route `handle`; tell the orchestrator the values you
 want.
 

@@ -7,11 +7,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useToday } from '@/lib/clock'
 import { formatTimeOfDay } from '@/lib/dates'
-import { PROJECT_PARAM, useProjectContext } from '@/lib/projectContext'
+import { PROJECT_PARAM, useProjectContext, useProjectHref } from '@/lib/projectContext'
 import { routes } from '@/lib/routes'
 import type { Viewport } from '@/lib/viewport'
 import { indexProblemCount } from '@/domain/indexStatus'
-import { useCommandPaletteShortcut } from './CommandPalette'
+import { CommandPalette, useCommandPaletteShortcut } from './CommandPalette'
 import { ContextSelect } from './ContextSelect'
 import { Icon } from './Icon'
 import { NewMenu } from './QuickActions'
@@ -39,6 +39,7 @@ export function Header({
   const today = useToday()
   const navigate = useNavigate()
   const project = useProjectContext()
+  const href = useProjectHref()
   const handle = useMatches().at(-1)?.handle as PageHandle | undefined
   const [query, setQuery] = useState('')
   const searchRef = useRef<HTMLInputElement>(null)
@@ -47,9 +48,9 @@ export function Header({
   const phone = viewport === 'phone'
   const tablet = viewport === 'tablet'
 
-  // Ctrl+K: the Search package replaces this callback with the palette.
-  const focusSearch = useCallback(() => searchRef.current?.focus(), [])
-  useCommandPaletteShortcut(focusSearch)
+  const [paletteOpen, setPaletteOpen] = useState(false)
+  const openPalette = useCallback(() => setPaletteOpen(true), [setPaletteOpen])
+  useCommandPaletteShortcut(openPalette)
 
   const lastPass = index?.last_pass_at ? formatTimeOfDay(index.last_pass_at) : null
   const ctx = { today, lastPass }
@@ -121,7 +122,7 @@ export function Header({
       <NewMenu iconOnly={phone} />
       {!phone && !tablet && problems > 0 && (
         <Button asChild variant="secondary" size="sm" className="bg-tint-blocked text-status-blocked hover:bg-tint-blocked">
-          <Link to={routes.indexStatus}>
+          <Link to={href.link(routes.indexStatus)}>
             <span className="num">{problems}</span> index {problems === 1 ? 'problem' : 'problems'}
           </Link>
         </Button>
@@ -132,6 +133,7 @@ export function Header({
           <span className="sr-only">{username ? `Signed in as ${username}` : 'User not available'}</span>
         </span>
       )}
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
     </header>
   )
 }

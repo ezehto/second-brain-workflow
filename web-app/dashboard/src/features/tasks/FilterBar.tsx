@@ -28,7 +28,7 @@ export function FilterBar({
   return (
     <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
       <label className="flex flex-col gap-0.5">
-        <span className="t-caption text-muted-ink">Project</span>
+        <span className="t-small text-muted-ink">Project</span>
         <select className={SELECT} value={filters.project ?? ''} onChange={(e) => onFilters({ project: e.target.value || undefined })}>
           <option value="">All projects</option>
           {filters.project && !known && <option value={filters.project}>{filters.project} (unknown)</option>}
@@ -40,7 +40,7 @@ export function FilterBar({
         </select>
       </label>
       <label className="flex flex-col gap-0.5">
-        <span className="t-caption text-muted-ink">Priority</span>
+        <span className="t-small text-muted-ink">Priority</span>
         <select className={SELECT} value={filters.priority ?? ''} onChange={(e) => onFilters({ priority: e.target.value || undefined })}>
           <option value="">Any priority</option>
           <option value="high">P1, high</option>

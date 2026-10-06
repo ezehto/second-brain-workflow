@@ -445,3 +445,160 @@ export const previewStandupReferences: { source: string; items: PreviewStandupRe
     { kind: 'meeting', ref: '11:00', text: 'UAT schedule with QA' },
   ],
 }
+
+/* ---------------------------------------------------------------------------
+ * WP6 project view: the Later tabs and the milestone line. Sample data for the
+ * IPP project only; other projects have sensible empties. The Timeline tab
+ * reuses `previewTimeline` filtered by project.
+ * ------------------------------------------------------------------------- */
+
+export interface PreviewMilestone {
+  title: string
+  /** `YYYY-MM-DD`. */
+  date: string
+  state: 'due' | 'blocked' | 'estimated'
+}
+
+export interface PreviewProjectTicket {
+  key: string
+  title: string
+  status: string
+  tone: StatusTone
+  task: string
+}
+
+export interface PreviewDeployment {
+  title: string
+  environment: string
+  when: string
+  source: string
+}
+
+export interface PreviewIncident {
+  title: string
+  when: string
+  status: string
+  tone: StatusTone
+  source: string
+}
+
+export interface PreviewArchNode {
+  id: string
+  name: string
+  kind: string
+  /** Position on a 4 by 2 grid. */
+  col: number
+  row: number
+  proposed?: boolean
+  external?: boolean
+  purpose: string
+  decisions: string[]
+  tasks: string[]
+  risks: string[]
+}
+
+export interface PreviewArchEdge {
+  from: string
+  to: string
+  label: string
+}
+
+export interface PreviewProjectLearning {
+  title: string
+  detail: string
+}
+
+export interface PreviewProjectData {
+  milestones: PreviewMilestone[]
+  tickets: PreviewProjectTicket[]
+  deployments: PreviewDeployment[]
+  incidents: PreviewIncident[]
+  architecture: { nodes: PreviewArchNode[]; edges: PreviewArchEdge[] }
+  learning: PreviewProjectLearning[]
+}
+
+export const EMPTY_PREVIEW_PROJECT: PreviewProjectData = {
+  milestones: [],
+  tickets: [],
+  deployments: [],
+  incidents: [],
+  architecture: { nodes: [], edges: [] },
+  learning: [],
+}
+
+export const previewProjectData: { source: string; bySlug: Record<string, PreviewProjectData> } = {
+  source: 'Milestones come from task due dates, the rest from Jira, GitLab and architecture notes in later phases. Sample data for IPP only',
+  bySlug: {
+    ipp: {
+      milestones: [
+        { title: 'Settlement rerun runbook due', date: '2026-10-06', state: 'due' },
+        { title: 'Retry fix due', date: '2026-10-07', state: 'due' },
+        { title: 'Load test due', date: '2026-10-09', state: 'blocked' },
+        { title: 'Production release', date: '2026-10-14', state: 'estimated' },
+      ],
+      tickets: [
+        { key: 'IPP-214', title: 'Duplicate settlement rows on retried callback', status: 'In QA', tone: 'progress', task: 'Reproduce duplicate settlement rows' },
+        { key: 'IPP-221', title: 'Confirm provider retry window', status: 'Open', tone: 'neutral', task: 'no task yet' },
+      ],
+      deployments: [{ title: 'Callback handler build deployed to staging', environment: 'staging', when: 'Oct 2, 14:00', source: 'GitLab' }],
+      incidents: [{ title: 'Duplicate rows in the staging settlement file', when: 'Oct 1, 18:20', status: 'done', tone: 'done', source: 'vault' }],
+      architecture: {
+        nodes: [
+          {
+            id: 'provider', name: 'Provider callback', kind: 'External system', col: 0, row: 0, external: true,
+            purpose: 'The payment provider posts an event to IPP when a payment succeeds, fails or is reversed. It retries when it does not get a 200.',
+            decisions: ['Ask the provider for a stable event id (change request, draft)'],
+            tasks: [],
+            risks: ['Provider retries are outside our control, so every duplicate must be absorbed on our side.'],
+          },
+          {
+            id: 'handler', name: 'Callback handler', kind: 'IPP service', col: 1, row: 0,
+            purpose: 'Receives provider callbacks, checks the idempotency key, reserves the wallet and writes the settlement row.',
+            decisions: ['Use idempotency keys on payment callbacks (proposed)', 'A retry on a business rejection duplicates the send (lesson)'],
+            tasks: ['Add retry with backoff to payment callback handler (in-progress)'],
+            risks: ['Retried callback wrote the settlement row twice on staging.', 'Retrying a business rejection duplicates the send.'],
+          },
+          {
+            id: 'wallet', name: 'Wallet service', kind: 'IPP service', col: 2, row: 0,
+            purpose: 'Reserves and debits the wallet balance for a payment.',
+            decisions: [],
+            tasks: ['Load test wallet reservation path (blocked, staging database refresh)'],
+            risks: ['Reservation path is untested at expected peak.'],
+          },
+          {
+            id: 'store', name: 'Idempotency key store', kind: 'Proposed, not built', col: 1, row: 1, proposed: true,
+            purpose: 'Remembers each callback key for a fixed time so a repeated callback is answered without writing again.',
+            decisions: ['Use idempotency keys on payment callbacks (proposed)', 'Key store location and expiry (open question)'],
+            tasks: [],
+            risks: ['A key that expires before the provider stops retrying lets a duplicate through.'],
+          },
+          {
+            id: 'job', name: 'Settlement file job', kind: 'IPP batch job', col: 2, row: 1,
+            purpose: 'Builds the daily settlement file from posted debits and delivers it to the bank.',
+            decisions: ['Settlement reruns by full file replace (superseded)'],
+            tasks: ['Write runbook for settlement file rerun (planned)', 'Reproduce duplicate settlement rows (done)'],
+            risks: ['No written rerun procedure once idempotency keys exist.'],
+          },
+          {
+            id: 'bank', name: 'Bank SFTP', kind: 'External system', col: 3, row: 1, external: true,
+            purpose: 'Receives the settlement file. A wrong or duplicate file here is a financial error, not a bug.',
+            decisions: [],
+            tasks: [],
+            risks: ['Duplicate rows reach the bank if a file is built before the fix ships.'],
+          },
+        ],
+        edges: [
+          { from: 'provider', to: 'handler', label: 'POST' },
+          { from: 'handler', to: 'wallet', label: 'reserve' },
+          { from: 'handler', to: 'store', label: 'check key' },
+          { from: 'wallet', to: 'job', label: 'posted debits' },
+          { from: 'job', to: 'bank', label: 'file' },
+        ],
+      },
+      learning: [
+        { title: 'Idempotent request handling', detail: 'Learning topic from the duplicate settlement rows. Applies to the callback handler.' },
+        { title: 'Retry classification: transient versus business failures', detail: 'Lesson captured Oct 5. Practice: apply it in the retry change.' },
+      ],
+    },
+  },
+}

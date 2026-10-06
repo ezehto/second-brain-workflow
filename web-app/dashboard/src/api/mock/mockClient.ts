@@ -1,4 +1,4 @@
-import { isOpen, isOverdue, priorityRank } from '@/domain/tasks'
+import { isForToday, isOpen, isOverdue, priorityRank } from '@/domain/tasks'
 import { ApiError, type ApiClient } from '../client'
 import {
   DEFAULT_STATUS,
@@ -20,6 +20,8 @@ import {
 } from '../types'
 import {
   FIXTURE_TODAY,
+  captureBodies,
+  captureClassifications,
   captureFixtures,
   captureName,
   dailyBodies,
@@ -71,6 +73,13 @@ export function createMockClient(options: MockClientOptions = {}): ApiClient {
   ]
   const projects: ProjectSummary[] = projectFixtures()
   const bodies = dailyBodies()
+  captureBodies().forEach((body, path) => bodies.set(path, body))
+  const classifications = captureClassifications()
+  // A finished task with the evidence line the Dashboard's Done recently shows.
+  bodies.set(
+    '02-Work/Tasks/Reproduce duplicate settlement rows.md',
+    '## Description\n\nFind where duplicate rows enter the settlement file.\n\n## Notes\n\n- Reproduced on staging: a retried callback wrote the row twice.\n\n## Links\n\n- [[IPP]]\n',
+  )
   // Revision per note path: every write increments it, and the content hash is built from it.
   const revisions = new Map<string, number>()
   const bump = (path: string) => revisions.set(path, (revisions.get(path) ?? 0) + 1)
@@ -99,7 +108,7 @@ export function createMockClient(options: MockClientOptions = {}): ApiClient {
   const carryToday = () => {
     const rank: Record<string, number> = { 'in-progress': 0, review: 1, planned: 2 }
     return tasks()
-      .filter((t) => t.status === 'in-progress' || t.status === 'review' || (t.status === 'planned' && !!t.due && t.due <= today))
+      .filter((t) => isForToday(t, today))
       .sort((a, b) => rank[a.status ?? ''] - rank[b.status ?? ''] || byDue(a, b))
   }
   const carryBlocked = () => tasks().filter((t) => t.status === 'blocked').sort(byDue)
@@ -179,7 +188,17 @@ export function createMockClient(options: MockClientOptions = {}): ApiClient {
     }
     return {
       ...n,
-      frontmatter: { type: n.type, id: n.id, status: n.status, priority: n.priority, project: n.project, created: n.created, due: n.due, tags: n.tags },
+      frontmatter: {
+        type: n.type,
+        id: n.id,
+        status: n.status,
+        priority: n.priority,
+        project: n.project,
+        created: n.created,
+        due: n.due,
+        tags: n.tags,
+        ...(classifications.has(n.path) ? { classification: classifications.get(n.path) } : {}),
+      },
       body,
       content_hash: hashOf(n),
       backlinks: allNotes()
@@ -332,6 +351,7 @@ export function createMockClient(options: MockClientOptions = {}): ApiClient {
           parse_error: null,
         }
         notes.push(note)
+        bodies.set(note.path, `${text.trim()}\n`)
         bump(note.path)
         return note
       }),
@@ -353,6 +373,7 @@ export function createMockClient(options: MockClientOptions = {}): ApiClient {
         if (hashOf(capture) !== input.expected_hash) {
           throw new ApiError(409, `${input.path} changed in Obsidian. The new note was created; retry to finish triage.`, target ? { created_target: target.path } : {})
         }
+        if (input.action !== 'dismiss' && input.classification) classifications.set(capture.path, input.classification)
         capture.status = input.action === 'dismiss' ? 'dismissed' : input.action === 'keep' ? 'inbox' : 'triaged'
         capture.modified = now()
         bump(capture.path)

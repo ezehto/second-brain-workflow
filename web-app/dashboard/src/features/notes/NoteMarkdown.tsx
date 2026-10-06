@@ -1,10 +1,10 @@
 import type { ComponentProps, ElementType } from 'react'
-import Markdown, { defaultUrlTransform, type Components } from 'react-markdown'
+import Markdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Link } from 'react-router'
 import type { NoteDetail } from '@/api/types'
-import { noteHref } from '@/lib/routes'
-import { WIKILINK_SCHEME, remarkWikilinks } from './remarkWikilinks'
+import { useProjectHref } from '@/lib/projectContext'
+import { WIKILINK_PROP, remarkWikilinks } from './remarkWikilinks'
 
 type Links = NoteDetail['links']
 
@@ -22,17 +22,15 @@ function linkEntry(inner: string, links: Links): Links[string] | undefined {
   return undefined
 }
 
-const URL_SAFE = (url: string) => (url.startsWith(WIKILINK_SCHEME) ? url : defaultUrlTransform(url))
 const isExternal = (href: string) => /^(https?:)?\/\//i.test(href) || /^mailto:/i.test(href)
 
-const FLAG = 't-caption ml-1 font-semibold'
+const FLAG = 't-small ml-1 font-semibold'
 
-function wikilink(href: string, children: ComponentProps<'a'>['children'], links: Links) {
-  const inner = decodeURIComponent(href.slice(WIKILINK_SCHEME.length))
+function wikilink(inner: string, children: ComponentProps<'a'>['children'], links: Links, noteLink: (path: string) => string) {
   const entry = linkEntry(inner, links)
   if (entry?.state === 'resolved' && entry.path) {
     return (
-      <Link to={noteHref(entry.path)} data-link-state="resolved">
+      <Link to={noteLink(entry.path)} data-link-state="resolved">
         {children}
       </Link>
     )
@@ -57,11 +55,14 @@ const styled = (Tag: ElementType, className: string) =>
     return <Tag {...rest} className={className} />
   }
 
-function components(links: Links): Components {
+function components(links: Links, noteLink: (path: string) => string): Components {
   return {
     a({ node, href = '', children, ...rest }) {
       void node
-      if (href.startsWith(WIKILINK_SCHEME)) return wikilink(href, children, links)
+      const inner = (rest as Record<string, unknown>)[WIKILINK_PROP]
+      if (typeof inner === 'string') return wikilink(inner, children, links, noteLink)
+      // A blocked address (javascript:, an author-written wikilink: ...) is shown as plain text, not an empty link.
+      if (!href) return <>{children}</>
       if (isExternal(href)) {
         return (
           <a {...rest} href={href} target="_blank" rel="noopener noreferrer">
@@ -75,6 +76,8 @@ function components(links: Links): Components {
         </a>
       )
     },
+    // GFM task-list boxes are read-only here: the text form carries the state to every reader.
+    input: ({ type, checked }) => (type === 'checkbox' ? <span className="mono mr-1">{checked ? '[x]' : '[ ]'}</span> : null),
     // An embedded image would make the browser fetch whatever address the note names.
     img: ({ alt }) => <span className="text-muted-ink">[image{alt ? `: ${alt}` : ''}]</span>,
     h1: styled('h3', 't-panel mt-4 mb-2 font-semibold'),
@@ -110,9 +113,10 @@ function components(links: Links): Components {
  * external links open in a new tab with `rel="noopener noreferrer"`.
  */
 export function NoteMarkdown({ body, links }: { body: string; links: Links }) {
+  const href = useProjectHref()
   return (
     <div className="max-w-[72ch] break-words">
-      <Markdown remarkPlugins={[remarkGfm, remarkWikilinks]} urlTransform={URL_SAFE} components={components(links)}>
+      <Markdown remarkPlugins={[remarkGfm, remarkWikilinks]} components={components(links, href.note)}>
         {body}
       </Markdown>
     </div>

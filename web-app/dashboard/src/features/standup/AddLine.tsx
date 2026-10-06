@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input'
  * changed in Obsidian: everything reloads and the typed text stays, so
  * nothing is lost.
  */
-export function AddLine({ section, note }: { section: StandupSection; note: NoteDetail }) {
+export function AddLine({ section, note, untouched }: { section: StandupSection; note: NoteDetail; untouched: boolean }) {
   const client = useApi()
   const invalidate = useInvalidate()
   const toast = useToast()
@@ -25,8 +25,23 @@ export function AddLine({ section, note }: { section: StandupSection; note: Note
     if (!draft.trim() || busy) return
     setBusy(true)
     try {
-      await client.appendToStandup({ section, text: draft.trim(), expected_hash: note.content_hash })
-      toast.show(`Added to ## ${section} in ${note.path}`)
+      // An untouched note is filled with carry-forward first: appending to it as it is would make it "touched",
+      // and carry-forward would never run for the day. The append then uses the filled note's hash.
+      let target = note
+      let filled = false
+      if (untouched) {
+        const started = await client.startStandup()
+        target = started.note
+        filled = started.filled
+        invalidate()
+      }
+      const text = draft.trim()
+      await client.appendToStandup({ section, text, expected_hash: target.content_hash })
+      toast.show(
+        filled
+          ? `Filled ${target.path} with carry-forward, then appended "${text}" under ${section}`
+          : `Added to ## ${section} in ${target.path}`,
+      )
       setDraft('')
       invalidate()
     } catch (error) {

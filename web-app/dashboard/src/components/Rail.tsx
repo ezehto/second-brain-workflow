@@ -154,11 +154,11 @@ export function Rail({
                   type="button"
                   onClick={toggleLater}
                   aria-expanded={open}
-                  aria-controls={`rail-group-${group.label}`}
+                  aria-controls={open ? `rail-group-${group.label}` : undefined}
                   aria-label={compact ? `${group.label} pages` : undefined}
                   className={cn(
                     'flex cursor-pointer items-center gap-1 rounded-btn text-muted-ink hover:text-ink',
-                    compact ? 'mx-auto size-8 justify-center' : 'w-full px-3 pb-1 t-caption font-semibold text-faint hover:text-ink',
+                    compact ? 'mx-auto size-8 justify-center' : 'w-full px-3 pb-1 t-small font-semibold text-faint hover:text-ink',
                   )}
                 >
                   <Icon name="chevron" className={cn('size-3.5 transition-transform', open ? '' : '-rotate-90')} />
@@ -167,7 +167,7 @@ export function Rail({
               ) : compact ? (
                 <div aria-hidden="true" className="mx-2 mb-2 h-px bg-line" />
               ) : (
-                <div className="t-caption px-3 pb-1 font-semibold text-faint">{group.label}</div>
+                <div className="t-small px-3 pb-1 font-semibold text-faint">{group.label}</div>
               )}
               {open && (
                 <ul id={`rail-group-${group.label}`} className="m-0 flex list-none flex-col gap-0.5 p-0">

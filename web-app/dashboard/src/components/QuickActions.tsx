@@ -45,9 +45,13 @@ export function useQuickActions() {
 const SHORTCUT: Record<string, QuickActionKind> = { t: 'task', f: 'followup', d: 'decision', n: 'lesson', c: 'capture' }
 const KEY_OF = Object.fromEntries(Object.entries(SHORTCUT).map(([key, kind]) => [kind, key.toUpperCase()])) as Record<QuickActionKind, string>
 
+const SELECT_PARTS = '[role="listbox"], [role="combobox"], [role="option"]'
+
 function isTyping(target: EventTarget | null) {
   const el = target as HTMLElement | null
-  return !!el && (['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName) || el.isContentEditable)
+  if (!el) return false
+  // A Radix Select takes letters for typeahead, so its trigger and list never start a shortcut.
+  return ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName) || el.isContentEditable || !!el.closest?.(SELECT_PARTS)
 }
 
 /**
@@ -63,7 +67,7 @@ export function QuickActionsProvider({ children }: { children: ReactNode }) {
     function onKey(event: KeyboardEvent) {
       if (event.ctrlKey || event.metaKey || event.altKey || event.repeat || isTyping(event.target)) return
       const kind = SHORTCUT[event.key.toLowerCase()]
-      if (!kind || document.querySelector('[role="dialog"], [role="menu"]')) return
+      if (!kind || document.querySelector('[role="dialog"], [role="menu"], [role="listbox"]')) return
       event.preventDefault()
       setOpen(kind)
     }
@@ -142,7 +146,7 @@ function QuickActionDialog({ kind, onClose }: { kind: QuickActionKind; onClose: 
     kind === 'capture'
       ? 'Writes a capture note to 00-Inbox/'
       : kind === 'followup'
-        ? `Appends a - [ ] line under Follow-ups in ${standupPath}`
+        ? `Appends a line under Follow-ups in ${standupPath}`
         : `Writes ${FOLDER[kind]}${title.trim() || '<title>'}.md`
   const disabled = busy || (isText ? !text.trim() : !title.trim())
 
@@ -155,7 +159,7 @@ function QuickActionDialog({ kind, onClose }: { kind: QuickActionKind; onClose: 
       return `Saved capture as ${note.path}`
     }
     if (kind === 'followup') {
-      const line = `- [ ] ${text.trim()}`
+      const line = text.trim()
       const standup = await client.getStandupToday()
       // A missing note is created, and an untouched one filled, with carry-forward before the line goes in.
       let note = standup.exists ? standup.note : null
@@ -206,9 +210,9 @@ function QuickActionDialog({ kind, onClose }: { kind: QuickActionKind; onClose: 
   return (
     <Dialog open onOpenChange={(next) => !next && onClose()}>
       <DialogContent showCloseButton={false}>
-        <form onSubmit={submit} className="flex flex-col gap-3.5">
+        <form onSubmit={submit} className="flex flex-col gap-3">
           <DialogHeader>
-            <DialogTitle className="text-base font-bold">{action.title}</DialogTitle>
+            <DialogTitle className="text-panel font-bold">{action.title}</DialogTitle>
             <DialogDescription className="sr-only">Creates a Markdown note in the vault.</DialogDescription>
           </DialogHeader>
 
@@ -289,8 +293,8 @@ function QuickActionDialog({ kind, onClose }: { kind: QuickActionKind; onClose: 
 
 function Field({ label, htmlFor, children }: { label: string; htmlFor: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <Label htmlFor={htmlFor} className="text-xs font-semibold text-muted-ink">
+    <div className="flex flex-col gap-1">
+      <Label htmlFor={htmlFor} className="text-small font-semibold text-muted-ink">
         {label}
       </Label>
       {children}

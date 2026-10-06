@@ -2,43 +2,68 @@ import type { NoteDetail, NoteSummary, ProjectSummary } from '@/api/types'
 import type { DailyLine } from '@/domain/daily'
 import { noteHref, projectHref } from '@/lib/routes'
 
-export interface LinkTarget {
-  kind: 'project' | 'note'
-  href: string
-}
+/** Where a wikilink goes, or why it goes nowhere. `unknown` means it could not be told (no server answer and no title match). */
+export type Resolution = { kind: 'project' | 'note'; href: string } | { kind: 'ambiguous' | 'unresolved' | 'unknown' }
 
 export interface LinkResolver {
-  /** Where a wikilink goes: a project through `projectHref`, any other note through `noteHref`; null when it resolves to nothing. */
-  resolve: (target: string) => LinkTarget | null
-  /** The project slug of a line, through the first link that is a project or a task with a project. */
+  /**
+   * For a line of the note on screen: the API's own answer (`note.links`) and
+   * nothing else, so a link never goes anywhere the server did not resolve.
+   * Without an open note (the not-yet-written preview) it falls back to titles.
+   */
+  resolve: (target: string) => Resolution
+  /**
+   * For a line of any other note (Yesterday, the patterns), which has no
+   * `links` map in hand: a match on title against the project and task lists,
+   * ambiguous when two notes share the title.
+   */
+  resolveByTitle: (target: string) => Resolution
+  /** The project slug of a line, through the first link that is a project or a task with a project (by title). */
   projectOf: (line: DailyLine) => string | null
   /** The project's title for a slug, or null when it is not in the project list. */
   projectTitle: (slug: string) => string | null
 }
 
-/**
- * Resolves wikilinks by title against the project list, the note's own
- * resolved links (when a note is open) and the task list. A link that matches
- * none of them is shown as text, not as a dead link.
- */
+function byTitle<T extends { title: string }>(items: T[]): Map<string, T[]> {
+  const map = new Map<string, T[]>()
+  for (const item of items) map.set(item.title.toLowerCase(), [...(map.get(item.title.toLowerCase()) ?? []), item])
+  return map
+}
+
 export function linkResolver(projects: ProjectSummary[], tasks: NoteSummary[], note?: NoteDetail): LinkResolver {
-  const bySlugTitle = new Map(projects.map((p) => [p.title.toLowerCase(), p]))
-  const taskByTitle = new Map(tasks.map((t) => [t.title.toLowerCase(), t]))
-  const own = new Map(Object.entries(note?.links ?? {}).map(([target, link]) => [target.toLowerCase(), link]))
+  const projectsByTitle = byTitle(projects)
+  const tasksByTitle = byTitle(tasks)
   const bySlug = new Map(projects.map((p) => [p.slug, p.title]))
+  const projectByPath = new Map(projects.map((p) => [p.path, p]))
+  const own = note ? new Map(Object.entries(note.links).map(([target, link]) => [target.toLowerCase(), link])) : null
+
+  const hrefFor = (path: string): Resolution => {
+    const project = projectByPath.get(path)
+    return project ? { kind: 'project', href: projectHref(project.slug) } : { kind: 'note', href: noteHref(path) }
+  }
+
+  const resolveByTitle = (target: string): Resolution => {
+    const key = target.toLowerCase()
+    const hits = [...(projectsByTitle.get(key) ?? []), ...(tasksByTitle.get(key) ?? [])]
+    if (hits.length > 1) return { kind: 'ambiguous' }
+    if (hits.length === 0) return { kind: 'unknown' }
+    return 'slug' in hits[0] ? { kind: 'project', href: projectHref(hits[0].slug) } : hrefFor(hits[0].path)
+  }
+
   return {
     projectTitle: (slug) => bySlug.get(slug) ?? null,
+    resolveByTitle,
     resolve: (target) => {
-      const key = target.toLowerCase()
-      const project = bySlugTitle.get(key)
-      if (project) return { kind: 'project', href: projectHref(project.slug) }
-      const path = own.get(key)?.path ?? taskByTitle.get(key)?.path
-      return path ? { kind: 'note', href: noteHref(path) } : null
+      if (!own) return resolveByTitle(target)
+      const link = own.get(target.toLowerCase())
+      if (!link || link.state === 'unresolved') return { kind: 'unresolved' }
+      if (link.state === 'ambiguous' || !link.path) return { kind: 'ambiguous' }
+      return hrefFor(link.path)
     },
     projectOf: (line) => {
       for (const target of line.links) {
         const key = target.toLowerCase()
-        const project = bySlugTitle.get(key)?.slug ?? taskByTitle.get(key)?.project
+        const project = projectsByTitle.get(key)?.[0]?.slug ?? tasksByTitle.get(key)?.[0]?.project
         if (project) return project
       }
       return null

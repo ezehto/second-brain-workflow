@@ -14,13 +14,13 @@ import { isOverdue } from '@/domain/tasks'
 import { projectLookup } from '@/domain/projects'
 import { useToday } from '@/lib/clock'
 import { NOT_AVAILABLE, formatShortDate, wallTime } from '@/lib/dates'
-import { noteHref, projectHref } from '@/lib/routes'
+import { useProjectHref } from '@/lib/projectContext'
 import { NoteMarkdown } from './NoteMarkdown'
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex min-w-0 flex-col">
-      <dt className="t-caption text-muted-ink">{label}</dt>
+      <dt className="t-small text-muted-ink">{label}</dt>
       <dd className="t-body m-0 min-w-0 truncate">{children}</dd>
     </div>
   )
@@ -31,6 +31,7 @@ const stamp = (iso: string | null) => (iso ? `${formatShortDate(iso)}${iso.lengt
 function Loaded({ note, onClose }: { note: NoteDetail; onClose?: () => void }) {
   const client = useApi()
   const today = useToday()
+  const href = useProjectHref()
   const titleId = useId()
   const projects = useQuery(useCallback(() => client.listProjects(), [client]))
   const lookup = useMemo(() => projectLookup(projects.status === 'success' ? projects.data : undefined), [projects])
@@ -69,13 +70,13 @@ function Loaded({ note, onClose }: { note: NoteDetail; onClose?: () => void }) {
           </span>
         </Field>
         <Field label="Project">
-          {note.project && lookup.known(note.project) ? <Link to={projectHref(note.project)}>{lookup.title(note.project)}</Link> : lookup.title(note.project)}
+          {note.project && lookup.known(note.project) ? <Link to={href.project(note.project)}>{lookup.title(note.project)}</Link> : lookup.title(note.project)}
         </Field>
         <Field label="Created">{stamp(note.created)}</Field>
         <Field label="Modified">{stamp(note.modified)}</Field>
         <Field label="Tags">{note.tags.length ? note.tags.join(', ') : NOT_AVAILABLE}</Field>
         <div className="col-span-full min-w-0">
-          <dt className="t-caption text-muted-ink">Path</dt>
+          <dt className="t-small text-muted-ink">Path</dt>
           <dd className="mono m-0 break-all text-muted-ink">{note.path}</dd>
         </div>
       </dl>
@@ -92,7 +93,7 @@ function Loaded({ note, onClose }: { note: NoteDetail; onClose?: () => void }) {
           <ul className="m-0 mt-1 list-none p-0">
             {note.backlinks.map((link) => (
               <li key={link.path} className="t-body py-0.5">
-                <Link to={noteHref(link.path)}>{link.title}</Link>
+                <Link to={href.note(link.path)}>{link.title}</Link>
               </li>
             ))}
           </ul>

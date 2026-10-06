@@ -224,15 +224,15 @@
   /* Literal vault text: paths, wikilink brackets, frontmatter values. */
   .mono {
     font-family: var(--font-mono);
-    font-size: 12px;
-    line-height: 16px;
+    font-size: var(--text-small);
+    line-height: var(--text-small--line-height);
   }
   .num {
     font-variant-numeric: tabular-nums;
   }
   .note {
-    font-size: 12px;
-    line-height: 16px;
+    font-size: var(--text-small);
+    line-height: var(--text-small--line-height);
     color: var(--color-muted-ink);
   }
   .linkbtn {

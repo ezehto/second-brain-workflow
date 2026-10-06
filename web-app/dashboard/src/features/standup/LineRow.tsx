@@ -6,19 +6,23 @@ import { cn } from '@/lib/utils'
 import type { LinkResolver } from './links'
 
 /** A line's text with each wikilink linked to its note or project; an unresolved link stays text. */
-export function LineText({ line, resolver }: { line: DailyLine; resolver: LinkResolver }) {
+export function LineText({ line, resolver, byTitle = false }: { line: DailyLine; resolver: LinkResolver; byTitle?: boolean }) {
   return (
     <>
       {textSegments(line.text).map((seg, i) => {
         if (seg.kind === 'text') return <span key={i}>{seg.value}</span>
-        const target = resolver.resolve(seg.target)
-        return target ? (
-          <Link key={i} to={target.href} className="linkbtn">
+        const target = byTitle ? resolver.resolveByTitle(seg.target) : resolver.resolve(seg.target)
+        if (target.kind === 'project' || target.kind === 'note') {
+          return (
+            <Link key={i} to={target.href} className="linkbtn">
+              {seg.label}
+            </Link>
+          )
+        }
+        return (
+          <span key={i} title={target.kind === 'ambiguous' ? 'Several notes have this name' : 'No note with this name'}>
             {seg.label}
-          </Link>
-        ) : (
-          <span key={i} title="No note with this name">
-            {seg.label}
+            {target.kind !== 'unknown' && <span className="text-muted-ink"> ({target.kind})</span>}
           </span>
         )
       })}
@@ -45,12 +49,12 @@ function Box({ checked }: { checked: boolean | null }) {
 }
 
 /** One list line of a section as a ruled row. `carried` is how many standups in a row list it (shown from 2). */
-export function LineRow({ line, resolver, carried }: { line: DailyLine; resolver: LinkResolver; carried?: number }) {
+export function LineRow({ line, resolver, carried, byTitle = false }: { line: DailyLine; resolver: LinkResolver; carried?: number; byTitle?: boolean }) {
   return (
     <CardRow className="grid-cols-[1rem_minmax(0,1fr)_auto]">
       <Box checked={line.checked} />
       <span className="t-body min-w-0 break-words">
-        <LineText line={line} resolver={resolver} />
+        <LineText line={line} resolver={resolver} byTitle={byTitle} />
       </span>
       {carried !== undefined && carried >= 2 && <StatusChip label={`In Today for ${carried} days`} tone={carried >= 3 ? 'risk' : 'neutral'} />}
     </CardRow>

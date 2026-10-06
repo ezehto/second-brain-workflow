@@ -1,10 +1,15 @@
-/** Scheme given to a wikilink's `url` so the renderer can tell it from a real link. */
-export const WIKILINK_SCHEME = 'wikilink:'
+/**
+ * The inner text of a wikilink travels on the node as this property, never in
+ * the URL: a note's own `[x](wikilink:...)` is author text and must not be
+ * mistaken for one, and a malformed escape in it cannot reach a decoder.
+ */
+export const WIKILINK_PROP = 'data-wikilink'
 
 interface Node {
   type: string
   value?: string
   url?: string
+  data?: { hProperties?: Record<string, string> }
   children?: Node[]
 }
 
@@ -22,7 +27,8 @@ function split(text: string): Node[] | null {
     if (match.index > last) parts.push({ type: 'text', value: text.slice(last, match.index) })
     parts.push({
       type: 'link',
-      url: WIKILINK_SCHEME + encodeURIComponent(inner),
+      url: '#wikilink',
+      data: { hProperties: { [WIKILINK_PROP]: inner } },
       children: [{ type: 'text', value: alias || target || inner }],
     })
     last = match.index + match[0].length

@@ -7,25 +7,26 @@ import { TASK_SEGMENT_COLOR } from '@/domain/status'
 import { countByStatus, countUnknownStatus } from '@/domain/tasks'
 import { plural } from '@/lib/plural'
 
-/** How are all task notes spread across statuses? */
+/** Where do all tasks stand? A 120px donut with its legend of counts (chart 1). */
 export function TasksByStatus({ tasks }: { tasks: Query<NoteSummary[]> }) {
-  const total = tasks.status === 'success' ? tasks.data.length : null
   return (
-    <Card>
-      <CardHead title="Tasks by status" note={total === null ? undefined : `${total} task notes`} />
-      <QueryBoundary query={tasks} isEmpty={(all) => all.length === 0} empty="No task notes in the vault yet.">
+    <Card aria-label="Tasks by status">
+      <CardHead title="Where do my tasks stand?" count={tasks.status === 'success' ? tasks.data.length : undefined} />
+      <QueryBoundary query={tasks} isEmpty={(all) => all.length === 0} empty="No task notes yet.">
         {(all) => {
           const unknown = countUnknownStatus(all)
           return (
             <>
               <Donut
+                size={120}
+                className="flex flex-wrap items-center gap-4 px-3 pb-3"
                 segments={countByStatus(all).map((s) => ({ label: s.status, count: s.count, color: TASK_SEGMENT_COLOR[s.status] }))}
                 total={all.length - unknown}
                 centerLabel="tasks"
                 ariaLabel={`Tasks by status, ${all.length - unknown} task notes`}
               />
               {unknown > 0 && (
-                <p className="note m-0 px-5 pb-4">
+                <p className="note m-0 px-3 pb-3">
                   {plural(unknown, 'task')} with a status outside the vocabulary {unknown === 1 ? 'is' : 'are'} not counted. See Index status.
                 </p>
               )}

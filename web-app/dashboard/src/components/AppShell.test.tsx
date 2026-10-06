@@ -109,7 +109,9 @@ describe('the Later group', () => {
     expect(within(nav).queryByRole('link', { name: 'Workflow' })).not.toBeInTheDocument()
     const toggle = within(nav).getByRole('button', { name: /Later/ })
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(toggle).not.toHaveAttribute('aria-controls')
     await user.click(toggle)
+    expect(toggle).toHaveAttribute('aria-controls')
     expect(within(nav).getAllByRole('link').map((l) => l.textContent)).toEqual(expect.arrayContaining(['Workflow', 'Timeline', 'Upskilling']))
     expect(window.localStorage.getItem('sb.rail.later')).toBe('1')
     first.unmount()
@@ -193,13 +195,13 @@ describe('top bar', () => {
     expect(await screen.findByRole('link', { name: /8 index problems/ })).toHaveAttribute('href', '/index-status')
   })
 
-  it('Ctrl+K focuses the search box, and the hint is shown', async () => {
+  it('Ctrl+K opens the command palette, and the hint is shown', async () => {
     const user = userEvent.setup()
     renderApp()
-    const search = await screen.findByRole('searchbox', { name: 'Search the vault' })
-    expect(search).not.toHaveFocus()
+    await screen.findByRole('searchbox', { name: 'Search the vault' })
+    expect(screen.queryByRole('dialog', { name: 'Command palette' })).not.toBeInTheDocument()
     await user.keyboard('{Control>}k{/Control}')
-    expect(search).toHaveFocus()
+    expect(await screen.findByRole('dialog', { name: 'Command palette' })).toBeInTheDocument()
     expect(screen.getByText('Ctrl K')).toBeInTheDocument()
   })
 
@@ -247,5 +249,20 @@ describe('content area', () => {
     renderApp()
     const area = (await screen.findByRole('main')) as HTMLElement
     expect(area).toHaveClass('max-w-[1840px]', 'px-4', 'sm:px-6', 'mx-auto')
+  })
+})
+
+describe('the menu on a resize', () => {
+  it('starts closed again when the layout changes', async () => {
+    setViewport(700)
+    const user = userEvent.setup()
+    renderApp()
+    await screen.findByRole('navigation', { name: 'Primary' })
+    await user.click(screen.getByRole('button', { name: 'Open navigation' }))
+    expect(screen.getByRole('dialog', { name: 'Navigation' })).toBeInTheDocument()
+    setViewport(1024)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    setViewport(700)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })

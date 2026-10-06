@@ -41,7 +41,7 @@ export function Patterns({ days, today, resolver }: { days: DailyDay[]; today: s
             <CardRow key={r.key} lines={2} className="grid-cols-[minmax(0,1fr)_auto]">
               <div className="flex min-w-0 flex-col">
                 <span className="t-body truncate">
-                  <LineText line={r.line} resolver={resolver} />
+                  <LineText line={r.line} resolver={resolver} byTitle />
                 </span>
                 <span className="t-small text-muted-ink">
                   Since {formatShortDate(r.since)}, on {plural(r.standups, 'standup')} in a row
@@ -120,7 +120,7 @@ export function Patterns({ days, today, resolver }: { days: DailyDay[]; today: s
             <CardRow key={f.key} lines={2} className="grid-cols-[minmax(0,1fr)_auto]">
               <div className="flex min-w-0 flex-col">
                 <span className="t-body truncate">
-                  <LineText line={f.line} resolver={resolver} />
+                  <LineText line={f.line} resolver={resolver} byTitle />
                 </span>
                 <span className="t-small text-muted-ink">First listed {formatShortDate(f.since)}</span>
               </div>

@@ -1,7 +1,7 @@
 import { screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import type { NoteDetail } from '@/api/types'
-import { renderInApp } from '@/test/helpers'
+import { mockClient, renderInApp, TODAY } from '@/test/helpers'
 import { NoteMarkdown } from './NoteMarkdown'
 
 const render = (body: string, links: NoteDetail['links'] = {}) => renderInApp(<NoteMarkdown body={body} links={links} />)
@@ -29,7 +29,7 @@ describe('NoteMarkdown', () => {
     const { container } = render('![chart](https://tracker.example/p.png)\n\n[click](javascript:alert(1))')
     expect(container.querySelector('img')).toBeNull()
     expect(container).toHaveTextContent('[image: chart]')
-    expect(screen.getByText('click').closest('a')).not.toHaveAttribute('href', expect.stringContaining('javascript'))
+    expect(screen.getByText('click').closest('a')).toBeNull()
   })
 
   it('opens external links in a new tab with rel noopener noreferrer', () => {
@@ -79,5 +79,37 @@ describe('NoteMarkdown', () => {
     expect(screen.queryByRole('link')).toBeNull()
     expect(container).toHaveTextContent('[[Code]]')
     expect(container).toHaveTextContent('[[Block]]')
+  })
+
+  it('does not crash on a hand-written wikilink: link with a malformed escape, and shows it as text', () => {
+    const { container } = render('[x](wikilink:%E0%A4%A) and [[Real]]', { Real: { path: 'R.md', state: 'resolved' } })
+    expect(container).toHaveTextContent('x')
+    expect(screen.queryByRole('link', { name: 'x' })).toBeNull()
+    expect(screen.getByRole('link', { name: 'Real' })).toHaveAttribute('href', '/notes?path=R.md')
+  })
+
+  it('does not treat an author-written wikilink: link as a wikilink', () => {
+    render('[Ghost](wikilink:Real)', { Real: { path: 'R.md', state: 'resolved' } })
+    expect(screen.queryByRole('link')).toBeNull()
+    expect(screen.getByText('Ghost').closest('[data-link-state]')).toBeNull()
+  })
+
+  it('renders a blocked URL as text, not as a link with an empty href', () => {
+    const { container } = render('[click me](javascript:alert(1))')
+    expect(container.querySelector('a')).toBeNull()
+    expect(container).toHaveTextContent('click me')
+  })
+
+  it('shows task-list boxes as [ ] and [x] text, not as unlabelled checkboxes', () => {
+    const { container } = render('- [ ] open item\n- [x] done item')
+    expect(screen.queryByRole('checkbox')).toBeNull()
+    expect(container.querySelector('input')).toBeNull()
+    expect(container).toHaveTextContent('[ ]')
+    expect(container).toHaveTextContent('[x]')
+  })
+
+  it('keeps the project context on a resolved wikilink', () => {
+    renderInApp(<NoteMarkdown body="[[Real]]" links={{ Real: { path: 'R.md', state: 'resolved' } }} />, mockClient(), TODAY, '/notes?project=ipp')
+    expect(screen.getByRole('link', { name: 'Real' }).getAttribute('href')).toContain('project=ipp')
   })
 })

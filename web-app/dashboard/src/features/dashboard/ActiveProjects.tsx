@@ -1,56 +1,80 @@
 import { Link } from 'react-router'
 import { joinQueries, type Query } from '@/api/useQuery'
 import type { NoteSummary, ProjectSummary } from '@/api/types'
-import { Card, CardFootnote, CardHead, CardRow } from '@/components/Card'
+import { Card, CardHead, CardRow } from '@/components/Card'
 import { ProgressBar } from '@/components/ProgressBar'
 import { QueryBoundary } from '@/components/QueryBoundary'
 import { StatusChip } from '@/components/StatusChip'
 import { Button } from '@/components/ui/button'
+import { projectNextItem } from '@/domain/dashboard'
 import { HEALTH_RULE, projectHealth, projectProgress } from '@/domain/health'
 import { useToday } from '@/lib/clock'
-import { projectHref, routes } from '@/lib/routes'
+import { withProject } from '@/lib/projectContext'
+import { noteHref, projectHref, routes } from '@/lib/routes'
+import { InfoTip } from './InfoTip'
 
-/** Each active project with its health (a stated rule) and progress as counts. */
-export function ActiveProjects({ projects, tasks }: { projects: Query<ProjectSummary[]>; tasks: Query<NoteSummary[]> }) {
+/** One ruled row per active project: health word with its reason, the blocked or next item, progress as counts. */
+export function ActiveProjects({
+  projects,
+  tasks,
+  project,
+}: {
+  projects: Query<ProjectSummary[]>
+  tasks: Query<NoteSummary[]>
+  /** Project context: only this project (if active), or all active projects. */
+  project: string | null
+}) {
   const today = useToday()
+  const visible = (list: ProjectSummary[]) => list.filter((p) => p.status === 'active' && (!project || p.slug === project))
   return (
-    <Card>
-      <CardHead title="Active projects">
+    <Card aria-label="Active projects">
+      <CardHead title="Active projects" count={projects.status === 'success' ? visible(projects.data).length : undefined}>
+        <InfoTip label="How project health is decided" rule={HEALTH_RULE} />
         <Button asChild variant="secondary" size="sm">
-          <Link to={routes.projects}>All projects</Link>
+          <Link to={withProject(routes.projects, project)}>All projects</Link>
         </Button>
       </CardHead>
-      <QueryBoundary
-        query={joinQueries(projects, tasks)}
-        isEmpty={([list]) => list.filter((p) => p.status === 'active').length === 0}
-        empty="No active projects."
-      >
+      <QueryBoundary query={joinQueries(projects, tasks)} isEmpty={([list]) => visible(list).length === 0} empty="No active projects.">
         {([list, all]) =>
-          list
-            .filter((p) => p.status === 'active')
-            .map((project) => {
-              const mine = all.filter((t) => t.project === project.slug)
-              const health = projectHealth(project, mine, today)
-              const progress = projectProgress(mine)
-              return (
-                <CardRow key={project.slug} className="grid-cols-1 gap-2">
-                  <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                    <Link to={projectHref(project.slug)} className="linkbtn">
-                      {project.title}
+          visible(list).map((p) => {
+            const mine = all.filter((t) => t.project === p.slug)
+            const health = projectHealth(p, mine, today)
+            const progress = projectProgress(mine)
+            const item = projectNextItem(mine)
+            return (
+              <CardRow key={p.slug} lines={2} className="grid-cols-[minmax(0,1fr)_auto] py-1.5">
+                <div className="flex min-w-0 flex-col">
+                  <div className="flex min-w-0 flex-wrap items-center gap-x-2">
+                    <Link to={projectHref(p.slug)} className="linkbtn t-body">
+                      {p.title}
                     </Link>
                     <StatusChip label={health.label} tone={health.tone} />
+                    <span className="t-small text-muted-ink">{health.reason}</span>
                   </div>
-                  <div className="text-[13px] text-muted-ink">{health.reason}</div>
-                  <div className="flex items-center gap-3">
-                    <ProgressBar percent={progress.percent} label={`${project.title} progress`} />
-                    <span className="num flex-none text-[13px] text-muted-ink">{progress.text}</span>
+                  <span className="t-small truncate text-muted-ink">
+                    {item ? (
+                      <>
+                        {item.kind === 'blocked' ? 'Blocked: ' : 'Next: '}
+                        <Link to={noteHref(item.task.path)} className="linkbtn t-small font-normal">
+                          {item.task.title}
+                        </Link>
+                      </>
+                    ) : (
+                      'No open tasks.'
+                    )}
+                  </span>
+                </div>
+                <div className="flex w-28 flex-col items-end gap-1">
+                  <span className="num t-small text-muted-ink">{progress.text}</span>
+                  <div className="flex w-full">
+                    <ProgressBar percent={progress.percent} label={`${p.title} progress`} />
                   </div>
-                </CardRow>
-              )
-            })
+                </div>
+              </CardRow>
+            )
+          })
         }
       </QueryBoundary>
-      <CardFootnote>{HEALTH_RULE}</CardFootnote>
     </Card>
   )
 }

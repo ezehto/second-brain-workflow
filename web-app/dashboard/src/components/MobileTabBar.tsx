@@ -25,7 +25,7 @@ export function MobileTabBar({ counts, sampleData, extra }: { counts: RailCounts
             end={item.to === '/'}
             className={({ isActive }) =>
               cn(
-                'relative flex min-w-11 flex-1 flex-col items-center justify-center gap-0.5 t-caption font-semibold no-underline',
+                'relative flex min-w-11 flex-1 flex-col items-center justify-center gap-0.5 t-small font-semibold no-underline',
                 isActive ? 'text-ink' : 'text-muted-ink hover:text-ink',
               )
             }
@@ -50,7 +50,7 @@ export function MobileTabBar({ counts, sampleData, extra }: { counts: RailCounts
           type="button"
           onClick={() => setMore(true)}
           aria-haspopup="dialog"
-          className="flex min-w-11 flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 t-caption font-semibold text-muted-ink hover:text-ink"
+          className="flex min-w-11 flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 t-small font-semibold text-muted-ink hover:text-ink"
         >
           <span className="flex h-6 w-10 items-center justify-center">
             <Icon name="dots" className="size-5" />

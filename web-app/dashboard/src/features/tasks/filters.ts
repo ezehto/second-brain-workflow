@@ -1,5 +1,5 @@
 import type { NoteSummary } from '@/api/types'
-import { isOpen, isOverdue } from '@/domain/tasks'
+import { isForToday, isOpen, isOverdue } from '@/domain/tasks'
 import type { IsoDate } from '@/lib/clock'
 import type { TaskFilters } from '@/lib/routes'
 
@@ -46,11 +46,6 @@ export function buildTaskParams({ filters, group, note }: TaskView): URLSearchPa
 }
 
 export const hasFilters = (f: TaskFilters) => Object.values(f).some(Boolean)
-
-/** The standup carry-forward set the "For today" tile counts: in progress, in review, and planned tasks due today or earlier. */
-export function isForToday(task: NoteSummary, today: IsoDate): boolean {
-  return task.status === 'in-progress' || task.status === 'review' || (task.status === 'planned' && !!task.due && task.due <= today)
-}
 
 /**
  * The tasks matching the filters. `ignoreStatus` leaves the status filter out,

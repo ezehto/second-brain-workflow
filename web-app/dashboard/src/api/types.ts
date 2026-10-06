@@ -4,6 +4,9 @@
  * when `web-app/backend/openapi.yaml` exists. Then it is replaced by generated
  * types and this file shrinks to re-exports. Nullable fields are `null`, never
  * missing: the UI shows `N/A` for them.
+ *
+ * Provisional contract change: `TriageRequest.classification` is optional, and
+ * sent only for `dismiss` when a classification was written or chosen.
  */
 
 export type NoteType = 'task' | 'project' | 'decision' | 'lesson' | 'capture' | 'daily' | 'note' | (string & {})
@@ -214,7 +217,11 @@ export interface StartStandupResponse {
   untouched: boolean
 }
 
-/** `POST /api/standups/today/append/`. */
+/**
+ * `POST /api/standups/today/append/`. `text` is the bare line: the writer adds
+ * the list marker by the section's rule (`- [ ] ` under Today and Follow-ups,
+ * `- ` elsewhere), so a caller never includes `- ` or `- [ ] `.
+ */
 export interface AppendStandupRequest {
   section: StandupSection
   text: string
@@ -254,7 +261,8 @@ export interface TriageRequest {
   path: string
   expected_hash: string
   action: TriageAction
-  classification: string
+  /** Required for every action but `dismiss`, which may omit it (provisional, see the note at the top). */
+  classification?: string
   title?: string
   project?: string
   /** Retry after a partial failure: reuse this note instead of creating one. */

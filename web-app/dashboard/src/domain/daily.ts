@@ -50,11 +50,12 @@ export function textSegments(text: string): TextSegment[] {
 const normalise = (text: string) => text.replace(/\s+/g, ' ').trim().toLowerCase()
 
 export function parseLine(raw: string): DailyLine {
-  const m = /^[-*+] (?:\[([ xX])\] )?(.*)$/.exec(raw.trim())
+  const m = /^[-*+] (?:\[(.)\] )?(.*)$/.exec(raw.trim())
   const text = (m ? m[2] : raw).trim()
   const links = wikilinkTargets(text)
   return {
     raw,
+    // Any marker but a space means the item is closed (`[x]`, `[/]`, `[-]`), as in plan section 2.2.
     checked: m?.[1] === undefined ? null : m[1] !== ' ',
     text,
     links,

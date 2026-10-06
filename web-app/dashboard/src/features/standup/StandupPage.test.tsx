@@ -171,6 +171,69 @@ describe('StandupPage, adding a line', () => {
   })
 })
 
+describe('StandupPage, adding to an untouched note', () => {
+  it('fills the note with carry-forward first, then appends with the filled note hash', async () => {
+    const client = mockClient({ standup: 'untouched' })
+    const start = vi.spyOn(client, 'startStandup')
+    const append = vi.spyOn(client, 'appendToStandup')
+    renderInApp(<StandupPage />, client)
+
+    const followUps = await screen.findByRole('region', { name: 'Follow-ups' })
+    await userEvent.type(within(followUps).getByRole('textbox', { name: 'Add a line to Follow-ups' }), 'Ask infra for the refresh date')
+    await userEvent.click(within(followUps).getByRole('button', { name: 'Add' }))
+
+    expect(await screen.findByText(`Filled 01-Daily/2026/${TODAY}.md with carry-forward, then appended "Ask infra for the refresh date" under Follow-ups`)).toBeInTheDocument()
+    expect(start).toHaveBeenCalledTimes(1)
+    // The fill bumped the hash (r0 to r1); the append carries the new one, not the hash the page loaded.
+    expect(append).toHaveBeenCalledWith({ section: 'Follow-ups', text: 'Ask infra for the refresh date', expected_hash: 'sha256:mock-standup-1' })
+    expect(await within(section('Today')).findByText('Investigate missing OTP email')).toBeInTheDocument()
+    expect(await within(section('Follow-ups')).findByText('Ask infra for the refresh date')).toBeInTheDocument()
+  })
+
+  it('does not fill a note that is already edited', async () => {
+    const client = mockClient({ standup: 'touched' })
+    const start = vi.spyOn(client, 'startStandup')
+    renderInApp(<StandupPage />, client)
+    const today = await screen.findByRole('region', { name: 'Today' })
+    await userEvent.type(within(today).getByRole('textbox', { name: 'Add a line to Today' }), 'x{Enter}')
+    await screen.findByText(/Added to ## Today/)
+    expect(start).not.toHaveBeenCalled()
+  })
+})
+
+describe('StandupPage, wikilinks use the API resolution', () => {
+  const note = (base: NoteDetail): NoteDetail => ({
+    ...base,
+    body: noteBody({
+      Today: ['- [ ] [[Fix N+1]]', '- [ ] [[Ghost task]]', '- [ ] [[LoadUp]]', '- [ ] [[Rotate staging API credentials]]'],
+    }),
+    links: {
+      'Fix N+1': { path: null, state: 'ambiguous' },
+      'Ghost task': { path: null, state: 'unresolved' },
+      LoadUp: { path: '05-Knowledge/Lessons/LoadUp.md', state: 'resolved' },
+      'Rotate staging API credentials': { path: '02-Work/Tasks/Rotate staging API credentials.md', state: 'resolved' },
+    },
+  })
+
+  it('shows ambiguous and unresolved targets as text with the word, and never lets a project title override the server', async () => {
+    const base = mockClient({ standup: 'touched' })
+    const current = await base.getStandupToday()
+    if (!current.exists) throw new Error('expected a note')
+    const client: ApiClient = { ...base, getStandupToday: async () => ({ ...current, note: note(current.note) }) }
+    renderInApp(<StandupPage />, client)
+
+    const today = await screen.findByRole('region', { name: 'Today' })
+    await within(today).findByText(/Fix N\+1/)
+    expect(within(today).queryByRole('link', { name: 'Fix N+1' })).not.toBeInTheDocument()
+    expect(within(today).getByText('(ambiguous)')).toBeInTheDocument()
+    expect(within(today).queryByRole('link', { name: 'Ghost task' })).not.toBeInTheDocument()
+    expect(within(today).getByText('(unresolved)')).toBeInTheDocument()
+    // The server resolved "LoadUp" to a lesson, so it is a note link even though a project has that title.
+    expect(within(today).getByRole('link', { name: 'LoadUp' })).toHaveAttribute('href', `/notes?path=${encodeURIComponent('05-Knowledge/Lessons/LoadUp.md')}`)
+    expect(within(today).getByRole('link', { name: 'Rotate staging API credentials' })).toHaveAttribute('href', expect.stringContaining('/notes?path='))
+  })
+})
+
 describe('StandupPage, history', () => {
   it('lists daily notes newest first, asking the API for them newest first', async () => {
     const client = mockClient({ standup: 'touched' })

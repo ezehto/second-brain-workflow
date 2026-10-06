@@ -135,7 +135,7 @@ function YesterdayDone({ yesterday, resolver }: { yesterday: DailyDay | null; re
       {lines.length === 0 ? (
         <p className="t-small m-0 px-3 py-2 text-muted-ink">Nothing was listed under Done on {formatShortDate(yesterday.date)}.</p>
       ) : (
-        lines.map((line, i) => <LineRow key={`${line.key}-${i}`} line={line} resolver={resolver} />)
+        lines.map((line, i) => <LineRow key={`${line.key}-${i}`} line={line} resolver={resolver} byTitle />)
       )}
       <h3 className="t-small border-t border-line px-3 pt-2 font-semibold">Done today</h3>
     </div>
@@ -212,7 +212,7 @@ export function DayPanel({
               ))
             )}
             {section === 'Related Tasks / Projects' && view.state !== 'past' && <References />}
-            {canAdd && view.note && <AddLine section={section} note={view.note} />}
+            {canAdd && view.note && <AddLine section={section} note={view.note} untouched={view.state === 'untouched'} />}
             {view.state === 'missing' && <p className="note m-0 border-t border-line px-3 py-2">Start the standup to add lines here.</p>}
           </Card>
         )

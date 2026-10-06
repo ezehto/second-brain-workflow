@@ -1,7 +1,8 @@
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
-import { renderInApp } from '@/test/helpers'
+import { mockClient, renderInApp, TODAY } from '@/test/helpers'
+import { useProjectHref } from '@/lib/projectContext'
 import { task } from '@/test/notes'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -144,6 +145,24 @@ describe('TaskRow', () => {
     renderInApp(<TaskRow task={overdue} status={<button>Custom status</button>} />)
     expect(screen.getByRole('button', { name: 'Custom status' })).toBeInTheDocument()
     expect(screen.queryByText('planned')).not.toBeInTheDocument()
+  })
+})
+
+describe('project context on links', () => {
+  it('a TaskRow link keeps the project of the page it is on', () => {
+    renderInApp(<TaskRow task={task('Rotate credentials')} />, mockClient(), TODAY, '/tasks?project=ipp')
+    expect(screen.getByRole('link', { name: 'Rotate credentials' }).getAttribute('href')).toBe('/notes?path=02-Work%2FTasks%2FRotate+credentials.md&project=ipp')
+  })
+  it('useProjectHref wraps note, project, tasks and plain links, and leaves them alone without a context', () => {
+    function Probe() {
+      const href = useProjectHref()
+      return <p>{[href.note('a.md'), href.project('loadup'), href.tasks({ status: 'open' }), href.link('/index-status'), href.tasks({ project: 'gida' })].join(' | ')}</p>
+    }
+    const { unmount, container } = renderInApp(<Probe />, mockClient(), TODAY, '/tasks?project=ipp')
+    expect(container.textContent).toBe('/notes?path=a.md&project=ipp | /projects/loadup?project=ipp | /tasks?status=open&project=ipp | /index-status?project=ipp | /tasks?project=gida')
+    unmount()
+    const plain = renderInApp(<Probe />)
+    expect(plain.container.textContent).toBe('/notes?path=a.md | /projects/loadup | /tasks?status=open | /index-status | /tasks?project=gida')
   })
 })
 

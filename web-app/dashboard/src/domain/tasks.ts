@@ -13,6 +13,11 @@ export function isOverdue(task: NoteSummary, today: IsoDate): boolean {
   return !!task.due && task.due < today && isOpen(task)
 }
 
+/** The standup carry-forward set the "For today" tile counts: in progress, in review, and planned tasks due today or earlier. */
+export function isForToday(task: NoteSummary, today: IsoDate): boolean {
+  return task.status === 'in-progress' || task.status === 'review' || (task.status === 'planned' && !!task.due && task.due <= today)
+}
+
 export const PRIORITY_RANK: Record<Priority, number> = { high: 0, medium: 1, low: 2 }
 
 /** Rank for sorting; no priority, or one outside high/medium/low, sorts after `low`. */

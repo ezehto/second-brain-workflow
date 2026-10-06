@@ -20,12 +20,12 @@ export const failed = <T,>(message: string): Query<T> => ({ status: 'error', dat
 export const mockClient = (options: MockClientOptions = {}) => createMockClient({ delayMs: 0, today: TODAY, ...options })
 
 /** A single component inside the providers it may use (router, clock, API, toast). */
-export function renderInApp(ui: ReactElement, client: ApiClient = mockClient(), today = TODAY) {
+export function renderInApp(ui: ReactElement, client: ApiClient = mockClient(), today = TODAY, url = '/') {
   return render(
     <ApiProvider client={client}>
       <ClockProvider clock={fixedClock(today)}>
         <ToastProvider>
-          <MemoryRouter>{ui}</MemoryRouter>
+          <MemoryRouter initialEntries={[url]}>{ui}</MemoryRouter>
         </ToastProvider>
       </ClockProvider>
     </ApiProvider>,

@@ -8,13 +8,13 @@ describe('App', () => {
     renderApp()
     expect(await screen.findByRole('heading', { level: 1, name: 'Tuesday 6 October' })).toBeInTheDocument()
     expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument()
-    expect(await screen.findByRole('heading', { name: "Today's focus" })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Focus' })).toBeInTheDocument()
     expect((await screen.findAllByText('Rotate staging API credentials')).length).toBeGreaterThan(0)
   })
 
   it('shows the Not built yet page inside the shell for a page that is not built', async () => {
-    renderApp('/inbox')
-    expect(await screen.findByRole('heading', { level: 1, name: 'Inbox' })).toBeInTheDocument()
+    renderApp('/nowhere')
+    expect(await screen.findByRole('heading', { level: 1, name: 'Page not found' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Not built yet' })).toBeInTheDocument()
     expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument()
   })
@@ -36,7 +36,7 @@ describe('App', () => {
     }
 
     it('still renders another route inside the shell', async () => {
-      renderApp('/inbox', failingOnce())
+      renderApp('/nowhere', failingOnce())
       expect(await screen.findByRole('heading', { name: 'Not built yet' })).toBeInTheDocument()
       expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument()
     })

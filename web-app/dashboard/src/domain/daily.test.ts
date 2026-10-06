@@ -25,6 +25,8 @@ describe('parseLine', () => {
   it('reads checkbox state, links and the key', () => {
     expect(parseLine('- [ ] [[Fix N+1 query]]')).toMatchObject({ checked: false, links: ['Fix N+1 query'], key: 'fix n+1 query' })
     expect(parseLine('- [x] Pair with  QA')).toMatchObject({ checked: true, text: 'Pair with  QA', key: 'pair with qa' })
+    expect(parseLine('- [/] half done')).toMatchObject({ checked: true, text: 'half done' })
+    expect(parseLine('- [-] dropped')).toMatchObject({ checked: true })
     expect(parseLine('- plain bullet')).toMatchObject({ checked: null, links: [] })
   })
   it('drops the alias and heading of a wikilink', () => {
@@ -79,6 +81,11 @@ describe('carry-over items', () => {
     const broken = [days[0], days[1], day('2026-10-02', { Today: ['- [x] [[Rotate keys]]'] }), days[3]]
     expect(openRuns(broken, 'Today').find((r) => r.key === 'rotate keys')?.standups).toBe(2)
     expect(carryOverItems(broken)).toEqual([])
+  })
+  it('does not count an item marked [/] or [-] as open', () => {
+    expect(openRuns([day('2026-10-06', { Today: ['- [/] [[A]]', '- [-] [[B]]', '- [ ] [[C]]'] })], 'Today').map((r) => r.label)).toEqual(['C'])
+    const days = [day('2026-10-06', { Today: ['- [ ] [[A]]'] }), day('2026-10-05', { Today: ['- [/] [[A]]'] })]
+    expect(openRuns(days, 'Today')[0].standups).toBe(1)
   })
   it('does not list an item that is not in the newest standup', () => {
     expect(carryOverItems([day('2026-10-06', {}), ...days.slice(1)])).toEqual([])

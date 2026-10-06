@@ -33,6 +33,12 @@ export function AppShell({ sampleData }: { sampleData: boolean }) {
   const fallbackClock = useClock()
   const viewport = useViewport()
   const [menu, setMenu] = useState(false)
+  // The menu belongs to one layout: a resize to another starts closed.
+  const [menuViewport, setMenuViewport] = useState(viewport)
+  if (menuViewport !== viewport) {
+    setMenuViewport(viewport)
+    setMenu(false)
+  }
 
   const dashboard = useQuery(useCallback(() => client.getDashboard(), [client]))
   const index = useQuery(useCallback(() => client.getIndexStatus(), [client]))

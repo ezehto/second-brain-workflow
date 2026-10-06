@@ -4,7 +4,7 @@ import type { NoteSummary } from '@/api/types'
 import { isOverdue } from '@/domain/tasks'
 import { useToday } from '@/lib/clock'
 import { formatShortDate } from '@/lib/dates'
-import { noteHref } from '@/lib/routes'
+import { useProjectHref } from '@/lib/projectContext'
 import { cn } from '@/lib/utils'
 import { CardRow } from './Card'
 import { PriorityMark } from './PriorityMark'
@@ -45,6 +45,7 @@ export function TaskRow({
   onOpen?: (task: NoteSummary) => void
 }) {
   const today = useToday()
+  const href = useProjectHref()
   const overdue = isOverdue(task, today)
   const due = task.due ? formatShortDate(task.due) : null
   return (
@@ -57,7 +58,7 @@ export function TaskRow({
       <div className="flex min-w-0 flex-col">
         <div className="flex min-w-0 items-baseline gap-2">
           <Link
-            to={noteHref(task.path)}
+            to={href.note(task.path)}
             className="linkbtn t-body truncate"
             onClick={(event) => {
               if (!onOpen || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return

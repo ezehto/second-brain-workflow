@@ -144,9 +144,9 @@ export const lessonFixtures = (): NoteSummary[] =>
     modified: at(x.m),
   }))
 
-const captureRows = [
-  { text: 'todo: renew the staging TLS certificate before the 20th', hm: '0912' },
-  { text: 'decided to keep the OTP sender on the existing relay until the provider contract is signed', hm: '1040' },
+const captureRows: { text: string; hm: string; classification?: string }[] = [
+  { text: 'todo: renew the staging TLS certificate before the 20th', hm: '0912', classification: 'task' },
+  { text: 'decided to keep the OTP sender on the existing relay until the provider contract is signed', hm: '1040', classification: 'decision' },
   { text: 'Idempotency keys on the callback handler would have prevented the duplicate rows', hm: '1158' },
   { text: 'Should the standup list show week numbers?', hm: '1326' },
 ]
@@ -166,6 +166,15 @@ export const captureFixtures = (): NoteSummary[] =>
     created: FIXTURE_TODAY,
     modified: at(`${FIXTURE_TODAY} ${x.hm.slice(0, 2)}:${x.hm.slice(2)}`),
   }))
+
+const capturePath = (x: { text: string; hm: string }) => `00-Inbox/${captureName(FIXTURE_TODAY, x.hm, x.text)}.md`
+
+/** The captured text is the body (plan 3.2), per capture path. */
+export const captureBodies = (): Map<string, string> => new Map(captureRows.map((x) => [capturePath(x), `${x.text}\n`]))
+
+/** The `classification` `/triage` already wrote (high confidence only), per capture path. */
+export const captureClassifications = (): Map<string, string> =>
+  new Map(captureRows.flatMap((x) => (x.classification ? [[capturePath(x), x.classification] as [string, string]] : [])))
 
 export const dailyFixtures = (): NoteSummary[] =>
   ['2026-10-05', '2026-10-02', '2026-10-01'].map((d) => ({

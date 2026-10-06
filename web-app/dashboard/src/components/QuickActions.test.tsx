@@ -6,6 +6,7 @@ import { useCallback } from 'react'
 import { useApi } from '@/api/ApiProvider'
 import { useQuery } from '@/api/useQuery'
 import { mockClient, renderInApp } from '@/test/helpers'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { NewMenu, QuickActionsProvider } from './QuickActions'
 
 const Harness = () => (
@@ -70,13 +71,18 @@ describe('QuickActions', () => {
 
   it('adds a follow-up, creating the daily note first when it does not exist', async () => {
     const user = userEvent.setup()
-    renderInApp(<Harness />)
+    const client = mockClient()
+    renderInApp(<Harness />, client)
     await openAction(user, 'Follow-up')
     await user.type(screen.getByLabelText('Follow-up'), 'Ask infra for the refresh date')
     await user.click(screen.getByRole('button', { name: 'Add follow-up' }))
     expect(await screen.findByRole('status')).toHaveTextContent(
-      'Created 01-Daily/2026/2026-10-06.md from the daily template, then appended "- [ ] Ask infra for the refresh date" under Follow-ups',
+      'Created 01-Daily/2026/2026-10-06.md from the daily template, then appended "Ask infra for the refresh date" under Follow-ups',
     )
+    const standup = await client.getStandupToday()
+    const lines = (standup.exists ? standup.note.body : '').split('\n')
+    expect(lines).toContain('- [ ] Ask infra for the refresh date')
+    expect(lines.some((l) => l.includes('- [ ] - [ ]'))).toBe(false)
   })
 
   it('fills an untouched standup with carry-forward before appending the line', async () => {
@@ -86,7 +92,7 @@ describe('QuickActions', () => {
     await openAction(user, 'Follow-up')
     await user.type(screen.getByLabelText('Follow-up'), 'Ask infra')
     await user.click(screen.getByRole('button', { name: 'Add follow-up' }))
-    expect(await screen.findByRole('status')).toHaveTextContent('Filled 01-Daily/2026/2026-10-06.md with carry-forward, then appended "- [ ] Ask infra"')
+    expect(await screen.findByRole('status')).toHaveTextContent('Filled 01-Daily/2026/2026-10-06.md with carry-forward, then appended "Ask infra"')
     const standup = await client.getStandupToday()
     expect(standup.exists && standup.note.body).toContain('- [ ] [[Investigate missing OTP email]]')
     expect(standup.exists && standup.note.body).toContain('- [ ] Ask infra')
@@ -102,6 +108,32 @@ describe('QuickActions', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('A note with this name already exists in 02-Work/Tasks. Nothing was written.')
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     await expect(client.createNote({ type: 'task', title: 'rotate staging api credentials' })).rejects.toBeInstanceOf(ApiError)
+  })
+
+  it('does not start a shortcut from a Select trigger or its open list', async () => {
+    const user = userEvent.setup()
+    renderInApp(
+      <>
+        <Select defaultValue="a">
+          <SelectTrigger aria-label="Filter">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="a">alpha</SelectItem>
+            <SelectItem value="d">delta</SelectItem>
+          </SelectContent>
+        </Select>
+        <Harness />
+      </>,
+    )
+    const combobox = screen.getByRole('combobox', { name: 'Filter' })
+    combobox.focus()
+    await user.keyboard('t')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await user.keyboard('{Enter}')
+    await screen.findByRole('listbox')
+    await user.keyboard('d')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('does not pre-select a project', async () => {
