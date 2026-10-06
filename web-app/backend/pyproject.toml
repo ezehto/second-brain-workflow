@@ -1,15 +1,20 @@
 [project]
 name = "second-brain-backend"
 version = "0.1.0"
-description = "Second brain backend: vault parser (P1-07); the Django app is added by P1-17"
+description = "Second brain backend: Django API, vault parser and indexer"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "Django>=5.2,<5.3",
+    "djangorestframework>=3.17.2,<3.18",
+    "drf-spectacular>=0.30,<0.31",
+    "psycopg[binary]>=3.2,<4",
     "ruamel.yaml>=0.18,<0.19",
 ]
 
 [dependency-groups]
 dev = [
     "pytest>=9,<10",
+    "pytest-django>=4,<5",
     "ruff",
 ]
 
@@ -19,6 +24,7 @@ package = false
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+DJANGO_SETTINGS_MODULE = "config.settings"
 
 [tool.ruff]
 target-version = "py312"

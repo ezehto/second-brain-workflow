@@ -18,6 +18,59 @@ services:
     restart: unless-stopped
     # No published port: only other services on the Compose network reach the database.
 
+  backend:
+    build: ./backend
+    image: second-brain-backend
+    command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+    env_file: .env
+    volumes:
+      - "${VAULT_PATH}:/vault"
+      - ./backend:/repo/web-app/backend
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Same image as backend. manage.py sync_vault arrives in P1-21; until then the service
+  # prints one line and exits. Profile "indexer" keeps `up` from starting it.
+  indexer:
+    build: ./backend
+    image: second-brain-backend
+    profiles: ["indexer"]
+    command: ["python", "-c", "print('indexer: manage.py sync_vault --watch arrives in P1-21')"]
+    env_file: .env
+    volumes:
+      - "${VAULT_PATH}:/vault:ro"
+      - ./backend:/repo/web-app/backend
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Tests run here only: no /vault mount, no published port. Test-mode variables are set
+  # inline, never in .env.
+  test:
+    build: ./backend
+    image: second-brain-backend
+    profiles: ["test"]
+    command: ["pytest"]
+    env_file: .env
+    environment:
+      # .env supplies the DB host and credentials; a different database name keeps pytest and
+      # any stray connection away from the real index (tests use test_second_brain_test).
+      POSTGRES_DB: second_brain_test
+      DJANGO_SECRET_KEY: test-only-not-a-secret-test-only-not-a-secret-test-only
+      SECOND_BRAIN_TEST_MODE: "1"
+      SECOND_BRAIN_TODAY: "2026-10-09"
+    volumes:
+      - ./backend:/repo/web-app/backend
+      # Vault source at the repo-relative path the parser tests resolve (see backend/Dockerfile).
+      - ../second-brain:/repo/second-brain:ro
+    depends_on:
+      db:
+        condition: service_healthy
+
   frontend:
     build: ./dashboard
     init: true

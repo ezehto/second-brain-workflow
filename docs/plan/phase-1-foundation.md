@@ -1381,10 +1381,10 @@ Mount paths are relative to `web-app/docker-compose.yml`.
 | Service | Image | Mounts | Ports |
 |---|---|---|---|
 | `db` | `postgres:18` | named volume `pgdata` at `/var/lib/postgresql` (the 18+ layout) | none |
-| `backend` | built from `web-app/backend/Dockerfile` (`python:3.12-slim` + uv) | `${VAULT_PATH}:/vault` rw, `./backend:/app` | `127.0.0.1:${BACKEND_PORT}:8000` |
-| `indexer` | same image, `manage.py sync_vault --watch` | `${VAULT_PATH}:/vault:ro` | none |
+| `backend` | built from `web-app/backend/Dockerfile` (`python:3.12-slim` + uv) | `${VAULT_PATH}:/vault` rw, `./backend:/repo/web-app/backend` | `127.0.0.1:${BACKEND_PORT}:8000` |
+| `indexer` | same image, `manage.py sync_vault --watch` | `${VAULT_PATH}:/vault:ro`, `./backend:/repo/web-app/backend` | none |
 | `frontend` | built from `web-app/dashboard/Dockerfile` (`node:22-slim`); Vite listens on `0.0.0.0` inside the container | `./dashboard:/app`, named volume `node_modules` | `127.0.0.1:${FRONTEND_PORT}:5173` |
-| `test` (profile `test`) | backend image | `./backend:/app`, `../second-brain/fixtures:/fixtures:ro`; **no vault mount** | none |
+| `test` (profile `test`) | backend image | `./backend:/repo/web-app/backend`, `../second-brain:/repo/second-brain:ro` (the parser tests resolve fixtures by repo-relative path); `POSTGRES_DB=second_brain_test`; **no vault mount** | none |
 | `e2e` (profile `e2e`) | `mcr.microsoft.com/playwright:v1.63.0-noble` (same version as `@playwright/test`) | `./dashboard:/app` | none; `network_mode: "service:frontend"` |
 
 Per C23, the only host **data** path mounted is the vault; repository source and
