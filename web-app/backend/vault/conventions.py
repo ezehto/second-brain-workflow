@@ -84,8 +84,15 @@ ATTACHMENT_EXTENSIONS = frozenset(
 CONTROL_CHARACTERS = frozenset([chr(code) for code in range(0x20)] + ["\x7f"])
 WINDOWS_ILLEGAL_CHARACTERS = frozenset('\\/:*?"<>|')
 LINK_BREAKING_CHARACTERS = frozenset("#^[]")
+# A shell expands these even inside double quotes; the writer and commands never create them (2.5).
+SHELL_EXPANDED_CHARACTERS = frozenset("$`")
 RESERVED_DEVICE_NAMES = frozenset(
     ["CON", "PRN", "AUX", "NUL"]
     + [f"COM{n}" for n in range(1, 10)]
     + [f"LPT{n}" for n in range(1, 10)]
+)
+# Windows also reserves these (superscript digits); the writer's rule 6 covers them, the F5 check
+# keeps to RESERVED_DEVICE_NAMES.
+SUPERSCRIPT_DEVICE_NAMES = frozenset(
+    f"{device}{digit}" for device in ("COM", "LPT") for digit in "\u00b9\u00b2\u00b3"
 )

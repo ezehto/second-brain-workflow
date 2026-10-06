@@ -291,7 +291,12 @@ Sanitising, applied by the writer and the commands whenever they derive a file
 name from a title. Daily notes are exempt (always `YYYY-MM-DD.md`).
 
 1. Normalise to Unicode NFC.
-2. Remove control characters (U+0000 to U+001F, U+007F).
+2. Remove every Unicode control (`Cc`: U+0000 to U+001F, U+007F to U+009F),
+   surrogate (`Cs`) and format (`Cf`) character (bidirectional controls, the
+   BOM, the soft hyphen, invisible operators), except U+200C (ZWNJ), U+200D
+   (ZWJ) and the tag characters U+E0020 to U+E007F, which are kept so emoji
+   sequences, Persian words and flag sequences survive. Map the line and
+   paragraph separators (`Zl`, `Zp`: U+2028, U+2029) to a space.
 3. Replace each of `\ / : * ? " < > |` (Windows-illegal), `# ^ [ ]`
    (break Obsidian links) and `$` and the backtick (expanded by a shell even
    inside double quotes, so a name containing one cannot be passed safely to
@@ -302,14 +307,25 @@ name from a title. Daily notes are exempt (always `YYYY-MM-DD.md`).
 4. Collapse whitespace runs to one space; trim both ends.
 5. Strip leading dots (a leading dot would hide the file and look like a
    writer temp file) and trailing dots and spaces (Windows strips them).
-6. If the stem, case-insensitively, is a Windows reserved device name (`CON`,
-   `PRN`, `AUX`, `NUL`, `COM1` to `COM9`, `LPT1` to `LPT9`), append ` note`.
+6. If the part of the stem before its first dot, with trailing spaces removed,
+   is case-insensitively a Windows reserved device name (`CON`, `PRN`, `AUX`,
+   `NUL`, `COM1` to `COM9`, `LPT1` to `LPT9`, and `COM`/`LPT` followed by
+   `¹`, `²` or `³`), insert ` note` after that part: `CON` becomes `CON note`,
+   `NUL.report` becomes `NUL note.report`. The writer also rejects any path
+   segment, folder or file, that is a reserved name by the same test.
 7. Truncate the stem to 100 characters (code points, never splitting a
-   surrogate pair), then trim again. The full vault-relative path must be at
-   most 200 characters, keeping `D:\Second Brain\...` under the Windows
+   surrogate pair) and to 233 UTF-8 bytes (room for `.md` and the writer's temp
+   suffix under the 255-byte file-name limit), whichever is shorter, then trim
+   again. The full vault-relative path must be at most 200 characters, counted in UTF-16
+   code units (Windows' unit), keeping `D:\Second Brain\...` under the Windows
    260-character limit; longer paths are rejected.
 8. An empty result becomes `Untitled YYYY-MM-DD HHmmss`.
 9. Captures are named `YYYY-MM-DD HHmm <first 8 words of the text>`.
+
+The writer also refuses a note body over 1 MiB and more than 50 notes in one
+operation, and, before writing, parses what the template rendered: a template
+that does not yield valid frontmatter of the requested `type` is a template
+error.
 
 The character sets in rules 2, 3 and 6 are constants in
 `web-app/backend/vault/conventions.py`.

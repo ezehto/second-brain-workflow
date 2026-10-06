@@ -14,7 +14,10 @@ section 2.5. Daily notes are exempt: they are always `YYYY-MM-DD.md`.
 Apply in order, to the title that becomes the file name stem.
 
 1. Normalise to Unicode NFC.
-2. Remove control characters (U+0000 to U+001F, U+007F).
+2. Remove every control (`Cc`), surrogate (`Cs`) and format (`Cf`) character
+   (bidirectional controls, the BOM, the soft hyphen), except U+200C, U+200D and
+   the tag characters U+E0020 to U+E007F, which are kept for emoji sequences,
+   Persian and flags. Turn U+2028 and U+2029 into a space.
 3. Replace each of `\ / : * ? " < > |` (illegal on Windows), `# ^ [ ]`
    (break Obsidian links) and `$` and the backtick (a shell expands them even in
    double quotes, so the lookup verbs cannot take them) with a space. The last
@@ -23,11 +26,14 @@ Apply in order, to the title that becomes the file name stem.
 4. Collapse runs of whitespace to one space. Trim both ends.
 5. Strip leading dots (a leading dot hides the file and looks like a writer
    temp file). Strip trailing dots and spaces (Windows removes them).
-6. If the stem, ignoring case, is a Windows reserved device name (`CON`, `PRN`,
-   `AUX`, `NUL`, `COM1` to `COM9`, `LPT1` to `LPT9`), append ` note`.
+6. If the part of the stem before its first dot (trailing spaces removed) is,
+   ignoring case, a Windows reserved device name (`CON`, `PRN`, `AUX`, `NUL`,
+   `COM1` to `COM9`, `LPT1` to `LPT9`, or `COM`/`LPT` plus `¹`, `²`, `³`),
+   insert ` note` after that part: `NUL.report` becomes `NUL note.report`.
 7. Truncate the stem to 100 characters (code points; never split a surrogate
-   pair), then trim again. The full vault-relative path must be at most
-   200 characters. Reject a longer path and tell the user.
+   pair) and to 233 UTF-8 bytes, whichever is shorter, then trim again. The
+   full vault-relative path must be at most 200 characters, counted in UTF-16
+   code units (an emoji counts 2). Reject a longer path and tell the user.
 8. An empty result becomes `Untitled YYYY-MM-DD HHmmss`.
 
 Then add `.md`.
