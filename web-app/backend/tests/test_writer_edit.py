@@ -16,6 +16,7 @@ from vault.templating import load_template, render
 from vault.writer import (
     ConflictError,
     EditResult,
+    NotFoundError,
     PathError,
     ValidationError,
     VaultWriter,
@@ -325,6 +326,35 @@ def test_the_result_hash_is_the_hash_of_the_file_on_disk_and_chains(writer, vaul
 def test_targets_are_confined_and_must_exist(writer, rel):
     with pytest.raises(PathError):
         writer.set_status(rel, "done", expected_hash="0" * 64)
+
+
+def test_locate_returns_the_confined_existing_file_without_reading_it(writer, vault):
+    found = writer.locate("02-work/tasks/CHECK THE LADDER RUNGS.md")
+    assert found == vault / "02-Work/Tasks/Check the ladder rungs.md"
+
+
+def test_locate_of_an_absent_note_is_not_found_and_a_path_error(writer):
+    with pytest.raises(NotFoundError) as caught:
+        writer.locate("02-Work/Tasks/Nope.md")
+    assert isinstance(caught.value, PathError)
+    with pytest.raises(NotFoundError):
+        writer.set_status("02-Work/Tasks/Nope.md", "done", expected_hash="0" * 64)
+
+
+@pytest.mark.parametrize(
+    "rel", ["../x.md", "/etc/x.md", "02-Work/Tasks/x.txt", ".trash/Wire the dock lights.md"]
+)
+def test_locate_refusals_other_than_absence_are_plain_path_errors(writer, rel):
+    with pytest.raises(PathError) as caught:
+        writer.locate(rel)
+    assert not isinstance(caught.value, NotFoundError)
+
+
+def test_locate_refuses_a_directory_named_like_a_note(writer, vault):
+    (vault / "02-Work/Tasks/Folder.md").mkdir()
+    with pytest.raises(PathError) as caught:
+        writer.locate("02-Work/Tasks/Folder.md")
+    assert not isinstance(caught.value, NotFoundError)
 
 
 def test_a_symlinked_note_is_refused(writer, vault, tmp_path):

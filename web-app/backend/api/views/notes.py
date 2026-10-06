@@ -1,4 +1,4 @@
-"""Notes: list and lookup (P1-26); create and status change are stubs until P1-28."""
+"""Notes: list and lookup (P1-26), create and status change (P1-28)."""
 
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
@@ -18,9 +18,11 @@ from api.serializers import (
     NoteSummarySerializer,
     StatusChangeRequestSerializer,
 )
-from api.views.common import not_implemented, validation_detail
+from api.views import writes
+from api.views.common import validation_detail
 from vault import clock, queries
 from vault.models import Note
+from vault.writer import ValidationError, VaultWriter
 
 
 class NoteListCreateView(GenericAPIView):
@@ -62,15 +64,29 @@ class NoteListCreateView(GenericAPIView):
             400: ErrorSerializer,
             409: ErrorSerializer,
             422: ErrorSerializer,
-            501: ErrorSerializer,
         },
-        description=(
-            "`409` on a same-folder name collision; `422` for an unknown project. "
-            "Implemented in P1-28."
-        ),
+        description="`409` on a same-folder name collision; `422` for an unknown project.",
     )
     def post(self, request: Request) -> Response:
-        return not_implemented()
+        form = CreateNoteRequestSerializer(data=request.data)
+        if not form.is_valid():
+            return Response(validation_detail(form.errors), status=status.HTTP_400_BAD_REQUEST)
+        fields = form.validated_data
+
+        def create(writer: VaultWriter) -> Response:
+            created = writer.create(
+                fields["type"],
+                fields["title"],
+                project=fields.get("project"),
+                priority=fields.get("priority"),
+                due=fields.get("due"),
+                status=fields.get("status"),
+                body=fields.get("body"),
+            )
+            note = writes.index(writer.root, created.path)
+            return Response(writes.summary_data(note), status=status.HTTP_201_CREATED)
+
+        return writes.run_write(create)
 
 
 class NoteLookupView(APIView):
@@ -126,7 +142,8 @@ class NoteStatusView(APIView):
         description=(
             "Validates the status against the vocabulary of the note's type. `409` on a hash "
             "mismatch, `422` on malformed frontmatter or a status outside the vocabulary. "
-            "Implemented in P1-28."
+            "A decision that becomes `accepted` gets `decided` set to today in the same write. "
+            "A `capture` is refused with `422`: its status changes only through triage."
         ),
         request=StatusChangeRequestSerializer,
         responses={
@@ -135,8 +152,39 @@ class NoteStatusView(APIView):
             404: ErrorSerializer,
             409: ErrorSerializer,
             422: ErrorSerializer,
-            501: ErrorSerializer,
         },
     )
     def post(self, request: Request) -> Response:
-        return not_implemented()
+        form = StatusChangeRequestSerializer(data=request.data)
+        if not form.is_valid():
+            return Response(validation_detail(form.errors), status=status.HTTP_400_BAD_REQUEST)
+        fields = form.validated_data
+
+        def change(writer: VaultWriter) -> Response:
+            rel = writes.locate(writer, fields["path"])
+            current = writes.index(writer.root, rel)
+            if current.type == "capture":
+                raise ValidationError("a capture changes status only through triage")
+            evidence = (fields.get("evidence") or "").strip()
+            if (
+                current.type == "decision"
+                and fields["status"] == "accepted"
+                and current.status != "accepted"
+                and not evidence  # evidence makes `set_status` refuse, as for any non-done status
+            ):
+                # `status` and `decided` in one write: `set_status` cannot set a second key (2.9).
+                writer.set_frontmatter(
+                    rel,
+                    {"status": "accepted", "decided": clock.today()},
+                    expected_hash=fields["expected_hash"],
+                )
+            else:
+                writer.set_status(
+                    rel,
+                    fields["status"],
+                    expected_hash=fields["expected_hash"],
+                    evidence=fields.get("evidence"),
+                )
+            return Response(writes.detail_data(writes.index(writer.root, rel)))
+
+        return writes.run_write(change)

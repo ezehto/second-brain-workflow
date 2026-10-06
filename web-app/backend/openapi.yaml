@@ -111,7 +111,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: ''
-        '501':
+        '422':
           content:
             application/json:
               schema:
@@ -167,12 +167,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PartialTriageError'
-          description: ''
-        '501':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
           description: ''
   /api/dashboard/:
     get:
@@ -369,8 +363,7 @@ paths:
           description: ''
     post:
       operationId: notes_create
-      description: '`409` on a same-folder name collision; `422` for an unknown project.
-        Implemented in P1-28.'
+      description: '`409` on a same-folder name collision; `422` for an unknown project.'
       summary: Create a note from a template
       tags:
       - notes
@@ -402,12 +395,6 @@ paths:
                 $ref: '#/components/schemas/Error'
           description: ''
         '422':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-          description: ''
-        '501':
           content:
             application/json:
               schema:
@@ -466,9 +453,11 @@ paths:
   /api/notes/status/:
     post:
       operationId: notes_status
-      description: Validates the status against the vocabulary of the note's type.
+      description: 'Validates the status against the vocabulary of the note''s type.
         `409` on a hash mismatch, `422` on malformed frontmatter or a status outside
-        the vocabulary. Implemented in P1-28.
+        the vocabulary. A decision that becomes `accepted` gets `decided` set to today
+        in the same write. A `capture` is refused with `422`: its status changes only
+        through triage.'
       summary: Change a note's status
       tags:
       - notes
@@ -506,12 +495,6 @@ paths:
                 $ref: '#/components/schemas/Error'
           description: ''
         '422':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-          description: ''
-        '501':
           content:
             application/json:
               schema:
@@ -1748,7 +1731,7 @@ components:
           allOf:
           - $ref: '#/components/schemas/ClassificationEnum'
           description: |-
-            Required for every action but `dismiss`, which may omit it when the capture has no classification.
+            Required for every action but `dismiss`. An action that creates a target needs a classification that files as that action (`task`/`problem` for `task`, `decision`, `learning-topic`/`note` for `lesson`, `project`); `keep` and `dismiss` take any.
 
             * `task` - task
             * `problem` - problem

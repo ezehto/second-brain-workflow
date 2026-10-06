@@ -469,7 +469,3 @@ def test_lookup_query_count_is_bounded(api, golden_index, django_assert_max_num_
     with django_assert_max_num_queries(6):
         assert lookup(api, path="02-Work/Projects/Harbor Lights.md").status_code == 200
 
-
-def test_create_and_status_are_still_stubs(api, golden_index):
-    assert api.post("/api/notes/", {}, content_type="application/json").status_code == 501
-    assert api.post("/api/notes/status/", {}, content_type="application/json").status_code == 501

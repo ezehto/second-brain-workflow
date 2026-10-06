@@ -11,11 +11,13 @@ from rest_framework.pagination import PageNumberPagination
 
 from vault.conventions import (
     ALL_STATUSES,
+    CLASSIFICATION_ACTIONS,
     CLASSIFICATIONS,
     CREATABLE_TYPES,
     PRIORITIES,
     STANDUP_HEADINGS,
     STATUSES,
+    TARGET_ACTIONS,
     TRIAGE_ACTIONS,
 )
 from vault.dates import frontmatter_date
@@ -261,8 +263,9 @@ class TriageRequestSerializer(serializers.Serializer):
         choices=CLASSIFICATIONS,
         required=False,
         help_text=(
-            "Required for every action but `dismiss`, which may omit it when the capture has "
-            "no classification."
+            "Required for every action but `dismiss`. An action that creates a target needs a "
+            "classification that files as that action (`task`/`problem` for `task`, `decision`, "
+            "`learning-topic`/`note` for `lesson`, `project`); `keep` and `dismiss` take any."
         ),
     )
     title = serializers.CharField(required=False, max_length=PATH_MAX)
@@ -277,9 +280,21 @@ class TriageRequestSerializer(serializers.Serializer):
     )
 
     def validate(self, attrs):
-        if attrs["action"] != "dismiss" and "classification" not in attrs:
+        action, classification = attrs["action"], attrs.get("classification")
+        if action != "dismiss" and classification is None:
             raise serializers.ValidationError(
                 {"classification": "Required unless the action is dismiss."}
+            )
+        if action in TARGET_ACTIONS and CLASSIFICATION_ACTIONS.get(classification) != action:
+            filed_as = CLASSIFICATION_ACTIONS.get(classification)
+            raise serializers.ValidationError(
+                {
+                    "classification": (
+                        f"{classification!r} "
+                        + (f"files as action {filed_as!r}" if filed_as else "creates no target")
+                        + f", not {action!r} (plan 2.13). Use `keep` or the matching action."
+                    )
+                }
             )
         return attrs
 

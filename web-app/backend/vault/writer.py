@@ -34,7 +34,7 @@ Limits: a note over 5 MiB is not edited; a changed string value is at most 4 KiB
 
 Errors, and the HTTP status the API (P1-28) maps them to; all derive from `WriterError`:
 
-- `PathError`: 400
+- `PathError`: 400; its subclass `NotFoundError` (the note to edit is absent): 404
 - `ConflictError`: 409
 - `ValidationError`, `SanitizeError`, `TemplateError`: 422
 - any other `OSError` is wrapped in a plain `WriterError` (500) with a vault-relative message.
@@ -87,6 +87,7 @@ __all__ = [
     "CreatedNote",
     "EditResult",
     "NoteSpec",
+    "NotFoundError",
     "PathError",
     "SanitizeError",
     "TemplateError",
@@ -132,6 +133,11 @@ _CHECKBOX_SECTIONS = frozenset({"today", "follow-ups"})  # daily-note sections t
 class PathError(WriterError):
     """A target escapes the vault, is ignored, is not a `.md` file, or sits in a folder the
     writer may not create (API: 400)."""
+
+
+class NotFoundError(PathError):
+    """The note to edit does not exist (API: 404). A `PathError`, so callers that treat every
+    path refusal alike keep working."""
 
 
 class ConflictError(WriterError):
@@ -881,13 +887,21 @@ class VaultWriter:
         if missing:
             raise ValidationError("the edit would drop frontmatter keys; nothing was written")
 
+    def locate(self, rel_path: str) -> Path:
+        """The existing regular file for `rel_path` (letter case matched on disk), confined.
+
+        Nothing is read or written. PathError for a path that escapes the vault, is ignored, is
+        not `.md`, passes a symlink or is not a regular file; NotFoundError when it is absent.
+        """
+        return self._locate(rel_path)
+
     def _locate(self, rel: str) -> Path:
         """The existing regular file for `rel` (letter case matched on disk), confined."""
         parts = self._validate_relative(rel)
         directory = self._directory(parts[:-1], create=False)
         entry = find_child_ci(directory, parts[-1]) if directory is not None else None
         if entry is None:
-            raise PathError(f"{_short(rel)} does not exist")
+            raise NotFoundError(f"{_short(rel)} does not exist")
         if entry.is_symlink() or not entry.is_file():
             raise PathError(f"{_short(rel)} is not a regular file")
         return entry

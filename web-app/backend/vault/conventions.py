@@ -79,6 +79,18 @@ CLASSIFICATIONS = (
 # What `POST /api/captures/triage/` can do with a capture (2.13).
 TRIAGE_ACTIONS = ("task", "decision", "lesson", "project", "keep", "dismiss")
 
+# The actions that create a target note, and the action each classification files as (2.13).
+# A classification with no Phase 1 target (ticket, architecture-idea, question, thought) is absent.
+TARGET_ACTIONS = ("task", "decision", "lesson", "project")
+CLASSIFICATION_ACTIONS = {
+    "task": "task",
+    "problem": "task",
+    "decision": "decision",
+    "learning-topic": "lesson",
+    "note": "lesson",
+    "project": "project",
+}
+
 # The six daily-note headings, in order (design D).
 STANDUP_HEADINGS = (
     "Done",
