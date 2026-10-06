@@ -87,7 +87,7 @@ export function StandupPage() {
           icon="flag"
           tone="review"
           value={counts?.followUps ?? 'N/A'}
-          label="Open follow-ups"
+          label="Follow-ups"
           to={shown?.note ? noteHref(shown.path) : routes.standups}
         />
       </div>

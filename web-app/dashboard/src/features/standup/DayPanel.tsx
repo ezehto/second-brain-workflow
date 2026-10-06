@@ -144,11 +144,26 @@ function YesterdayDone({ yesterday, resolver }: { yesterday: DailyDay | null; re
 
 const EMPTY: Record<StandupSection, string> = {
   Done: 'Nothing done yet today.',
-  Today: 'Nothing planned. Add the first line below.',
+  Today: 'Nothing planned.',
   Blockers: 'Nothing is blocked.',
   'Decisions / Updates': 'No decisions or updates.',
   'Follow-ups': 'No follow-ups.',
   'Related Tasks / Projects': 'No related tasks or projects.',
+}
+
+/** The head of an empty section: one row with its title and, once the standup is started, the button that reveals the add-a-line form. */
+function EmptyHead({ section, expandable, open, panelId, onToggle }: { section: StandupSection; expandable: boolean; open: boolean; panelId: string; onToggle: () => void }) {
+  return (
+    <div className="flex min-h-10 flex-wrap items-center gap-x-3 gap-y-1 px-3 py-1">
+      <h2 className="t-panel font-semibold">{section}</h2>
+      <span className="t-small text-muted-ink">{EMPTY[section]}</span>
+      {expandable && (
+        <Button variant="ghost" size="sm" className="ml-auto" aria-expanded={open} aria-controls={open ? panelId : undefined} onClick={onToggle}>
+          Add line
+        </Button>
+      )}
+    </div>
+  )
 }
 
 function References() {
@@ -189,6 +204,14 @@ export function DayPanel({
   onBack?: () => void
 }) {
   const [textOpen, setTextOpen] = useState(false)
+  const [expanded, setExpanded] = useState<ReadonlySet<StandupSection>>(new Set())
+  const baseId = useId()
+  const toggle = (section: StandupSection) =>
+    setExpanded((was) => {
+      const next = new Set(was)
+      if (!next.delete(section)) next.add(section)
+      return next
+    })
   const runOf = new Map(todayRuns.map((r) => [r.key, r.standups]))
   const canAdd = view.state === 'untouched' || view.state === 'touched'
 
@@ -198,22 +221,35 @@ export function DayPanel({
       {textOpen && <PlainText text={standupAsText({ date: view.date, yesterday, sections: view.sections })} onClose={() => setTextOpen(false)} />}
       {STANDUP_SECTIONS.map((section) => {
         const lines = view.sections[section]
+        const extras = view.state !== 'past' && ((section === 'Done' && yesterday !== null) || section === 'Related Tasks / Projects')
+        const collapsed = lines.length === 0 && !extras
+        const addable = canAdd && view.note !== null
+        const panelId = `${baseId}-section-${STANDUP_SECTIONS.indexOf(section)}`
+        // One AddLine at one position in every branch, so adding the first line to a collapsed section keeps its focus and its draft.
         return (
           <Card key={section} aria-label={section}>
-            <CardHead title={section} count={lines.length} />
-            {section === 'Done' && view.state !== 'past' && <YesterdayDone yesterday={yesterday} resolver={resolver} />}
-            {lines.length === 0 ? (
-              <CardRow>
-                <span className="t-small text-muted-ink">{EMPTY[section]}</span>
-              </CardRow>
+            {collapsed ? (
+              <EmptyHead section={section} expandable={addable} open={expanded.has(section)} panelId={panelId} onToggle={() => toggle(section)} />
             ) : (
-              lines.map((line, i) => (
-                <LineRow key={`${line.key}-${i}`} line={line} resolver={resolver} carried={section === 'Today' && view.state !== 'past' ? runOf.get(line.key) : undefined} />
-              ))
+              <CardHead title={section} count={lines.length} />
             )}
-            {section === 'Related Tasks / Projects' && view.state !== 'past' && <References />}
-            {canAdd && view.note && <AddLine section={section} note={view.note} untouched={view.state === 'untouched'} />}
-            {view.state === 'missing' && <p className="note m-0 border-t border-line px-3 py-2">Start the standup to add lines here.</p>}
+            {!collapsed && section === 'Done' && view.state !== 'past' && <YesterdayDone yesterday={yesterday} resolver={resolver} />}
+            {!collapsed &&
+              (lines.length === 0 ? (
+                <CardRow>
+                  <span className="t-small text-muted-ink">{EMPTY[section]}</span>
+                </CardRow>
+              ) : (
+                lines.map((line, i) => (
+                  <LineRow key={`${line.key}-${i}`} line={line} resolver={resolver} carried={section === 'Today' && view.state !== 'past' ? runOf.get(line.key) : undefined} />
+                ))
+              ))}
+            {!collapsed && section === 'Related Tasks / Projects' && view.state !== 'past' && <References />}
+            {addable && (!collapsed || expanded.has(section)) && (
+              <div id={panelId}>
+                <AddLine section={section} note={view.note!} untouched={view.state === 'untouched'} />
+              </div>
+            )}
           </Card>
         )
       })}

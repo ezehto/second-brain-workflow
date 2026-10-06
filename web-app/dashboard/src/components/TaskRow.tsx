@@ -19,6 +19,9 @@ import { StatusChip } from './StatusChip'
  * With `reason` (why the task is here, e.g. "Blocked: staging refresh") it is a
  * 48px two-line row, with the reason and project under the title.
  *
+ * Below the `sm` breakpoint a one-line, non-dense row wraps its title to two
+ * lines (a 48px row) instead of cutting it off.
+ *
  * `status` defaults to a read-only chip; pass a `StatusMenu` to make it editable.
  *
  * `dense` makes a one-line row 32px (dense tables; the status control must fit
@@ -47,19 +50,21 @@ export function TaskRow({
   const today = useToday()
   const href = useProjectHref()
   const overdue = isOverdue(task, today)
+  // A one-line row may wrap its title to two lines on a phone; a row with a reason, or a dense one, keeps its height.
+  const wraps = !reason && !dense
   const due = task.due ? formatShortDate(task.due) : null
   return (
     <CardRow
       lines={reason ? 2 : 1}
       aria-current={selected ? 'true' : undefined}
-      className={cn('grid-cols-[1.75rem_minmax(0,1fr)_auto]', dense && !reason && 'min-h-8 py-0', selected && 'bg-inset')}
+      className={cn('grid-cols-[1.75rem_minmax(0,1fr)_auto]', wraps && 'max-sm:min-h-12', dense && !reason && 'min-h-8 py-0', selected && 'bg-inset')}
     >
       <PriorityMark priority={task.priority} />
       <div className="flex min-w-0 flex-col">
         <div className="flex min-w-0 items-baseline gap-2">
           <Link
             to={href.note(task.path)}
-            className="linkbtn t-body truncate"
+            className={cn('linkbtn t-body', wraps ? 'max-sm:line-clamp-2 sm:truncate' : 'truncate')}
             onClick={(event) => {
               if (!onOpen || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
               event.preventDefault()

@@ -87,8 +87,9 @@ export function TimelinePage() {
 
       <EventsChart range={filters.range} />
 
-      <Card>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2">
+      {/* Sticky under the top bar (52px, 48px on a phone) so the filters stay in reach while the list grows with the page. */}
+      <Card className="sticky top-12 z-20 sm:top-[52px]">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-1">
           <Segmented label="Range" options={RANGE_OPTIONS} value={filters.range} onChange={(v) => setFilter('range', v)} />
           <Segmented label="Project" options={PROJECT_OPTIONS} value={filters.project} onChange={(v) => setFilter('project', v)} />
           <Segmented label="Source" options={SOURCE_OPTIONS} value={filters.source} onChange={(v) => setFilter('source', v)} />
@@ -120,7 +121,7 @@ export function TimelinePage() {
               </Button>
             </div>
           )}
-          <div className="max-h-[680px] overflow-y-auto" tabIndex={0} role="region" aria-label="Events by day">
+          <div role="region" aria-label="Events by day">
             {dates.map((date) => {
               const dayEvents = shown.filter((e) => e.date === date).sort((a, b) => b.time.localeCompare(a.time))
               return (
@@ -213,7 +214,7 @@ function EventsChart({ range }: { range: string }) {
           <div aria-hidden="true" className="grid" style={{ gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))` }}>
             {days.map((d, i) => (
               <span key={d.date} className="t-caption flex flex-col items-center text-muted-ink">
-                <span className="num font-semibold text-ink">{n <= 10 ? d.total : ''}</span>
+                <span className="num t-numeral font-semibold text-ink">{n <= 10 ? d.total : ''}</span>
                 <span>{i % step === 0 || i === n - 1 ? formatShortDate(d.date) : ''}</span>
               </span>
             ))}

@@ -22,6 +22,7 @@ the request in `docs/design/app-request.md`.
 - [7. Open questions for the user](#7-open-questions-for-the-user)
 - [8. Addendum: metrics and charts stay](#8-addendum-metrics-and-charts-stay-user-instruction-2026-10-06)
 - [9. Decisions](#9-decisions-user-go-ahead-2026-10-06)
+- [10. Round 2 (2026-10-06)](#10-round-2-2026-10-06)
 
 ## 1. Summary
 
@@ -172,7 +173,7 @@ Keep the four rail groups and 12 destinations; no new top-level routes. What cha
 | Index status | Can I trust what I am seeing | Counts and problems |
 | Workflow, Timeline, Upskilling | Preview only until their phases | Stay under a quiet "Later" group |
 
-Navigation: rail groups become Today (Today, Standup, Inbox), Work (Tasks, Projects), Knowledge (Knowledge, Decisions, Search), System (Index status), and a collapsed "Later" group (Workflow, Timeline, Upskilling) so previews stop looking like broken items. Rail shows 224px at 1280 and up, a 56px icon rail from 832 to 1279, and is replaced by a bottom tab bar below 640 (Today, Tasks, Standup, Projects, More) with a floating "+" for capture. Counts stay on Inbox, Tasks (blocked) and Index status (problems only).
+Navigation: rail groups become Today (Today, Standup, Inbox), Work (Tasks, Projects), Knowledge (Knowledge, Decisions, Search), System (Index status), and a collapsed "Later" group (Workflow, Timeline, Upskilling) so previews stop looking like broken items. Rail shows 224px at 1280 and up, a 72px icon rail from 832 to 1279, and is replaced by a bottom tab bar below 640 (Today, Tasks, Standup, Projects, More) with the header New button for capture. Counts stay on Inbox, Tasks (blocked) and Index status (problems only).
 
 ### 5.2 Layout principles
 
@@ -183,8 +184,8 @@ Navigation: rail groups become Today (Today, Standup, Inbox), Work (Tasks, Proje
 |---|---|---|---|
 | 1920 | 224px | **3** (5/12, 4/12, 3/12) | Focus and Done recently; Blocked, Decisions, Projects; Standup/Today, Learning |
 | 1440 | 224px | **2** (7/12, 5/12) | Focus, Projects on the left; Blocked, Decisions, Standup on the right |
-| 1024 | 56px icons | **2** (8/12, 4/12) with the side column dropping under at 900 | As 1440, tighter |
-| 768 | 56px icons | 1, small panels 2-up | Strip, Focus, then pairs |
+| 1024 | 72px icons | **2** (8/12, 4/12) with the side column dropping under at 900 | As 1440, tighter |
+| 768 | 72px icons | 1, small panels 2-up | Strip (one row of six), Focus, then pairs |
 | 390 | bottom tabs | 1, priority order | Section 5.6 |
 
 - **Density targets** (current values in brackets):
@@ -200,7 +201,7 @@ Navigation: rail groups become Today (Today, Standup, Inbox), Work (Tasks, Proje
 | Controls | 32px desktop, 44px touch | 40px |
 | Panel radius, control radius | 12px, 8px | 16px, 10px |
 
-- **Type scale (px, line height):** 12/16 caption (timestamps, counts only), 13/18 secondary, **14/20 body and row titles**, 16/22 panel titles (600), 20/26 page title (700), 28/34 the date on Today only (700), 22/26 tabular figures in the status strip. Weights 400, 500, 600, 700; drop 800. Letter spacing only on the 28 and 20. Nothing readable below 13px; 12px must hold at least 4.5:1 (the `faint` token `#7D7D90` on rail and card is borderline and should be checked or lightened).
+- **Type scale (px, line height):** 13/18 caption and secondary (timestamps, chips, marks, hints; a 12/16 `numeral` class exists for digit-only counts and chart ticks, see section 10), **14/20 body and row titles**, 16/22 panel titles (600), 20/26 page title (700), 28/34 the date on Today only (700), 22/26 tabular figures in the status strip. Weights 400, 500, 600, 700; drop 800. Letter spacing only on the 28 and 20. Nothing readable below 13px; 12px must hold at least 4.5:1 (the `faint` token `#7D7D90` on rail and card is borderline and should be checked or lightened).
 - **Spacing scale (px):** 4, 8, 12, 16, 24, 32. Nothing else.
 - **Cards versus rows.** A bordered panel is kept only for a group the user scans as a unit: Focus, Blocked, Decisions, Projects, Standup, Done recently. Inside a panel everything is ruled rows on one surface; no nested tiles (kills InsetItem on the Dashboard and the six stage tiles). Counts and filters are a strip or a segmented control, never five boxes. Tables for Tasks and Projects.
 - **Grouping.** Panels are ordered by the request's flow: understand (strip), decide (Blocked, Decisions), prioritise and execute (Focus, Projects), record (Standup), remember and improve (Done recently, Learning). Panel titles carry a count, not a subtitle.
@@ -267,11 +268,11 @@ Priority order for building (reasoning: daily value, then dependencies; the phas
 | Width | Changes |
 |---|---|
 | 1280 and up | Full rail 224px; 2 or 3 columns; table density 32px; reader as split pane |
-| 832 to 1279 | 56px icon rail with tooltips; 2 columns (8/4) that collapse to 1 under 900; reader opens as route or overlay pane |
-| 640 to 831 | No rail; top bar with menu; bottom tab bar; panels 1 column, small panels 2-up |
-| Under 640 | Top bar 48px (title, search icon, +). Strip becomes a horizontal chip scroller. Bottom tab bar: Today, Tasks, Standup, Projects, More; floating capture button. Tables become two-line cards-as-rows (title, then status, priority, due) |
+| 832 to 1279 | 72px icon rail with tooltips and inline counts, search collapses to an icon under 1100px; 2 columns (8/4) that collapse to 1 under 900; reader opens as route or overlay pane |
+| 640 to 831 | No rail; top bar with menu; bottom tab bar; panels 1 column, small panels 2-up; the six stat tiles stay in one row |
+| Under 640 | Top bar 48px (title, search icon, +). Strip becomes a 3 by 2 grid of tiles. Bottom tab bar: Today, Tasks, Standup, Projects, More; capture is the header New button (no floating button). Tables become two-line cards-as-rows (title, then status, priority, due) |
 
-Mobile shows first, in this order: status strip, Focus (with the status control), Blocked, Decisions, Standup (add a line), Projects (one line each), then Done recently. Learning and previews hide behind "More". Header controls (context select) collapse into the top bar menu. The filled capture button is reachable by thumb. No tab ever shows a table wider than the screen.
+Mobile shows first, in this order: status strip, Focus (with the status control), Blocked, Decisions, Standup (add a line), Projects (one line each), then Done recently. Learning and previews hide behind "More". Header controls (context select) collapse into the top bar menu. The header New button is the capture entry point. No tab ever shows a table wider than the screen.
 
 ### 5.7 Components
 
@@ -356,3 +357,33 @@ to section 7:
 4. "Done recently" uses the note's modified time as an approximate completion date, labelled as such.
 5. Build order: Tasks, Standup, Projects, Inbox, then Knowledge and Decisions, Search, Index status, previews.
 6. Workflow, Timeline and Upskilling sit under a collapsed "Later" group in the rail.
+
+## 10. Round 2 (2026-10-06)
+
+Quick wins from the second audit (screenshots at 1920, 1440, 1024, 768 and 390). No layout,
+navigation or data-shape change. Where this section contradicts an earlier one, this section wins.
+
+- **Type floor.** Caption is 13/18 and carries every readable small use (status chips, P1/P2 marks,
+  timestamps, Preview badges, Ctrl K, chart date labels). A separate 12/16 `numeral` class (`.t-numeral`)
+  is kept for digit-only count badges and chart tick numbers. Sub-13 px text nodes that are not
+  numerals went from 44 to 0 on Today and 116 to 0 on Timeline.
+- **Disabled controls.** A disabled button is the inset surface with faint text and a line border, 4.59:1,
+  instead of 45% opacity (which measured 2.24 to 3.98:1). Capture on the Inbox stays enabled and says
+  "Write a thought to capture." on an empty submit.
+- **Phone.** The floating capture button is removed (it covered Start standup and the last Inbox rows);
+  the header New button remains. The six stat tiles are a 3 by 2 grid, not a scroller.
+- **Tablet.** The six tiles are one row from 640 px, with the icon chip dropped below 1280 px and the
+  label allowed two lines. The icon rail is 72 px so count badges sit beside their icons, not over
+  them. The header search is an icon that opens the palette below 1100 px (Ctrl K still works).
+- **Header badge.** It shows only errors, as "N index errors". The error categories are `parse_errors`,
+  `duplicate_ids` and `duplicate_project_slugs`; `missing_ids` and the other categories are warnings.
+  The rail and the Index status page keep the total of problems.
+- **Standup.** A not-started day is announced once, by the status card, instead of under six sections. Empty sections collapse to one row, with an "Add line" button once the day is started. "In Today for N days" and the Carried over tile both mean days in Today including today's plan, and they do not change when Start standup writes the note (the preview and the written note give the same counts). The tile is "Follow-ups", not "Open follow-ups" (it was truncated at 390).
+- **Timeline.** The "What changed" list has no inner scroll and grows with the page; the filter bar is
+  sticky under the top bar.
+- **Titles.** A project page shows the project name and a note page the note title in the header, taken
+  from the loaded data through a small context (`usePageTitle`), with the route title as the fallback
+  while it loads. Subtitles no longer name vault folders.
+- **Rows on phones.** A one-line, non-dense task row wraps its title to two lines; rows with a reason
+  line and dense rows keep their height.
+- **Accepted deviations.** Focus rows measure 53 px at 390, not 48 px, because the status control keeps its 44 px touch target. Focus titles truncate on phones, because a row with a reason line stays a two-line row; only one-line, non-dense rows wrap their title.

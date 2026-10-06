@@ -128,10 +128,24 @@ describe('InboxPage: quick capture', () => {
     expect(screen.getAllByText(/Captured in 00-Inbox\//).length).toBeGreaterThan(0)
   })
 
-  it('does not post blank text', async () => {
-    open(withBodies(mockClient()))
+  it('keeps Capture enabled and says what is missing instead of posting blank text', async () => {
+    const user = userEvent.setup()
+    const client = withBodies(mockClient())
+    const posted: string[] = []
+    client.createCapture = async (input) => {
+      posted.push(input.text)
+      throw new Error('should not be called')
+    }
+    open(client)
     await screen.findAllByRole('listitem')
-    expect(screen.getByRole('button', { name: 'Capture' })).toBeDisabled()
+    const button = screen.getByRole('button', { name: 'Capture' })
+    expect(button).toBeEnabled()
+    await user.click(button)
+    expect(await screen.findByRole('alert')).toHaveTextContent('Write a thought to capture.')
+    expect(screen.getByLabelText('Quick capture')).toBeInvalid()
+    expect(posted).toEqual([])
+    await user.type(screen.getByLabelText('Quick capture'), 'x')
+    expect(screen.queryByText('Write a thought to capture.')).not.toBeInTheDocument()
   })
 })
 

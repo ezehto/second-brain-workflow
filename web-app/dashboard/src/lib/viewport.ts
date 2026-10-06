@@ -3,9 +3,9 @@ import { useCallback, useSyncExternalStore } from 'react'
 /**
  * Which layout the shell uses, by width (assessment 5.6):
  * - `wide`    1280 and up: 224px rail with labels
- * - `compact` 832 to 1279: 56px icon rail with tooltips
+ * - `compact` 832 to 1279: 72px icon rail with tooltips
  * - `tablet`  640 to 831: no rail, top bar with a menu, bottom tab bar
- * - `phone`   under 640: 48px top bar, bottom tab bar, floating capture button
+ * - `phone`   under 640: 48px top bar, bottom tab bar, New button in the top bar
  *
  * Chosen in JavaScript, not by hiding elements in CSS, so only one navigation
  * is in the document (no duplicate landmarks) and tests can pick a width.

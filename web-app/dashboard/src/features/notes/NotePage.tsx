@@ -17,7 +17,7 @@ export function NotePage() {
           Back
         </Button>
       </div>
-      {path ? <NoteReader path={path} /> : <EmptyState>No note is selected. Open one from a list.</EmptyState>}
+      {path ? <NoteReader path={path} setsPageTitle /> : <EmptyState>No note is selected. Open one from a list.</EmptyState>}
     </div>
   )
 }

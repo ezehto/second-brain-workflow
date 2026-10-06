@@ -132,7 +132,7 @@ export function WorkflowPage() {
               <div key={name} role="group" aria-label={name}>
                 <div className="flex min-h-9 flex-wrap items-baseline gap-x-2 border-t border-line bg-inset px-3 py-1">
                   <h3 className="t-body font-semibold">{name}</h3>
-                  <span className="num t-caption text-muted-ink">{rows.length}</span>
+                  <span className="num t-numeral text-muted-ink">{rows.length}</span>
                   <span className="t-caption text-muted-ink">{STAGE_HINT[i]}</span>
                 </div>
                 {rows.map((item) => (

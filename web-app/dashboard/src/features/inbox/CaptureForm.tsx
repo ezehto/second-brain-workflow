@@ -14,11 +14,17 @@ export function CaptureForm() {
   const id = useId()
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
+  const [empty, setEmpty] = useState(false)
 
   async function submit(event: FormEvent) {
     event.preventDefault()
     const value = text.trim()
-    if (!value || busy) return
+    if (busy) return
+    if (!value) {
+      setEmpty(true)
+      return
+    }
+    setEmpty(false)
     setBusy(true)
     try {
       const note = await client.createCapture({ text: value })
@@ -39,9 +45,25 @@ export function CaptureForm() {
           <Label htmlFor={id} className="t-small font-semibold text-muted-ink">
             Quick capture
           </Label>
-          <Input id={id} value={text} onChange={(e) => setText(e.target.value)} placeholder="todo: ask infra about the staging database refresh" autoComplete="off" />
+          <Input
+            id={id}
+            value={text}
+            onChange={(e) => {
+              setText(e.target.value)
+              setEmpty(false)
+            }}
+            placeholder="todo: ask infra about the staging database refresh"
+            autoComplete="off"
+            aria-invalid={empty || undefined}
+            aria-describedby={empty ? `${id}-error` : undefined}
+          />
+          {empty && (
+            <p id={`${id}-error`} role="alert" className="t-small m-0 font-medium text-status-blocked">
+              Write a thought to capture.
+            </p>
+          )}
         </div>
-        <Button type="submit" disabled={busy || !text.trim()}>
+        <Button type="submit" disabled={busy}>
           Capture
         </Button>
       </form>

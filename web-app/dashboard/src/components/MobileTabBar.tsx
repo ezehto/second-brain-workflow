@@ -37,7 +37,7 @@ export function MobileTabBar({ counts, sampleData, extra }: { counts: RailCounts
                 </span>
                 {item.label}
                 {counts[item.to] ? (
-                  <span className="num absolute top-1 right-[calc(50%-1.5rem)] min-w-4 rounded-full bg-line px-1 text-center t-caption leading-4 font-bold text-ink">
+                  <span className="num absolute top-1 right-[calc(50%-1.5rem)] min-w-4 rounded-full bg-line px-1 text-center t-numeral leading-4 font-bold text-ink">
                     <span className="sr-only">Count: </span>
                     {counts[item.to]}
                   </span>

@@ -106,21 +106,6 @@ export function NewMenu({ iconOnly = false }: { iconOnly?: boolean }) {
   )
 }
 
-/** The floating capture button on phone widths, within thumb reach above the tab bar. */
-export function CaptureFab() {
-  const { open } = useQuickActions()
-  return (
-    <button
-      type="button"
-      aria-label="Capture"
-      onClick={() => open('capture')}
-      className="fixed right-4 bottom-20 z-40 inline-flex size-12 cursor-pointer items-center justify-center rounded-full bg-brand-fill text-white shadow-lg hover:bg-brand-fill-hover"
-    >
-      <Icon name="plus" className="size-6" />
-    </button>
-  )
-}
-
 function QuickActionDialog({ kind, onClose }: { kind: QuickActionKind; onClose: () => void }) {
   const action = ACTIONS.find((a) => a.kind === kind)!
   const client = useApi()

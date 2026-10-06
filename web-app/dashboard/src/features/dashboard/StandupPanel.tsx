@@ -112,7 +112,7 @@ export function StandupPanel({
                     <section key={section} aria-label={section} className="border-t border-line">
                       <h3 className="t-small flex items-baseline gap-2 px-3 pt-2 font-semibold">
                         {section}
-                        <span className="num t-caption font-normal text-muted-ink">{lines.length}</span>
+                        <span className="num t-numeral font-normal text-muted-ink">{lines.length}</span>
                       </h3>
                       {lines.slice(0, SHOWN).map((line, i) => (
                         <LineRow key={`${line.key}-${i}`} line={line} resolver={resolver} />

@@ -10,7 +10,8 @@ import { indexProblemCount } from '@/domain/indexStatus'
 import { ContextSelect } from './ContextSelect'
 import { Header } from './Header'
 import { LoadingRows } from './QueryBoundary'
-import { CaptureFab, QuickActionsProvider } from './QuickActions'
+import { PageTitleProvider } from './PageTitle'
+import { QuickActionsProvider } from './QuickActions'
 import { MobileTabBar, NavSheet } from './MobileTabBar'
 import { Rail } from './Rail'
 import { ShellDashboardContext } from './ShellData'
@@ -63,12 +64,13 @@ export function AppShell({ sampleData }: { sampleData: boolean }) {
     <ClockProvider clock={clock}>
       <ShellDashboardContext.Provider value={dashboard}>
         <QuickActionsProvider>
+          <PageTitleProvider>
           <div className="flex min-h-screen">
             {(viewport === 'wide' || viewport === 'compact') && (
               <aside
                 className={cn(
                   'sticky top-0 h-screen flex-none self-start overflow-y-auto border-r border-line bg-rail',
-                  viewport === 'wide' ? 'w-56' : 'w-14',
+                  viewport === 'wide' ? 'w-56' : 'w-[4.5rem]',
                 )}
               >
                 <Rail variant={viewport === 'wide' ? 'full' : 'icon'} counts={counts} sampleData={sampleData} />
@@ -88,11 +90,11 @@ export function AppShell({ sampleData }: { sampleData: boolean }) {
             </div>
 
             {tabBar && <MobileTabBar counts={counts} sampleData={sampleData} extra={viewport === 'phone' ? <ContextSelect className="w-full" /> : undefined} />}
-            {viewport === 'phone' && <CaptureFab />}
             {viewport === 'tablet' && (
               <NavSheet open={menu} onOpenChange={setMenu} counts={counts} sampleData={sampleData} extra={<ContextSelect className="w-full" />} />
             )}
           </div>
+          </PageTitleProvider>
         </QuickActionsProvider>
       </ShellDashboardContext.Provider>
     </ClockProvider>

@@ -36,7 +36,7 @@ describe('navigation by width', () => {
     expect(within(nav).getByRole('link', { name: 'Standup' })).not.toHaveTextContent('Count')
   })
 
-  it('832 to 1279: a 56px icon rail whose items are named and have tooltips', async () => {
+  it('832 to 1279: a 72px icon rail whose items are named and have tooltips', async () => {
     setViewport(1024)
     const user = userEvent.setup()
     renderApp()
@@ -46,7 +46,7 @@ describe('navigation by width', () => {
     expect(within(nav).queryByText('Standup')).not.toBeInTheDocument()
     await user.hover(within(nav).getByRole('link', { name: 'Standup' }))
     expect((await screen.findAllByText('Standup')).length).toBeGreaterThan(0)
-    expect(nav.closest('aside')).toHaveClass('w-14')
+    expect(nav.closest('aside')).toHaveClass('w-[4.5rem]')
     expect(within(nav).getByRole('link', { name: 'Today' })).toHaveClass('bg-brand-fill')
     expect(within(nav).getByRole('link', { name: /Inbox/ })).toHaveTextContent('Count: 4')
   })
@@ -65,7 +65,7 @@ describe('navigation by width', () => {
     expect(within(sheet).getByRole('combobox', { name: 'Project' })).toBeInTheDocument()
   })
 
-  it('under 640: 48px top bar, bottom tab bar with More, and a floating capture button', async () => {
+  it('under 640: 48px top bar, bottom tab bar with More, and no floating capture button', async () => {
     setViewport(390)
     const user = userEvent.setup()
     renderApp()
@@ -74,7 +74,8 @@ describe('navigation by width', () => {
     expect(within(tabs).getAllByRole('link')).toHaveLength(4)
     expect(screen.getByRole('link', { name: 'Search' })).toBeInTheDocument()
     expect(screen.queryByRole('searchbox')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Capture' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Capture' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'New' })).toBeInTheDocument()
     await user.click(within(tabs).getByRole('button', { name: 'More' }))
     const sheet = await screen.findByRole('dialog', { name: 'More' })
     // The sheet holds what the tab bar does not, and the context select.
@@ -84,11 +85,12 @@ describe('navigation by width', () => {
     expect(within(sheet).getByRole('combobox', { name: 'Project' })).toBeInTheDocument()
   })
 
-  it('the capture button opens the capture dialog', async () => {
+  it('on a phone, captures through the header New button', async () => {
     setViewport(390)
     const user = userEvent.setup()
     renderApp()
-    await user.click(await screen.findByRole('button', { name: 'Capture' }))
+    await user.click(await screen.findByRole('button', { name: 'New' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Capture' }))
     expect(await screen.findByRole('dialog', { name: 'Capture' })).toBeInTheDocument()
   })
 
@@ -190,9 +192,21 @@ describe('top bar', () => {
     expect(document.title).toBe('Tasks · Second Brain')
   })
 
-  it('shows the index pill only when the index has problems', async () => {
+  it('shows the project name as the title on a project page, and falls back to the route title elsewhere', async () => {
+    renderApp('/projects/ipp')
+    expect(await screen.findByRole('heading', { level: 1, name: 'IPP' })).toBeInTheDocument()
+    expect(document.title).toBe('IPP · Second Brain')
+  })
+
+  it('shows the note title as the title on the note page', async () => {
+    renderApp(`/notes?path=${encodeURIComponent('02-Work/Tasks/Investigate missing OTP email.md')}`)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Investigate missing OTP email' })).toBeInTheDocument()
+  })
+
+  it('shows the index badge for errors only, while the rail keeps the total of problems', async () => {
     renderApp()
-    expect(await screen.findByRole('link', { name: /8 index problems/ })).toHaveAttribute('href', '/index-status')
+    expect(await screen.findByRole('link', { name: /2 index errors/ })).toHaveAttribute('href', '/index-status')
+    expect(within(screen.getByRole('navigation', { name: 'Main' })).getByRole('link', { name: /Index status/ })).toHaveTextContent('8')
   })
 
   it('Ctrl+K opens the command palette, and the hint is shown', async () => {

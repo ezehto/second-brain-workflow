@@ -8,8 +8,9 @@ import { useToday } from '@/lib/clock'
 import { useProjectHref } from '@/lib/projectContext'
 import { routes } from '@/lib/routes'
 
-const LAYOUT = 'flex gap-3 overflow-x-auto sm:grid sm:grid-cols-3 sm:overflow-visible fullrail:grid-cols-6'
-const TILE = 'min-w-40 flex-none sm:min-w-0'
+/** Three by two on a phone, one row of six from 640px up (chips drop below 1280px, see `StatTile`). */
+const LAYOUT = 'grid grid-cols-3 gap-2 sm:grid-cols-6 sm:gap-3'
+const TILE = 'min-w-0'
 
 /**
  * Six compact counts, each linking to the list it counts.
@@ -52,22 +53,22 @@ export function StatTiles({
   return (
     <div className={LAYOUT}>
       <div className={TILE}>
-        <StatTile compact icon="calendar" tone="brand" value={all.filter((t) => isForToday(t, today)).length} label="For today" to={href.tasks({ today: true })} />
+        <StatTile compact condensed icon="calendar" tone="brand" value={all.filter((t) => isForToday(t, today)).length} label="For today" to={href.tasks({ today: true })} />
       </div>
       <div className={TILE}>
-        <StatTile compact icon="clock" tone="progress" value={all.filter((t) => t.status === 'in-progress').length} label="In progress" to={href.tasks({ status: 'in-progress' })} />
+        <StatTile compact condensed icon="clock" tone="progress" value={all.filter((t) => t.status === 'in-progress').length} label="In progress" to={href.tasks({ status: 'in-progress' })} />
       </div>
       <div className={TILE}>
-        <StatTile compact icon="blocked" tone="blocked" value={all.filter((t) => t.status === 'blocked').length} label="Blocked" to={href.tasks({ status: 'blocked' })} />
+        <StatTile compact condensed icon="blocked" tone="blocked" value={all.filter((t) => t.status === 'blocked').length} label="Blocked" to={href.tasks({ status: 'blocked' })} />
       </div>
       <div className={TILE}>
-        <StatTile compact icon="flag" tone="blocked" value={all.filter((t) => isOverdue(t, today)).length} label="Overdue" to={href.tasks({ status: 'open', overdue: true })} />
+        <StatTile compact condensed icon="flag" tone="blocked" value={all.filter((t) => isOverdue(t, today)).length} label="Overdue" to={href.tasks({ status: 'open', overdue: true })} />
       </div>
       <div className={TILE}>
-        <StatTile compact icon="inbox" tone="neutral" value={d.inbox_count} label="In the inbox" to={href.link(routes.inbox)} />
+        <StatTile compact condensed icon="inbox" tone="neutral" value={d.inbox_count} label="In the inbox" to={href.link(routes.inbox)} />
       </div>
       <div className={TILE}>
-        <StatTile compact icon="decisions" tone="review" value={proposedDecisions(decided).length} label="Decisions pending" to={href.link(`${routes.decisions}?status=proposed`)} />
+        <StatTile compact condensed icon="decisions" tone="review" value={proposedDecisions(decided).length} label="Decisions pending" to={href.link(`${routes.decisions}?status=proposed`)} />
       </div>
     </div>
   )

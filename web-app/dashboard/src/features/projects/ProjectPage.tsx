@@ -9,6 +9,7 @@ import { Card } from '@/components/Card'
 import { EmptyState } from '@/components/EmptyState'
 import { ProgressBar } from '@/components/ProgressBar'
 import { QueryBoundary } from '@/components/QueryBoundary'
+import { usePageTitle } from '@/components/PageTitle'
 import { Segmented } from '@/components/Segmented'
 import { StatTile } from '@/components/StatTile'
 import { StatusChip } from '@/components/StatusChip'
@@ -56,6 +57,7 @@ function Loaded({ detail, tasks, tab }: { detail: ProjectDetail; tasks: NoteSumm
   const split = useSplitLayout()
   const roomy = useMinWidth(640)
   const { project } = detail
+  usePageTitle(project.title)
   const health = projectHealth(project, tasks, today)
   const progress = projectProgress(tasks)
   const counts = projectCounts(tasks, today)

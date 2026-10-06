@@ -27,7 +27,7 @@ export function DoneBars({ days }: { days: DayCount[] }) {
       >
         {days.map((d) => (
           <li key={d.date} className="flex flex-col items-center justify-end gap-0.5" style={{ height: BAR_MAX_PX + 36 }} title={`${formatShortDate(d.date)}: ${d.count} done`}>
-            <span className="num t-caption text-muted-ink">{d.count}</span>
+            <span className="num t-numeral text-muted-ink">{d.count}</span>
             <span
               aria-hidden="true"
               className={d.count ? 'w-full max-w-8 rounded-t-lg bg-status-done' : 'w-full max-w-8 border-b border-line'}

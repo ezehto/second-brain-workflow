@@ -54,8 +54,10 @@
 
   /* Type scale, size / line height. Each is a real utility (text-caption ...), and
      cn() in lib/utils.ts knows the names so they merge as font sizes, not colours. */
-  --text-caption: 12px; /* timestamps and counts only */
-  --text-caption--line-height: 16px;
+  --text-numeral: 12px; /* pure numerals only: chart ticks, digit-only count badges */
+  --text-numeral--line-height: 16px;
+  --text-caption: 13px; /* timestamps, chips, marks, hints: anything a person reads */
+  --text-caption--line-height: 18px;
   --text-small: 13px; /* secondary */
   --text-small--line-height: 18px;
   --text-body: 14px; /* body and row titles */
@@ -184,6 +186,10 @@
 
 @layer components {
   /* Aliases of the --text-* tokens, kept for existing markup. New code uses text-body etc. */
+  .t-numeral {
+    font-size: var(--text-numeral);
+    line-height: var(--text-numeral--line-height);
+  }
   .t-caption {
     font-size: var(--text-caption);
     line-height: var(--text-caption--line-height);

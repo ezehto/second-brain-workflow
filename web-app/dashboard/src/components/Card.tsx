@@ -46,7 +46,7 @@ export function CardHead({
     <div className={cn('flex min-h-10 flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 py-1', className)}>
       <div className="flex min-w-0 items-baseline gap-2">
         <h2 className="t-panel font-semibold">{title}</h2>
-        {count !== undefined && <span className="num t-caption text-muted-ink">{count}</span>}
+        {count !== undefined && <span className={cn('num text-muted-ink', typeof count === 'number' ? 't-numeral' : 't-caption')}>{count}</span>}
       </div>
       {(note || children) && (
         <div className="flex flex-wrap items-center gap-2">

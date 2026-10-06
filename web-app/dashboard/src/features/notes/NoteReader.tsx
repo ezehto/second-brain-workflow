@@ -15,6 +15,7 @@ import { projectLookup } from '@/domain/projects'
 import { useToday } from '@/lib/clock'
 import { NOT_AVAILABLE, formatShortDate, wallTime } from '@/lib/dates'
 import { useProjectHref } from '@/lib/projectContext'
+import { usePageTitle } from '@/components/PageTitle'
 import { NoteMarkdown } from './NoteMarkdown'
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
@@ -28,7 +29,8 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 
 const stamp = (iso: string | null) => (iso ? `${formatShortDate(iso)}${iso.length > 10 ? `, ${wallTime(iso)}` : ''}` : NOT_AVAILABLE)
 
-function Loaded({ note, onClose }: { note: NoteDetail; onClose?: () => void }) {
+function Loaded({ note, onClose, setsPageTitle }: { note: NoteDetail; onClose?: () => void; setsPageTitle?: boolean }) {
+  usePageTitle(setsPageTitle ? note.title : undefined)
   const client = useApi()
   const today = useToday()
   const href = useProjectHref()
@@ -87,7 +89,7 @@ function Loaded({ note, onClose }: { note: NoteDetail; onClose?: () => void }) {
 
       <section aria-label="Backlinks" className="border-t border-line px-4 py-3">
         <h3 className="t-body font-semibold">
-          Backlinks <span className="num t-caption font-normal text-muted-ink">{note.backlinks.length}</span>
+          Backlinks <span className="num t-numeral font-normal text-muted-ink">{note.backlinks.length}</span>
         </h3>
         {note.backlinks.length ? (
           <ul className="m-0 mt-1 list-none p-0">
@@ -112,13 +114,13 @@ function Loaded({ note, onClose }: { note: NoteDetail; onClose?: () => void }) {
  * so the `content_hash` it hands the status menu is the one on screen; a write
  * anywhere refetches it.
  */
-export function NoteReader({ path, onClose }: { path: string; onClose?: () => void }) {
+export function NoteReader({ path, onClose, setsPageTitle }: { path: string; onClose?: () => void; /** True on the note's own route: the note's title goes in the top bar. */ setsPageTitle?: boolean }) {
   const client = useApi()
   const note = useQuery(useCallback(() => client.lookupNote({ path }), [client, path]))
   return (
     <Card className={note.status === 'success' ? undefined : 'pt-3'}>
       <QueryBoundary query={note} rows={6}>
-        {(data) => <Loaded note={data} onClose={onClose} />}
+        {(data) => <Loaded note={data} onClose={onClose} setsPageTitle={setsPageTitle} />}
       </QueryBoundary>
     </Card>
   )

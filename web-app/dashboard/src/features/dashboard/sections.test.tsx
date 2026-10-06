@@ -41,7 +41,7 @@ describe('StatTiles', () => {
     expect(link('In the inbox')).toHaveAttribute('href', '/inbox')
     expect(link('Decisions pending')).toHaveTextContent('1')
     expect(link('Decisions pending')).toHaveAttribute('href', '/decisions?status=proposed')
-    expect(link('Blocked')).toHaveClass('h-16')
+    expect(link('Blocked')).toHaveClass('min-h-16')
   })
   it('carries the project context in its links and counts only that project', async () => {
     const ipp = tasks.filter((t) => t.project === 'ipp')

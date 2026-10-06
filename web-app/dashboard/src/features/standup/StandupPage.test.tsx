@@ -29,7 +29,34 @@ describe('StandupPage, missing note', () => {
     expect(await screen.findByText(`Created 01-Daily/2026/${TODAY}.md with carry-forward`)).toBeInTheDocument()
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Start standup' })).not.toBeInTheDocument())
     expect(screen.getByText('Edited by hand')).toBeInTheDocument()
-    expect(screen.getAllByRole('textbox', { name: /Add a line to/ })).toHaveLength(6)
+    // Every section can take a line: a form where it has lines, an "Add line" button where it is empty.
+    expect(screen.getAllByRole('textbox', { name: /Add a line to/ }).length + screen.getAllByRole('button', { name: 'Add line' }).length).toBe(6)
+  })
+
+  it('says once that the day is not started, and collapses empty sections to one row', async () => {
+    renderInApp(<StandupPage />, mockClient({ standup: 'missing' }))
+    await screen.findByText('Not started')
+    expect(screen.queryByText('Start the standup to add lines here.')).not.toBeInTheDocument()
+    expect(screen.getAllByText(/Nothing is written until you start the standup/)).toHaveLength(1)
+    // Follow-ups has no lines: a single row with its title and no form, and no way to add before the start.
+    const followUps = section('Follow-ups')
+    expect(within(followUps).getByRole('heading', { name: 'Follow-ups' })).toBeInTheDocument()
+    expect(within(followUps).getByText('No follow-ups.')).toBeInTheDocument()
+    expect(within(followUps).queryByRole('button')).not.toBeInTheDocument()
+  })
+
+  it('keeps the Carried over tile and the "In Today for N days" chips unchanged across Start', async () => {
+    renderInApp(<StandupPage />, mockClient({ standup: 'missing' }))
+    await screen.findByText('Not started')
+    await waitFor(() => expect(tile('Planned today')).toHaveTextContent('5'))
+    await within(section('Today')).findByText('Investigate missing OTP email')
+    const chips = () => within(section('Today')).queryAllByText(/^In Today for \d+ days$/).map((c) => c.textContent)
+    const before = { tile: tile('Carried over').textContent, chips: chips() }
+    expect(before.chips.length).toBeGreaterThan(0)
+    await userEvent.click(screen.getByRole('button', { name: 'Start standup' }))
+    await waitFor(() => expect(screen.queryByText('Not started')).not.toBeInTheDocument())
+    await waitFor(() => expect(tile('Planned today')).toHaveTextContent('5'))
+    expect({ tile: tile('Carried over').textContent, chips: chips() }).toEqual(before)
   })
 
   it('links task lines through the note reader and project lines through the project route', async () => {
@@ -80,7 +107,7 @@ describe('StandupPage, note edited by hand', () => {
     await waitFor(() => expect(tile('Planned today')).toHaveTextContent('1'))
     expect(tile('Carried over')).toHaveTextContent('0')
     expect(tile('Blockers')).toHaveTextContent('0')
-    expect(tile('Open follow-ups')).toHaveTextContent('0')
+    expect(tile('Follow-ups')).toHaveTextContent('0')
   })
 
   it('shows the standup as plain text in a read-only textarea without touching the clipboard', async () => {
@@ -117,6 +144,7 @@ describe('StandupPage, adding a line', () => {
     renderInApp(<StandupPage />, client)
 
     const blockers = await screen.findByRole('region', { name: 'Blockers' })
+    await userEvent.click(within(blockers).getByRole('button', { name: 'Add line' }))
     await userEvent.type(within(blockers).getByRole('textbox', { name: 'Add a line to Blockers' }), 'Waiting on the staging refresh')
     await userEvent.click(within(blockers).getByRole('button', { name: 'Add' }))
 
@@ -125,6 +153,18 @@ describe('StandupPage, adding a line', () => {
     expect(await screen.findByText(`Added to ## Blockers in 01-Daily/2026/${TODAY}.md`)).toBeInTheDocument()
     expect(await within(section('Blockers')).findByText('Waiting on the staging refresh')).toBeInTheDocument()
     expect(within(section('Blockers')).getByRole('textbox', { name: 'Add a line to Blockers' })).toHaveValue('')
+  })
+
+  it('keeps focus in the textbox when the first line turns an empty section into a full one', async () => {
+    renderInApp(<StandupPage />, mockClient({ standup: 'touched' }))
+    const blockers = await screen.findByRole('region', { name: 'Blockers' })
+    await userEvent.click(within(blockers).getByRole('button', { name: 'Add line' }))
+    const input = within(blockers).getByRole('textbox', { name: 'Add a line to Blockers' })
+    await userEvent.type(input, 'Waiting on infra{Enter}')
+    expect(await within(section('Blockers')).findByText('Waiting on infra')).toBeInTheDocument()
+    const after = within(section('Blockers')).getByRole('textbox', { name: 'Add a line to Blockers' })
+    expect(after).toBe(input)
+    expect(document.activeElement).toBe(input)
   })
 
   it('sends only the entry text, and the list shows the marker the writer adds', async () => {
@@ -179,6 +219,7 @@ describe('StandupPage, adding to an untouched note', () => {
     renderInApp(<StandupPage />, client)
 
     const followUps = await screen.findByRole('region', { name: 'Follow-ups' })
+    await userEvent.click(within(followUps).getByRole('button', { name: 'Add line' }))
     await userEvent.type(within(followUps).getByRole('textbox', { name: 'Add a line to Follow-ups' }), 'Ask infra for the refresh date')
     await userEvent.click(within(followUps).getByRole('button', { name: 'Add' }))
 

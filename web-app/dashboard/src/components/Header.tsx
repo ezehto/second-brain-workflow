@@ -9,13 +9,17 @@ import { useToday } from '@/lib/clock'
 import { formatTimeOfDay } from '@/lib/dates'
 import { PROJECT_PARAM, useProjectContext, useProjectHref } from '@/lib/projectContext'
 import { routes } from '@/lib/routes'
-import type { Viewport } from '@/lib/viewport'
-import { indexProblemCount } from '@/domain/indexStatus'
+import { useMinWidth, type Viewport } from '@/lib/viewport'
+import { indexErrorCount } from '@/domain/indexStatus'
 import { CommandPalette, useCommandPaletteShortcut } from './CommandPalette'
 import { ContextSelect } from './ContextSelect'
 import { Icon } from './Icon'
+import { usePublishedTitle } from './PageTitle'
 import { NewMenu } from './QuickActions'
 import { resolveText, type PageHandle } from './pageHandle'
+
+/** The width from which the header holds the full search box. */
+const SEARCH_BOX_MIN_WIDTH = 1100
 
 /**
  * The top bar: 52px (48px on a phone). Page title, with the date as the title
@@ -46,6 +50,8 @@ export function Header({
   const me = useQuery(useCallback(() => client.me(), [client]))
 
   const phone = viewport === 'phone'
+  // Below 1100px the search box would be squeezed to a few characters: it becomes an icon that opens the palette.
+  const roomyForSearch = useMinWidth(SEARCH_BOX_MIN_WIDTH)
   const tablet = viewport === 'tablet'
 
   const [paletteOpen, setPaletteOpen] = useState(false)
@@ -55,9 +61,11 @@ export function Header({
   const lastPass = index?.last_pass_at ? formatTimeOfDay(index.last_pass_at) : null
   const ctx = { today, lastPass }
   // Until the server has said what day it is, a date title would be a guess.
-  const title = handle && todayKnown ? resolveText(handle.title, ctx) : ''
+  const published = usePublishedTitle()
+  const title = handle && todayKnown ? (published ?? resolveText(handle.title, ctx)) : ''
   const subtitle = handle && todayKnown ? resolveText(handle.subtitle, ctx) : ''
-  const problems = index ? indexProblemCount(index) : 0
+  // Warnings stay in the rail's count; the top bar is for what is broken.
+  const problems = index ? indexErrorCount(index) : 0
   const username = me.status === 'success' ? me.data.username : null
 
   const tabLabel = handle && todayKnown ? (handle.label ?? title) : ''
@@ -93,6 +101,10 @@ export function Header({
             <Icon name="search" className="size-[18px]" />
           </Link>
         </Button>
+      ) : !roomyForSearch ? (
+        <Button variant="secondary" size="icon" aria-label="Search the vault (Ctrl K)" title="Search the vault (Ctrl K)" onClick={openPalette}>
+          <Icon name="search" className="size-[18px]" />
+        </Button>
       ) : (
         <form role="search" onSubmit={onSearch} className="relative flex min-w-[140px] max-w-[420px] flex-[3_1_0] items-center">
           <label htmlFor="vault-search" className="sr-only">
@@ -123,7 +135,7 @@ export function Header({
       {!phone && !tablet && problems > 0 && (
         <Button asChild variant="secondary" size="sm" className="bg-tint-blocked text-status-blocked hover:bg-tint-blocked">
           <Link to={href.link(routes.indexStatus)}>
-            <span className="num">{problems}</span> index {problems === 1 ? 'problem' : 'problems'}
+            <span className="num">{problems}</span> index {problems === 1 ? 'error' : 'errors'}
           </Link>
         </Button>
       )}

@@ -47,13 +47,14 @@ function groupsFor(variant: RailVariant, hideTabItems: boolean): NavGroup[] {
 const LINK = 'flex items-center rounded-btn font-semibold no-underline'
 const linkState = (isActive: boolean) => (isActive ? 'bg-brand-fill text-white hover:text-white' : 'text-muted-ink hover:bg-inset hover:text-ink')
 
-function CountChip({ count, floating }: { count: number | undefined; floating?: boolean }) {
+function CountChip({ count, beside }: { count: number | undefined; beside?: boolean }) {
   if (!count) return null
   return (
     <span
       className={cn(
-        'num t-caption rounded-full bg-inset px-1.5 font-bold text-ink',
-        floating ? 'absolute -top-0.5 -right-0.5 min-w-4 border border-rail bg-line px-1 text-center leading-4' : 'ml-auto',
+        'num t-numeral rounded-full bg-inset px-1.5 font-bold text-ink',
+        // In the icon rail the chip sits beside its icon, never over it.
+        beside ? 'min-w-4 bg-line px-1 text-center leading-4' : 'ml-auto',
       )}
     >
       <span className="sr-only">Count: </span>
@@ -64,7 +65,7 @@ function CountChip({ count, floating }: { count: number | undefined; floating?: 
 
 /**
  * The navigation: product mark, groups and a note when the data is not real.
- * `full` is 224px with labels, `icon` is the 56px rail with tooltips, `sheet`
+ * `full` is 224px with labels, `icon` is the 72px rail with tooltips, `sheet`
  * is the full list inside a drawer (with `hideTabItems`, only what the bottom
  * tab bar does not already hold). The "Later" group is collapsed until opened.
  * Links keep the project context in the query string.
@@ -96,15 +97,15 @@ export function Rail({
           <Tooltip>
             {/* A wrapper is the trigger: Radix Slot cannot merge NavLink's className function. */}
             <TooltipTrigger asChild>
-              <span className="mx-auto flex size-10">
+              <span className="mx-auto flex h-10 w-14">
                 <NavLink
                   to={linkTo(item)}
                   end={item.to === '/'}
                   aria-label={item.label}
-                  className={({ isActive }) => cn(LINK, 'relative size-10 justify-center', linkState(isActive))}
+                  className={({ isActive }) => cn(LINK, 'h-10 w-14 justify-center gap-1', linkState(isActive))}
                 >
                   <Icon name={item.icon} />
-                  <CountChip count={count} floating />
+                  <CountChip count={count} beside />
                 </NavLink>
               </span>
             </TooltipTrigger>
