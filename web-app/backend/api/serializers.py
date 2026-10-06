@@ -88,8 +88,11 @@ class HealthSerializer(serializers.Serializer):
 
 
 class LoginRequestSerializer(serializers.Serializer):
-    username = serializers.CharField()
-    password = serializers.CharField(style={"input_type": "password"})
+    username = serializers.CharField(max_length=150)
+    # Whitespace is part of a password, so it is not trimmed before the check.
+    password = serializers.CharField(
+        max_length=4096, trim_whitespace=False, style={"input_type": "password"}
+    )
 
 
 class MeSerializer(serializers.Serializer):

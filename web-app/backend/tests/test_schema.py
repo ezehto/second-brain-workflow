@@ -41,10 +41,28 @@ SECTION_5 = [
 ]
 
 NO_SESSION_PATHS = {"/api/health/", "/api/auth/csrf/", "/api/auth/login/"}
-# Served for real by P1-24 itself.
-IMPLEMENTED = {("get", "/api/health/"), ("get", "/api/schema/")}
+# Served for real: P1-24 (health, schema) and P1-25 (auth).
+IMPLEMENTED = {
+    ("get", "/api/health/"),
+    ("get", "/api/schema/"),
+    ("get", "/api/auth/csrf/"),
+    ("post", "/api/auth/login/"),
+    ("post", "/api/auth/logout/"),
+    ("get", "/api/auth/me/"),
+}
 STUBBED = [entry for entry in SECTION_5 if entry not in IMPLEMENTED]
 STUBBED_SESSION = [entry for entry in STUBBED if entry[1] not in NO_SESSION_PATHS]
+
+
+def session_operations() -> list[tuple[str, str]]:
+    """Every (method, path) the committed schema secures with the session cookie."""
+    document = yaml.safe_load(COMMITTED_SCHEMA.read_text())
+    return [
+        (method, path)
+        for path, item in document["paths"].items()
+        for method, operation in item.items()
+        if operation.get("security") == [{"cookieAuth": []}]
+    ]
 
 
 def generate_schema(tmp_path: Path) -> str:
@@ -102,18 +120,10 @@ def test_unimplemented_endpoint_is_501_when_authenticated(client, django_user_mo
     assert response.json() == {"detail": "Not implemented"}
 
 
-@pytest.mark.parametrize(("method", "path"), STUBBED_SESSION)
+@pytest.mark.parametrize(("method", "path"), session_operations())
 @pytest.mark.django_db
 def test_session_endpoint_rejects_anonymous(client, method, path):
     assert request_for(client, method, path).status_code in {401, 403}
-
-
-@pytest.mark.parametrize(("method", "path"), [e for e in STUBBED if e[1] in NO_SESSION_PATHS])
-@pytest.mark.django_db
-def test_csrf_and_login_stubs_are_501_without_a_session(client, method, path):
-    response = request_for(client, method, path)
-    assert response.status_code == 501
-    assert response.json() == {"detail": "Not implemented"}
 
 
 @pytest.mark.django_db
@@ -177,7 +187,10 @@ def test_triage_requires_classification_unless_dismiss(action, classification, v
     data = {"path": "00-Inbox/x.md", "expected_hash": GOOD_HASH, "action": action}
     if classification:
         data["classification"] = classification
-    assert TriageRequestSerializer(data=data).is_valid() is valid
+    serializer = TriageRequestSerializer(data=data)
+    assert serializer.is_valid() is valid
+    if action != "dismiss" and classification is None:
+        assert "classification" in serializer.errors
 
 
 @pytest.mark.parametrize("bad_hash", ["", "abc", "A" * 64, "g" * 64, "a" * 65])

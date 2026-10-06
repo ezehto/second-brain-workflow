@@ -70,6 +70,19 @@ example = {m.group(1) for line in open(".env.example")
 for var in sorted(set(json.loads(os.environ["VARS"])) - example):
     problems.append(f".env.example lacks {var}, referenced in docker-compose.yml")
 
+def words(v):
+    return [v] if isinstance(v, str) else list(v or [])
+
+for name, svc in services.items():
+    for key in ("command", "entrypoint"):
+        if any("createsuperuser" in w for w in words(svc.get(key))):
+            problems.append(f"{name}: {key} runs createsuperuser")
+
+dockerfile = open("backend/Dockerfile").read()
+for line in dockerfile.splitlines():
+    if re.match(r"\s*(CMD|ENTRYPOINT)\b", line) and "createsuperuser" in line:
+        problems.append(f"backend/Dockerfile: {line.strip()}")
+
 if problems:
     print("\n".join("FAIL: " + p for p in problems), file=sys.stderr)
     sys.exit(1)
@@ -79,6 +92,7 @@ print("ok: no service uses host or other non-service network_mode")
 print("ok: indexer vault mount (if any) is read-only")
 print("ok: test service (if any) does not mount the vault")
 print("ok: test-mode variables are absent from every non-test service")
+print("ok: no service command or entrypoint, and no backend Dockerfile CMD or ENTRYPOINT, creates a user")
 print("ok: .env.example defines every variable referenced in docker-compose.yml")
 print("ok: services checked: " + ", ".join(sorted(services)))
 PY

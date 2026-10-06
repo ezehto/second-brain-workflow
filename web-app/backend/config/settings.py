@@ -102,6 +102,10 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.SessionAuthentication"],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    # Only views that opt in through ScopedRateThrottle are throttled. NUM_PROXIES = 0 makes DRF
+    # key on REMOTE_ADDR only; left unset it would key on the client-controlled X-Forwarded-For.
+    "DEFAULT_THROTTLE_RATES": {"login": "5/min"},
+    "NUM_PROXIES": 0,
 }
 
 SPECTACULAR_SETTINGS = {
@@ -125,6 +129,8 @@ SPECTACULAR_SETTINGS = {
 SESSION_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SAMESITE = "Lax"
+
+CSRF_FAILURE_VIEW = "api.views.errors.csrf_failure"
 
 LOGGING = {
     "version": 1,

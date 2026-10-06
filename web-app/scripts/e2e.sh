@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # E2E stack (P1-19): start, seed and stop the separate Compose project "sbw-e2e".
 #
-#   scripts/e2e.sh up [--vault-copy-of <path>]   fresh vault copy, start db/backend/frontend, migrate
+#   scripts/e2e.sh up [--vault-copy-of <path>]   fresh vault copy, start db/backend/frontend (the backend migrates on start)
 #   scripts/e2e.sh user                          create the e2e superuser (createsuperuser --noinput)
 #   scripts/e2e.sh down [-v]                     stop; -v also removes the sbw-e2e volumes
 #
@@ -153,7 +153,6 @@ cmd_up() {
 
   compose up -d --wait db
   compose up -d backend frontend
-  compose exec -T backend python manage.py migrate --noinput
   local port; port="$(env_get BACKEND_PORT "$ENV_FILE")"
   if [ "$DRY_RUN" != 1 ]; then
     local healthy=0

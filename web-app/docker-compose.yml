@@ -35,7 +35,12 @@ services:
   backend:
     build: ./backend
     image: second-brain-backend
-    command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+    init: true
+    # Migrate first; nothing here creates a user (the account is made by hand, decision C18).
+    command:
+      - sh
+      - -c
+      - python manage.py migrate --noinput && exec python manage.py runserver 0.0.0.0:8000
     environment: *django-env
     volumes:
       - "${VAULT_PATH}:/vault"
