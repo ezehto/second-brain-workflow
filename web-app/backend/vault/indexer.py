@@ -28,9 +28,10 @@ from pathlib import Path
 
 from django.db import connection, transaction
 from django.db.models import Count
+from django.utils import timezone
 
 from vault.ignore import is_ignored, read_sbignore, walk_notes
-from vault.models import Link, Note, Tag
+from vault.models import IndexPass, Link, Note, Tag
 from vault.parser import ParsedNote, parse_note
 
 logger = logging.getLogger(__name__)
@@ -347,7 +348,20 @@ class Indexer:
             logger.warning(
                 "indexer pass took %.3f s, over the %.0f s budget", summary.duration_s, budget
             )
+        self._record(summary)
         return summary
+
+    @staticmethod
+    def _record(summary: PassSummary) -> None:
+        """Persist the pass for the status endpoint (the single `IndexPass` row)."""
+        IndexPass.objects.update_or_create(
+            pk=IndexPass.SINGLETON_PK,
+            defaults={
+                "finished_at": timezone.now(),
+                "duration_ms": round(summary.duration_s * 1000),
+                "summary": asdict(summary),
+            },
+        )
 
     @staticmethod
     def _log_moves(gone, indexed, added, summary: PassSummary) -> None:

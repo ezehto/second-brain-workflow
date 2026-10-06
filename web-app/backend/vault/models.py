@@ -38,13 +38,13 @@ class Note(models.Model):
     # Racy-file rule (plan 2.7): True until a later pass re-reads the file and finds the same
     # digest and stat, so a second write that left (mtime, size) unchanged is still caught.
     reread_next = models.BooleanField(default=True)
-    # `simple` configuration: no stemming, so ticket keys and paths survive intact.
+    # `simple` configuration: no stemming, so ticket keys and paths survive intact. The default
+    # parser keeps "work/projects/gida" as one token, so `/` is split to a space in every
+    # column; search queries get the same rewrite (api/views/search.py).
     search_vector = models.GeneratedField(
         expression=SearchVector(
-            "title",
-            Left("body", SEARCH_BODY_LIMIT),
-            # The default parser keeps "work/projects/gida" as one token; split on "/" so
-            # folder names are searchable.
+            Replace("title", Value("/"), Value(" ")),
+            Replace(Left("body", SEARCH_BODY_LIMIT), Value("/"), Value(" ")),
             Replace("path", Value("/"), Value(" ")),
             config="simple",
         ),
@@ -87,3 +87,20 @@ class Tag(models.Model):
 
     def __str__(self) -> str:
         return self.name
+
+
+class IndexPass(models.Model):
+    """The last indexer pass (one row, pk 1): what `GET /api/index/status/` reports.
+
+    Derived state, written by the indexer inside the pass transaction. `reindex` leaves it
+    alone, so `last_pass_at` survives a rebuild; it is not part of the rebuild invariant.
+    """
+
+    SINGLETON_PK = 1
+
+    finished_at = models.DateTimeField()
+    duration_ms = models.PositiveIntegerField()
+    summary = models.JSONField(default=dict)
+
+    def __str__(self) -> str:
+        return f"pass at {self.finished_at:%Y-%m-%d %H:%M:%S}"
