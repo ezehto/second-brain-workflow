@@ -16,6 +16,7 @@ const hit = (over: Partial<SearchResult> = {}): SearchResult => ({
   path: RETRY,
   type: 'task',
   title: 'Add retry with backoff to payment callback handler',
+  project: null,
   snippet: 'Callbacks that fail should retry with exponential backoff.',
   source: 'vault',
   ...over,

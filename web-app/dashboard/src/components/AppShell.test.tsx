@@ -27,6 +27,17 @@ describe('navigation by width', () => {
     expect(screen.queryByRole('navigation', { name: 'Primary' })).not.toBeInTheDocument()
   })
 
+  it('keeps the Later group collapsed, so the rail shows exactly the nine destinations until it is opened', async () => {
+    const user = userEvent.setup()
+    renderApp()
+    const nav = await main()
+    const toggle = within(nav).getByRole('button', { name: /Later/ })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    for (const name of ['Workflow', 'Timeline', 'Upskilling']) expect(within(nav).queryByRole('link', { name })).not.toBeInTheDocument()
+    await user.click(toggle)
+    for (const name of ['Workflow', 'Timeline', 'Upskilling']) expect(within(nav).getByRole('link', { name })).toBeInTheDocument()
+  })
+
   it('shows counts on Inbox, Tasks (blocked) and Index status', async () => {
     renderApp()
     const nav = await main()

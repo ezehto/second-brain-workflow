@@ -1,6 +1,7 @@
 import type {
   ApiErrorBody,
   AppendStandupRequest,
+  AppendStandupResponse,
   CreateNoteRequest,
   DashboardResponse,
   Health,
@@ -43,6 +44,12 @@ export class ApiError extends Error {
  * it here, not in a page.
  */
 export interface ApiClient {
+  /**
+   * Calls `listener` whenever a session endpoint says the session is gone (401, or 403 that is not a
+   * CSRF failure). Returns the unsubscribe function. A client with no session (the mock) never calls it.
+   */
+  onUnauthenticated(listener: () => void): () => void
+
   // auth
   /** `GET /api/auth/csrf/`: sets the CSRF cookie. */
   csrf(): Promise<void>
@@ -73,11 +80,16 @@ export interface ApiClient {
   // standups
   getStandupToday(): Promise<StandupToday>
   startStandup(): Promise<StartStandupResponse>
-  appendToStandup(input: AppendStandupRequest): Promise<NoteDetail>
+  /** `POST /api/standups/today/append/`. `section_created` is true when the heading had to be added. */
+  appendToStandup(input: AppendStandupRequest): Promise<AppendStandupResponse>
 
   // aggregates, search, index
   getDashboard(): Promise<DashboardResponse>
   search(query: string): Promise<SearchResponse>
   getIndexStatus(): Promise<IndexStatus>
+  /**
+   * `POST /api/index/refresh/` then `GET /api/index/status/`: the pass summary on the wire is not an
+   * `IndexStatus`, and the Index status page shows the status after the pass.
+   */
   refreshIndex(): Promise<IndexStatus>
 }

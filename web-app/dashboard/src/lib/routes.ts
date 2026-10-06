@@ -13,6 +13,7 @@ export const routes = {
   upskilling: '/upskilling',
   search: '/search',
   indexStatus: '/index-status',
+  login: '/login',
 } as const
 
 /** The note reader (P1-32). The vault path is the stable identity of a note. */

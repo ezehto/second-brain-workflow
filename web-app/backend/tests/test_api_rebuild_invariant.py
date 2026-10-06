@@ -196,8 +196,6 @@ def test_the_sequence_changed_what_the_snapshot_reads(api, vault):
 
 
 def test_the_invariant_holds_with_a_standup_started_and_appended(api, vault):
-    if api.get("/api/standups/today/").status_code == 501:
-        pytest.skip("standup endpoints return 501 until the standup task lands")
     run_sequence(api, vault)
     started = post(api, "/api/standups/today/")
     assert started.status_code in (200, 201), started.content

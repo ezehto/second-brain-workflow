@@ -6,6 +6,7 @@ import { ClockProvider, fixedClock, useClock } from '@/lib/clock'
 import { routes } from '@/lib/routes'
 import { hasTabBar, useViewport } from '@/lib/viewport'
 import { cn } from '@/lib/utils'
+import { SignOutButton } from '@/features/auth'
 import { indexProblemCount } from '@/domain/indexStatus'
 import { ContextSelect } from './ContextSelect'
 import { Header } from './Header'
@@ -89,7 +90,14 @@ export function AppShell({ sampleData }: { sampleData: boolean }) {
               </main>
             </div>
 
-            {tabBar && <MobileTabBar counts={counts} sampleData={sampleData} extra={viewport === 'phone' ? <ContextSelect className="w-full" /> : undefined} />}
+            {tabBar && <MobileTabBar counts={counts} sampleData={sampleData} extra={
+                  viewport === 'phone' ? (
+                    <div className="flex flex-col gap-2">
+                      <ContextSelect className="w-full" />
+                      <SignOutButton className="w-full" />
+                    </div>
+                  ) : undefined
+                } />}
             {viewport === 'tablet' && (
               <NavSheet open={menu} onOpenChange={setMenu} counts={counts} sampleData={sampleData} extra={<ContextSelect className="w-full" />} />
             )}

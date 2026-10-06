@@ -46,6 +46,7 @@ describe('CommandPalette', () => {
       path: `02-Work/Tasks/Retry ${i}.md`,
       type: 'task',
       title: `Retry ${i}`,
+      project: null,
       snippet: 'x',
       source: 'vault' as const,
     }))
@@ -63,7 +64,7 @@ describe('CommandPalette', () => {
   it('moves with the arrow keys and opens the chosen note on Enter, keeping the project', async () => {
     const search = async (q: string) => ({
       query: q,
-      results: [{ path: RETRY, type: 'task', title: 'Add retry with backoff to payment callback handler', snippet: 'x', source: 'vault' as const }],
+      results: [{ path: RETRY, type: 'task', title: 'Add retry with backoff to payment callback handler', project: null, snippet: 'x', source: 'vault' as const }],
     })
     const { user, dialog, router } = await openPalette('/tasks?project=ipp', withSearch(search))
     const input = within(dialog).getByRole('combobox')

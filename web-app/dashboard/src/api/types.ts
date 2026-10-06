@@ -1,14 +1,13 @@
+import type { components } from './generated/schema'
+
 /**
- * PROVISIONAL until the OpenAPI contract (P1-24): every shape in this file is
- * hand-written from docs/plan/phase-1-foundation.md section 5 and may change
- * when `web-app/backend/openapi.yaml` exists. Then it is replaced by generated
- * types and this file shrinks to re-exports. Nullable fields are `null`, never
- * missing: the UI shows `N/A` for them.
- *
- * Provisional contract change: `TriageRequest.classification` is optional, and
- * sent only for `dismiss` when a classification was already written to the
- * capture (a kind merely chosen in the UI is not sent).
+ * The shapes of the API. Request and response shapes are the generated ones
+ * (`generated/schema.d.ts`, from `web-app/backend/openapi.yaml`): this file
+ * names them, keeps the constants the UI needs (vocabularies, sections) and
+ * keeps a few narrower request types that the generated ones accept. Nullable
+ * fields are `null`, never missing: the UI shows `N/A` for them.
  */
+type Schemas = components['schemas']
 
 export type NoteType = 'task' | 'project' | 'decision' | 'lesson' | 'capture' | 'daily' | 'note' | (string & {})
 
@@ -40,31 +39,12 @@ export const DEFAULT_STATUS: { [T in VocabularyType]: StatusOf<T> } = {
 
 export type Priority = 'high' | 'medium' | 'low'
 
-/** Promoted fields of one indexed note, as listed by `GET /api/notes/`. */
-export interface NoteSummary {
-  /** The `id` frontmatter value; null for a note made by hand without one. */
-  id: string | null
-  /** Vault-relative path, e.g. `02-Work/Tasks/Fix N+1 query.md`. */
-  path: string
-  type: NoteType
-  title: string
-  /** Stored as written: any value, even one outside the type's vocabulary. */
-  status: string | null
-  priority: Priority | null
-  /** Project slug as written in frontmatter. */
-  project: string | null
-  /** `YYYY-MM-DD`, or null when absent or unreadable. */
-  due: string | null
-  blocked_by: string | null
-  /** Decisions: `YYYY-MM-DD` set when the status became accepted. */
-  decided: string | null
-  tags: string[]
-  created: string | null
-  /** Local ISO time with the vault offset, e.g. `2026-10-06T11:20:00+08:00`. */
-  modified: string
-  parse_error: string | null
-}
+/** Promoted fields of one indexed note. `type` and `priority` are free text on the wire (stored as written). */
+export type NoteSummary = Schemas['NoteSummary']
+/** `GET /api/notes/lookup/`: one note in full. */
+export type NoteDetail = Schemas['NoteDetail']
 
+/** A page of a DRF list. The generated list type marks `next`/`previous` optional; the HTTP client always fills them. */
 export interface Paginated<T> {
   count: number
   next: string | null
@@ -89,41 +69,12 @@ export interface NoteListParams {
 }
 
 /** `GET /api/projects/`: a project note with its slug and open-task count. */
-export interface ProjectSummary {
-  slug: string
-  title: string
-  path: string
-  status: string | null
-  goal: string | null
-  open_task_count: number
-  modified: string
-}
+export type ProjectSummary = Schemas['ProjectSummary']
+export type IndexSummary = Schemas['IndexSummary']
+/** `GET /api/dashboard/`. `today` is the vault's day (honours the test clock). */
+export type DashboardResponse = Schemas['Dashboard']
 
-export interface IndexSummary {
-  /** Local ISO time of the last sync pass; null before the first pass. */
-  last_pass_at: string | null
-  problem_count: number
-}
-
-/** `GET /api/dashboard/`. */
-export interface DashboardResponse {
-  /** The vault's "today", `YYYY-MM-DD` (honours the test clock). */
-  today: string
-  today_tasks: NoteSummary[]
-  in_progress: NoteSummary[]
-  blocked: NoteSummary[]
-  overdue: NoteSummary[]
-  standup: StandupToday
-  recent_activity: NoteSummary[]
-  active_projects: ProjectSummary[]
-  inbox_count: number
-  index: IndexSummary
-}
-
-export interface IndexProblem {
-  path: string
-  detail: string
-}
+export type IndexProblem = Schemas['IndexProblem']
 
 export const INDEX_PROBLEM_CATEGORIES = [
   'parse_errors',
@@ -134,35 +85,16 @@ export const INDEX_PROBLEM_CATEGORIES = [
   'duplicate_project_slugs',
   'unknown_statuses',
   'invalid_dates',
-] as const
-export type IndexProblemCategory = (typeof INDEX_PROBLEM_CATEGORIES)[number]
+] as const satisfies readonly IndexProblemCategory[]
+export type IndexProblemCategory = keyof Schemas['IndexProblems']
 
 /** `GET /api/index/status/`. */
-export interface IndexStatus {
-  last_pass_at: string | null
-  duration_ms: number | null
-  counts_by_type: Record<string, number>
-  problems: Record<IndexProblemCategory, IndexProblem[]>
-  /** The pinned date when plan section 2.12 test mode is on. */
-  test_mode: { today: string } | null
-}
+export type IndexStatus = Schemas['IndexStatus']
+/** `POST /api/index/refresh/`: the pass summary (not an `IndexStatus`). */
+export type RefreshSummary = Schemas['RefreshSummary']
 
-/**
- * `GET /api/search/?q=`. Provisional: results should also carry `project` (the
- * note's project slug or null) so a project context can filter them without
- * loading every note, and `snippet` should be plain text, not HTML.
- */
-export interface SearchResult {
-  path: string
-  type: NoteType
-  title: string
-  snippet: string
-  source: 'vault'
-}
-export interface SearchResponse {
-  query: string
-  results: SearchResult[]
-}
+export type SearchResult = Schemas['SearchResult']
+export type SearchResponse = Schemas['SearchResponse']
 
 export const STANDUP_SECTIONS = [
   'Done',
@@ -171,72 +103,39 @@ export const STANDUP_SECTIONS = [
   'Decisions / Updates',
   'Follow-ups',
   'Related Tasks / Projects',
-] as const
-export type StandupSection = (typeof STANDUP_SECTIONS)[number]
+] as const satisfies readonly StandupSection[]
+export type StandupSection = Schemas['SectionEnum']
 
 /** Where a wikilink target resolves: one note, several, or none (review O-7). */
-export type LinkState = 'resolved' | 'ambiguous' | 'unresolved'
-
-/** `GET /api/notes/lookup/`: one note in full. */
-export interface NoteDetail extends NoteSummary {
-  frontmatter: Record<string, unknown>
-  body: string
-  content_hash: string
-  /** Notes that link here. */
-  backlinks: { path: string; title: string }[]
-  /** Each link target as written in the body, to where it resolves. */
-  links: Record<string, { path: string | null; state: LinkState }>
-}
+export type LinkState = Schemas['StateEnum']
 
 /** `GET /api/projects/{slug}/`. */
-export interface ProjectDetail {
-  project: ProjectSummary
-  note: NoteDetail
-  open_tasks: NoteSummary[]
-  decisions: NoteSummary[]
-  /** By modified time, then path. */
-  recent_notes: NoteSummary[]
-}
+export type ProjectDetail = Schemas['ProjectDetail']
 
 /** The six standup sections as lines of Markdown. */
-export type StandupPreview = Record<StandupSection, string[]>
+export type StandupPreview = Schemas['StandupPreview']
 
 /**
  * `GET /api/standups/today/`: today's daily note, or (404 on the wire) the
  * carry-forward preview of what starting the standup would write.
  */
-export type StandupToday =
-  | { exists: true; note: NoteDetail; untouched: boolean }
-  | { exists: false; preview: StandupPreview }
+export type StandupToday = Schemas['StandupToday']
 
-/**
- * `POST /api/standups/today/`. `created` is true on 201 (a new note with
- * carry-forward). Otherwise 200: `filled` says whether an untouched note was
- * filled (true) or a touched one returned unchanged (false). When `created`,
- * `filled` is true.
- */
-export interface StartStandupResponse {
-  created: boolean
-  filled: boolean
-  note: NoteDetail
-  untouched: boolean
-}
+/** `POST /api/standups/today/`. `created` is true on 201; `filled` says whether an untouched note was filled. */
+export type StartStandupResponse = Schemas['StartStandupResponse']
 
 /**
  * `POST /api/standups/today/append/`. `text` is the bare line: the writer adds
- * the list marker by the section's rule (`- [ ] ` under Today and Follow-ups,
- * `- ` elsewhere), so a caller never includes `- ` or `- [ ] `.
+ * the list marker by the section's rule, so a caller never includes `- ` or `- [ ] `.
  */
-export interface AppendStandupRequest {
-  section: StandupSection
-  text: string
-  expected_hash: string
-}
+export type AppendStandupRequest = Schemas['AppendStandupRequest']
+/** The note and whether the section heading had to be added. */
+export type AppendStandupResponse = Schemas['AppendStandupResponse']
 
 /** The types `POST /api/notes/` can create (C17). */
-export type CreatableType = 'task' | 'project' | 'decision' | 'lesson'
+export type CreatableType = Schemas['TypeEnum']
 
-/** `POST /api/notes/` (C17). The status, when given, is from the type's vocabulary. */
+/** `POST /api/notes/` (C17): the generated request narrowed so a status belongs to the type's vocabulary. */
 export type CreateNoteRequest = {
   [T in CreatableType]: {
     type: T
@@ -250,47 +149,20 @@ export type CreateNoteRequest = {
   }
 }[CreatableType]
 
-/** `POST /api/notes/status/` (C17). */
-export interface StatusChangeRequest {
-  path: string
-  status: string
-  expected_hash: string
-  /** Appended under `## Notes` when the status becomes `done`. */
-  evidence?: string
-}
+/** `POST /api/notes/status/` (C17). `status` is a word the UI offers; the server checks it against the note's type and answers 422 when it is not in the vocabulary. */
+export type StatusChangeRequest = Omit<Schemas['StatusChangeRequest'], 'status'> & { status: string }
 
-export type TriageAction = 'task' | 'decision' | 'lesson' | 'project' | 'keep' | 'dismiss'
+export type TriageAction = Schemas['ActionEnum']
 
-/** `POST /api/captures/triage/` (C17). */
-export interface TriageRequest {
-  path: string
-  expected_hash: string
-  action: TriageAction
-  /** Required for every action but `dismiss`, which may omit it (provisional, see the note at the top). */
-  classification?: string
-  title?: string
-  project?: string
-  /** Retry after a partial failure: reuse this note instead of creating one. */
-  existing_target?: string
-}
-export interface TriageResponse {
-  capture: NoteDetail
-  /** The note created or reused; null for `keep` and `dismiss`. */
-  target: NoteSummary | null
-}
+/** `POST /api/captures/triage/` (C17). `classification` is any kind the user chose (the server checks it), and is optional. */
+export type TriageRequest = Omit<Schemas['TriageRequest'], 'classification'> & { classification?: string }
+export type TriageResponse = Schemas['TriageResponse']
 
-export interface LoginRequest {
-  username: string
-  password: string
-}
+export type LoginRequest = Schemas['LoginRequest']
 /** `GET /api/auth/me/`. */
-export interface Me {
-  username: string
-}
+export type Me = Schemas['Me']
 /** `GET /api/health/`. */
-export interface Health {
-  status: 'ok'
-}
+export type Health = Schemas['Health']
 
 /**
  * The body of a 4xx/5xx response. `candidates` lists the paths a `?id=` lookup

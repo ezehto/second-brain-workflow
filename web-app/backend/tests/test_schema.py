@@ -41,32 +41,6 @@ SECTION_5 = [
 ]
 
 NO_SESSION_PATHS = {"/api/health/", "/api/auth/csrf/", "/api/auth/login/"}
-# Served for real: P1-24 (health, schema) and P1-25 (auth).
-IMPLEMENTED = {
-    ("get", "/api/health/"),
-    ("get", "/api/schema/"),
-    ("get", "/api/auth/csrf/"),
-    ("post", "/api/auth/login/"),
-    ("post", "/api/auth/logout/"),
-    ("get", "/api/auth/me/"),
-    ("get", "/api/search/"),
-    ("get", "/api/index/status/"),
-    ("post", "/api/index/refresh/"),
-    ("get", "/api/notes/"),
-    ("get", "/api/notes/lookup/"),
-    ("get", "/api/projects/"),
-    ("get", "/api/projects/{slug}/"),
-    ("get", "/api/dashboard/"),
-    ("post", "/api/notes/"),
-    ("post", "/api/notes/status/"),
-    ("post", "/api/captures/"),
-    ("post", "/api/captures/triage/"),
-    ("get", "/api/standups/today/"),
-    ("post", "/api/standups/today/"),
-    ("post", "/api/standups/today/append/"),
-}
-STUBBED = [entry for entry in SECTION_5 if entry not in IMPLEMENTED]
-STUBBED_SESSION = [entry for entry in STUBBED if entry[1] not in NO_SESSION_PATHS]
 
 
 def session_operations() -> list[tuple[str, str]]:
@@ -123,16 +97,6 @@ def test_session_auth_declared_except_health_csrf_login(schema_document, method,
     else:
         assert operation["security"] == [{"cookieAuth": []}]
     assert schema_document["components"]["securitySchemes"]["cookieAuth"]["in"] == "cookie"
-
-
-@pytest.mark.parametrize(("method", "path"), STUBBED_SESSION)
-@pytest.mark.django_db
-def test_unimplemented_endpoint_is_501_when_authenticated(client, django_user_model, method, path):
-    user = django_user_model.objects.create_user(username="tester", password="x-not-a-secret-1")
-    client.force_login(user)
-    response = request_for(client, method, path)
-    assert response.status_code == 501
-    assert response.json() == {"detail": "Not implemented"}
 
 
 @pytest.mark.parametrize(("method", "path"), session_operations())

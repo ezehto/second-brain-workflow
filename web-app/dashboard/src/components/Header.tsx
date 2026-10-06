@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useMatches, useNavigate } from 'react-router'
-import { useApi } from '@/api/ApiProvider'
-import { useQuery } from '@/api/useQuery'
 import type { IndexStatus } from '@/api/types'
 import { Button } from '@/components/ui/button'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
+import { SignOutMenuItem, useSession } from '@/features/auth'
 import { useToday } from '@/lib/clock'
 import { formatTimeOfDay } from '@/lib/dates'
 import { PROJECT_PARAM, useProjectContext, useProjectHref } from '@/lib/projectContext'
@@ -39,7 +39,6 @@ export function Header({
   viewport: Viewport
   onOpenMenu: () => void
 }) {
-  const client = useApi()
   const today = useToday()
   const navigate = useNavigate()
   const project = useProjectContext()
@@ -47,7 +46,6 @@ export function Header({
   const handle = useMatches().at(-1)?.handle as PageHandle | undefined
   const [query, setQuery] = useState('')
   const searchRef = useRef<HTMLInputElement>(null)
-  const me = useQuery(useCallback(() => client.me(), [client]))
 
   const phone = viewport === 'phone'
   // Below 1100px the search box would be squeezed to a few characters: it becomes an icon that opens the palette.
@@ -66,7 +64,8 @@ export function Header({
   const subtitle = handle && todayKnown ? resolveText(handle.subtitle, ctx) : ''
   // Warnings stay in the rail's count; the top bar is for what is broken.
   const problems = index ? indexErrorCount(index) : 0
-  const username = me.status === 'success' ? me.data.username : null
+  const { state: session } = useSession()
+  const username = session.status === 'authenticated' ? session.username : null
 
   const tabLabel = handle && todayKnown ? (handle.label ?? title) : ''
   useEffect(() => {
@@ -140,10 +139,19 @@ export function Header({
         </Button>
       )}
       {!phone && (
-        <span title={username ?? undefined} className="inline-flex size-8 flex-none items-center justify-center rounded-full bg-brand-soft font-bold text-brand-hover">
-          <span aria-hidden="true">{username ? username[0].toUpperCase() : '?'}</span>
-          <span className="sr-only">{username ? `Signed in as ${username}` : 'User not available'}</span>
-        </span>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            title={username ?? undefined}
+            className="inline-flex size-8 flex-none cursor-pointer items-center justify-center rounded-full bg-brand-soft font-bold text-brand-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+          >
+            <span aria-hidden="true">{username ? username[0].toUpperCase() : '?'}</span>
+            <span className="sr-only">{username ? `Signed in as ${username}` : 'Account menu'}</span>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-52">
+            {username && <DropdownMenuLabel className="t-small font-normal text-muted-ink">Signed in as {username}</DropdownMenuLabel>}
+            <SignOutMenuItem />
+          </DropdownMenuContent>
+        </DropdownMenu>
       )}
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
     </header>

@@ -11,7 +11,7 @@ import { CLASSIFICATIONS, actionLabel, captureText, capturedWhen, conversionOf, 
 import type { Handled } from './HandledList'
 
 const SELECT_CLASS =
-  'h-8 min-w-0 rounded-btn border border-line bg-inset px-2 t-body text-ink outline-none focus-visible:border-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand max-rail:min-h-11'
+  'h-8 min-w-0 rounded-btn border border-line bg-inset px-2 t-body text-ink focus-visible:border-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand max-rail:min-h-11'
 
 /**
  * One capture awaiting triage, a 48px row: the text, when it was captured,
@@ -138,7 +138,7 @@ export function InboxRow({
       tabIndex={active ? 0 : -1}
       aria-label={text}
       onKeyDown={onKeyDown}
-      className="list-none outline-none focus-visible:bg-inset focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand"
+      className="list-none focus-visible:bg-inset focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand"
     >
       <CardRow lines={2} className={cn('flex flex-wrap', selected && 'bg-inset')}>
         <div className="flex min-w-0 flex-[1_1_240px] flex-col">

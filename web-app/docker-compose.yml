@@ -95,12 +95,20 @@ services:
     init: true
     environment:
       TZ: ${TZ:-Asia/Manila}
-      VITE_API_MODE: mock
+      # `http` talks to the backend through the dev proxy; `mock` serves sample data with no backend.
+      VITE_API_MODE: ${VITE_API_MODE:-http}
+      # The contract, read-only: `npm run generate:api` and its freshness test read it here.
+      OPENAPI_SPEC: /contract/openapi.yaml
     volumes:
       - ./dashboard:/app
       - node_modules:/app/node_modules
+      - ./backend/openapi.yaml:/contract/openapi.yaml:ro
     ports:
       - "127.0.0.1:${FRONTEND_PORT:-5173}:5173"
+    # http mode proxies /api to the backend. Frontend-only commands (`run`, lint, tests) pass --no-deps.
+    depends_on:
+      backend:
+        condition: service_started
     restart: unless-stopped
 
 volumes:

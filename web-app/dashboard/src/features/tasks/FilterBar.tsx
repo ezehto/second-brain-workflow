@@ -5,7 +5,7 @@ import { tasksHref, type TaskFilters } from '@/lib/routes'
 import { GROUPS, hasFilters, type GroupBy } from './filters'
 
 const SELECT =
-  't-body h-8 min-w-0 cursor-pointer rounded-btn border border-line bg-inset px-2 font-normal text-ink outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand max-rail:min-h-11'
+  't-body h-8 min-w-0 cursor-pointer rounded-btn border border-line bg-inset px-2 font-normal text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand max-rail:min-h-11'
 
 const GROUP_LABEL: Record<GroupBy, string> = { project: 'Project', status: 'Status', due: 'Due' }
 

@@ -263,6 +263,7 @@ export function createMockClient(options: MockClientOptions = {}): ApiClient {
       : { exists: true, note: detail(standupNote()), untouched: standup === 'untouched' }
 
   return {
+    onUnauthenticated: () => () => undefined,
     csrf: () => wait(() => undefined),
     login: ({ username, password }) =>
       wait(() => {
@@ -419,7 +420,7 @@ export function createMockClient(options: MockClientOptions = {}): ApiClient {
         const marker = section === 'Today' || section === 'Follow-ups' ? '- [ ] ' : '- '
         ;(standupAdded[section as StandupSection] ??= []).push(`${marker}${text.trim()}`)
         standupRevision += 1
-        return detail(standupNote())
+        return { note: detail(standupNote()), section_created: false }
       }),
 
     getDashboard: () =>
@@ -449,7 +450,7 @@ export function createMockClient(options: MockClientOptions = {}): ApiClient {
         const results = q
           ? allNotes()
               .filter((n) => n.title.toLowerCase().includes(q))
-              .map((n) => ({ path: n.path, type: n.type, title: n.title, snippet: 'Title match', source: 'vault' as const }))
+              .map((n) => ({ path: n.path, type: n.type, title: n.title, project: n.project, snippet: 'Title match', source: 'vault' as const }))
           : []
         return { query, results }
       }),

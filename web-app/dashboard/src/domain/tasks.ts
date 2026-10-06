@@ -27,7 +27,7 @@ export const byPriorityDueTitle = (a: NoteSummary, b: NoteSummary) =>
 export const PRIORITY_RANK: Record<Priority, number> = { high: 0, medium: 1, low: 2 }
 
 /** Rank for sorting; no priority, or one outside high/medium/low, sorts after `low`. */
-export function priorityRank(priority: Priority | null): number {
+export function priorityRank(priority: string | null): number {
   const rank = priority ? (PRIORITY_RANK as Record<string, number | undefined>)[priority] : undefined
   return rank ?? 3
 }
