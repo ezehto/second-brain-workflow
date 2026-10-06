@@ -1,0 +1,8 @@
+# Layered over docker-compose.yml by scripts/e2e.sh only: lets the e2e project pin the test clock
+# (plan section 2.12). Empty equals unset for vault/clock.py, so `up --vault-copy-of` leaves both empty.
+# Never add it to COMPOSE_FILE: the real stack must not see these keys (check_compose.sh refuses COMPOSE_FILE).
+services:
+  backend:
+    environment:
+      SECOND_BRAIN_TEST_MODE: ${SECOND_BRAIN_TEST_MODE:-}
+      SECOND_BRAIN_TODAY: ${SECOND_BRAIN_TODAY:-}

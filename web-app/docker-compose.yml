@@ -1,3 +1,17 @@
+# Everything the backend reads comes from the env file named on the command line
+# (`.env` by default, `.env.e2e` for the e2e project), never from `env_file:`, so one
+# `--env-file` selects the whole stack.
+x-django-env: &django-env
+  DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?set DJANGO_SECRET_KEY in the env file}
+  DJANGO_DEBUG: ${DJANGO_DEBUG:?set DJANGO_DEBUG in the env file}
+  DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:?set DJANGO_ALLOWED_HOSTS in the env file}
+  CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:?set CSRF_TRUSTED_ORIGINS in the env file}
+  POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in the env file}
+  POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in the env file}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in the env file}
+  INDEXER_POLL_SECONDS: ${INDEXER_POLL_SECONDS:-10}
+  TZ: ${TZ:-Asia/Manila}
+
 services:
   db:
     image: postgres:18
@@ -22,7 +36,7 @@ services:
     build: ./backend
     image: second-brain-backend
     command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
-    env_file: .env
+    environment: *django-env
     volumes:
       - "${VAULT_PATH}:/vault"
       - ./backend:/repo/web-app/backend
@@ -40,7 +54,7 @@ services:
     image: second-brain-backend
     profiles: ["indexer"]
     command: ["python", "-c", "print('indexer: manage.py sync_vault --watch arrives in P1-21')"]
-    env_file: .env
+    environment: *django-env
     volumes:
       - "${VAULT_PATH}:/vault:ro"
       - ./backend:/repo/web-app/backend
@@ -55,9 +69,9 @@ services:
     image: second-brain-backend
     profiles: ["test"]
     command: ["pytest"]
-    env_file: .env
     environment:
-      # .env supplies the DB host and credentials; a different database name keeps pytest and
+      <<: *django-env
+      # The env file supplies the DB credentials; a different database name keeps pytest and
       # any stray connection away from the real index (tests use test_second_brain_test).
       POSTGRES_DB: second_brain_test
       DJANGO_SECRET_KEY: test-only-not-a-secret-test-only-not-a-secret-test-only

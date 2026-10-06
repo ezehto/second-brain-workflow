@@ -14,6 +14,7 @@ ok() { echo "ok: $*"; }
 [ -f .env.example ] || fail "web-app/.env.example is missing"
 
 # Use .env when present; on a fresh clone fall back to .env.example.
+[ -z "${COMPOSE_FILE:-}" ] || fail "COMPOSE_FILE is set; unset it so only docker-compose.yml is checked and run"
 ENVFILE=.env
 [ -f .env ] || ENVFILE=.env.example
 
