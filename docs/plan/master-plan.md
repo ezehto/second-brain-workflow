@@ -183,12 +183,14 @@ Phase design (spec delta) -> user approval
   -> task-level plan (docs/plan/phase-N-*.md) -> user approval
   -> implement (delegated, one task at a time, TDD)
   -> code review (different agent) + security review where relevant
-  -> tests run and read by the orchestrator
+  -> tests run by a verification agent; output read by the orchestrator
   -> phase summary -> user approval -> next phase
 ```
 
-- **Orchestrator**: Fable. Plans, briefs agents, verifies their output, runs the
-  test suites itself, carries context between tasks. Does not self-review.
+- **Orchestrator**: Fable. Plans, briefs agents, reads and verifies their
+  output, carries context between tasks, updates Beads and commits verified
+  work. Always delegates: it does not run suites, write code or review inline
+  (user instruction, 2026-10-06). Does not self-review.
 - **Implementers**: `backend-engineer-python` (Django, DRF, indexer, writer),
   `frontend-engineer` (React, shadcn/ui), `devops-cloud-engineer` (Docker,
   Compose), `qa-test-engineer` (test design), `technical-writer` (docs).

@@ -62,6 +62,10 @@ documentation through context7 before using an API.
 
 ## Working model
 
-Fable orchestrates and plans. Implementation, review and test design are
-delegated to the specialist agents named in the master plan. The agent that
-writes a change never reviews it. The orchestrator runs the tests itself.
+Fable orchestrates and plans. **Always delegate tasks to subagents:**
+implementation, review, test design, test runs, probes, measurements and
+documents go to the specialist agents named in the master plan, one brief
+each. The agent that writes a change never reviews it. A verification agent
+runs the tests and reports the exact output; the orchestrator reads that
+output, decides, updates Beads and commits verified work. The orchestrator
+does not run suites, write code or review inline.
